@@ -142,6 +142,8 @@
 - [ ] Cambios aplican inmediatamente para todos los usuarios del tenant
 - [ ] Solo el rol ADM puede modificar estos datos
 
+> **Nota (2026-09-14, decisión de Jorge):** UI diferida a HUs de frontend (HU-045 y siguientes) — HU-006 entregada **100% backend** en Sprint 1; la vista Razor de configuración de empresa se planificará con el cimiento de frontend. Pts y sprint sin cambios.
+
 **Pts:** 3 · **Prioridad:** Alta · **Sprint:** 2
 
 ---

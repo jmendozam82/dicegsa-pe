@@ -82,7 +82,7 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 | HU-002 | Planes de Suscripción | 3 | @Arquitecto → @BackendDev |
 | HU-003 | Usuarios y Roles (Super Admin) | 5 | @Arquitecto → @BackendDev |
 | HU-004 | Autenticación JWT | 5 | @Arquitecto → @BackendDev |
-| HU-006 | Configuración de Empresa (Tenant) | 3 | @Arquitecto → @BackendDev + @FrontendDev |
+| HU-006 | Configuración de Empresa (Tenant) | 3 | @Arquitecto → @BackendDev |
 | HU-007 | Gestión de Ciclos Anuales | 5 | @Arquitecto → @BackendDev + @FrontendDev |
 | HU-008 | Umbrales de Semáforo | 3 | @Arquitecto → @BackendDev |
 | **Total** | | **29 pts** | |
@@ -217,6 +217,23 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
+## HU-006 · Configuración de la Empresa (Tenant) — CERRADA
+
+**Fecha de cierre:** 2026-09-14 · **Cerrada por:** @Documenter (LOOP-05) · **Spec:** `specs/sprint-01/HU-006.spec.md` → `Implementado`
+
+**Entregado (100% backend):** endpoints `api/v1/empresa` — GET (multi-rol `AdminTenant,Gerente,JefeArea`) · PUT (`AdminTenant`) · POST `/api/v1/empresa/logo` (multipart, `AdminTenant`); `EmpresaService`/`IEmpresaService` (BLL), extensión de `TenantRepository` (DAL-E1..E5), `ZonaHorariaHelper` + `ZonasIANA` (Utility), `StorageHelper`/`IStorageHelper`/`SupabaseStorageOptions` (Utility — ADR-005), `EmpresaUpdateRequestValidator`, registro IOC.
+
+**Verificación:** build 0/0 · tests 156/156 (26 HU-006 + 130 regresión HU-001..HU-004) · cobertura BLL 87.51% (≥ 70%, TEST-02) · commit `f1e7289` `[HU-006] feat: configuración de empresa (tenant)` · ADR-005 implementado (paquete `Supabase` 8.1.1 fijado por @BackendDev; bucket `logos-tenant`).
+
+**Flags menores no bloqueantes (de @QA en Review):**
+1. **UI diferida (decisión de Jorge, Flag #2):** la vista Razor de configuración y el logo en el encabezado se entregan en HUs de frontend (HU-045 y siguientes), cuando `PE-GOL.Aplicacion` tenga sesión/ApiClient. **@Orquestador debe reflejarlo en el planning del Sprint 2.** HU-006 se entregó 100% backend; el contrato de endpoints/DTOs queda listo para consumir.
+2. **Mejora opcional (de @QA):** añadir test `SubirLogo_RolNoAdminTenant` para blindar D12 (re-validación de rol en BLL en el endpoint de logo) — anotado para el siguiente ciclo.
+3. **Discrepancia documental corregida:** la tabla de «Tests requeridos» del spec declaraba "17 casos" listando 18 filas; el criterio de Done declaraba `EmpresaServiceTests` (18) cuando el archivo real tiene 22 (18 del spec + 4 extras autorizados por @Orquestador: tenant inexistente en GET, lectura multi-rol, nombre vacío/151 chars, no tocar campos del SuperAdmin). Conteos corregidos a 22 + 4 = 26 tests.
+
+**Siguientes dependencias:** HU-007 (Gestión de Ciclos Anuales, Sprint 1) es la próxima HU candidata; la UI de configuración de empresa se planificará con el cimiento de frontend (HU-045+).
+
+---
+
 ## Decisiones de Jorge — 2026-09-13 (resuelven flags del Sprint 1)
 
 **Contexto:** Jorge resolvió los 5 puntos bloqueantes del Sprint 1 señalados como flags en la sección HU-002. Ninguna decisión obliga a cambios de esquema ni de seed; la única pieza nueva es el **ADR-003** (aplicable a partir de HU-003).
@@ -229,5 +246,5 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Sprint 1 — Implementación HU-001 (fase 4 · @BackendDev)*
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-14 (cierre HU-006) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Sprint 1 — Implementación HU-007 (Gestión de Ciclos Anuales, fase 4 · @BackendDev)*

@@ -1,6 +1,7 @@
 # AGENTS.md — Constitución del Proyecto PE-GOL SaaS
 > Este archivo es la fuente de verdad del proyecto. Todo agente, spec, ADR y plan debe leerlo antes de actuar.
-> Versión: 1.5 · Fecha: 2026-09-13 · Autor: Jorge (Dicegsa)
+> Versión: 1.6 · Fecha: 2026-09-14 · Autor: Jorge (Dicegsa)
+> v1.6 (2026-09-14): tabla de estado actualizada tras implementar HU-006 (Configuración de la Empresa/Tenant).
 > v1.5 (2026-09-13): tabla de estado actualizada tras implementar HU-004 (Autenticación y Seguridad).
 > v1.4 (2026-09-13): tabla de estado actualizada tras implementar HU-003 (Gestión de Usuarios del Tenant).
 > v1.3 (2026-09-13): tabla de estado y backlog actualizados — 45 HU · 243 pts · 9 Sprints · HU-003 spec Aprobada · HU-045 movida al Sprint 3.
@@ -202,7 +203,7 @@ dicegsa-pe/
 | Design System | `07_DESIGN_SYSTEM.md` | ✅ Completo |
 | **AGENTS.md** | Este archivo | ✅ Completo |
 | Agentes | `agents/*.md` | ✅ Completo |
-| Specs Sprint 1 | `specs/sprint-01/*.spec.md` | 🔄 En progreso — HU-001, HU-002, HU-003 y HU-004 Implementadas (3 pendientes) |
+| Specs Sprint 1 | `specs/sprint-01/*.spec.md` | 🔄 En progreso — HU-001, HU-002, HU-003, HU-004 y HU-006 Implementadas (2 pendientes: HU-007, HU-008) |
 | Implementación | Código fuente | ⏳ Pendiente |
 
 ---
@@ -220,7 +221,8 @@ dicegsa-pe/
 
 ---
 
-*AGENTS.md — Constitución PE-GOL SaaS · Versión 1.5 · 2026-09-13*
+*AGENTS.md — Constitución PE-GOL SaaS · Versión 1.6 · 2026-09-14*
+*v1.6 (2026-09-14): tabla de estado actualizada tras implementar HU-006 (Configuración de la Empresa/Tenant).*
 *v1.5 (2026-09-13): tabla de estado actualizada tras implementar HU-004 (Autenticación y Seguridad).*
 *v1.4 (2026-09-13): tabla de estado actualizada tras implementar HU-003 (Gestión de Usuarios del Tenant).*
 *v1.3 (2026-09-13): tabla de estado y backlog actualizados — 45 HU · 243 pts · 9 Sprints · HU-003 spec Aprobada · HU-045 movida al Sprint 3.*
