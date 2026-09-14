@@ -1,0 +1,112 @@
+using System.Text;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using PE_GOL.API.Middleware;
+using PE_GOL.API.Validators;
+using PE_GOL.IOC;
+using Serilog;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// ── Configuración de Supabase (04_ARQUITECTURA.md § 9): carga opcional de
+//    appsettings.Supabase.json con las credenciales reales (password de BD,
+//    anon key y service_role key). Se fusiona DESPUÉS de appsettings.json y no
+//    se versiona (ver .gitignore) para no exponer secretos.
+builder.Configuration.AddJsonFile("appsettings.Supabase.json", optional: true, reloadOnChange: true);
+
+// ── Logging estructurado (Serilog, RNF-023): configuración JSON con filtros por tenant/usuario/módulo.
+builder.Host.UseSerilog((ctx, lc) => lc
+    .ReadFrom.Configuration(ctx.Configuration)
+    .Enrich.FromLogContext());
+
+builder.Services.AddControllers();
+
+// Validación de forma del request (FluentValidation 11+): auto-validation + registro de validators.
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddFluentValidationClientsideAdapters();
+builder.Services.AddValidatorsFromAssemblyContaining<TenantCreateRequestValidator>();
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "PE-GOL SaaS API",
+        Version = "v1",
+        Description = "API REST de PE-GOL SaaS · Gestión de Tenants (HU-001) y Planes de Suscripción (HU-002) · [Authorize(Roles = \"SuperAdmin\")]"
+    });
+
+    // Esquema de seguridad Bearer JWT para Swagger (SEC-01).
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Ingrese el token JWT: Bearer {token}"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+// ── Autenticación JWT base (SEC-01). La EMISIÓN de tokens es HU-004; aquí se deja la
+//    infraestructura para que [Authorize] funcione leyendo Issuer/Audience/Key de appsettings.
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("Jwt:Key no está configurada en appsettings.json.");
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "pe-gol-saas";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "pe-gol-users";
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+builder.Services.AddAuthorization();
+
+// CORS básico para el frontend (07_DESIGN_SYSTEM.md; se endurecerá en despliegue).
+builder.Services.AddCors(o => o.AddPolicy("Default", p =>
+    p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+
+// Inyección de dependencias (PE-GOL.IOC): repositorios, servicios y fábrica de conexiones.
+builder.Services.AddPEGolServices(builder.Configuration);
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+// Manejo global de errores: envuelve en ApiResponse<T>; ValidacionException → 422,
+// NotFoundException → 404, resto → 500 (ARCH-07).
+app.UseMiddleware<ExceptionMiddleware>();
+
+app.UseCors("Default");
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();

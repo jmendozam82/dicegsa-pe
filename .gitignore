@@ -1,0 +1,16 @@
+# ── .NET ────────────────────────────────────────────────────────────────────
+bin/
+obj/
+TestResults/
+*.user
+*.suo
+.vs/
+
+# ── Secretos locales (NO versionar) ─────────────────────────────────────────
+# Archivo donde se completan las credenciales reales de Supabase
+# (password de BD, anon key, service_role key). Completar localmente y NUNCA commitear.
+PE-GOL.API/appsettings.Supabase.json
+
+# ── Entorno / logs ──────────────────────────────────────────────────────────
+.env
+*.log
