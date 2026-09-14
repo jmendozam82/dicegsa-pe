@@ -266,4 +266,54 @@ public sealed class TenantRepository : ITenantRepository, IDisposable
         var cmd = new CommandDefinition(sql, dto, cancellationToken: ct);
         return await conn.ExecuteAsync(cmd);
     }
+
+    /// <summary>DAL-E2 (HU-006) · UPDATE configuración de empresa (nombre, eslogan, zona_horaria).
+    /// Retorna filas afectadas. Solo toca los 3 campos de la HU-006: NUNCA plan_id, estado,
+    /// logo_url ni descripcion (esos son de SuperAdmin vía UpdateAsync — test #16 del spec).</summary>
+    public async Task<int> ActualizarConfiguracionAsync(TenantConfiguracionUpdateDto dto, IDbTransaction? tx = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE tenant
+            SET nombre       = @Nombre,
+                eslogan      = @Eslogan,
+                zona_horaria = @ZonaHoraria,
+                updated_at   = NOW()
+            WHERE id = @Id
+            RETURNING id, created_at, updated_at;";
+
+        if (tx is not null)
+        {
+            // Ejecuta sobre la conexión asociada a la transacción (BeginTransactionAsync).
+            var cmdTx = new CommandDefinition(sql, dto, tx, cancellationToken: ct);
+            return await tx.Connection!.ExecuteAsync(cmdTx);
+        }
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, dto, cancellationToken: ct);
+        return await conn.ExecuteAsync(cmd);
+    }
+
+    /// <summary>DAL-E3 (HU-006) · UPDATE logo_url (solo logo). Retorna filas afectadas.</summary>
+    public async Task<int> ActualizarLogoUrlAsync(Guid tenantId, string logoUrl, IDbTransaction? tx = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE tenant
+            SET logo_url   = @LogoUrl,
+                updated_at = NOW()
+            WHERE id = @TenantId
+            RETURNING id, created_at, updated_at;";
+
+        if (tx is not null)
+        {
+            // Ejecuta sobre la conexión asociada a la transacción (BeginTransactionAsync).
+            var cmdTx = new CommandDefinition(sql, new { TenantId = tenantId, LogoUrl = logoUrl }, tx, cancellationToken: ct);
+            return await tx.Connection!.ExecuteAsync(cmdTx);
+        }
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId, LogoUrl = logoUrl }, cancellationToken: ct);
+        return await conn.ExecuteAsync(cmd);
+    }
 }

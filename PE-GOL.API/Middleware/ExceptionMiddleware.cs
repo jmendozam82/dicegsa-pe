@@ -44,6 +44,14 @@ public class ExceptionMiddleware
             _logger.LogWarning(ex, "Autenticación fallida. Modulo=Saas, Mensaje={Message}", ex.Message);
             await EscribirErrorAsync(context, HttpStatusCode.Unauthorized, ex.Message);
         }
+        catch (AccesoDenegadoException ex)
+        {
+            // HU-006 (D12): rol sin permiso para la operación → 403. Re-validación defensiva
+            // de la BLL (el [Authorize] del controller es la primera capa; la BLL es la fuente
+            // de verdad). Mismo patrón que ValidacionException/NotFoundException.
+            _logger.LogWarning(ex, "Acceso denegado por rol. Modulo=Empresa, Mensaje={Message}", ex.Message);
+            await EscribirErrorAsync(context, HttpStatusCode.Forbidden, ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error no controlado. Modulo=Saas, Mensaje={Message}", ex.Message);

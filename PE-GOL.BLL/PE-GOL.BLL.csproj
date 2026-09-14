@@ -9,7 +9,9 @@
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <!-- 10.0.8 (2026-09-14): bump requerido por Supabase.Realtime 8.1.1 (Websocket.Client 5.5.0) — NU1605.
+         Backward-compatible con ASP.NET Core 8.0.10 (dependencia >= 8.0.0). -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
     <PackageReference Include="Npgsql" Version="8.0.5" />
   </ItemGroup>
 

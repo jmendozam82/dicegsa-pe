@@ -7,6 +7,7 @@ using PE_GOL.DAL.Infrastructure;
 using PE_GOL.DAL.Interfaces;
 using PE_GOL.DAL.Repositories.Saas;
 using PE_GOL.Utility.Security;
+using PE_GOL.Utility.Storage;
 
 namespace PE_GOL.IOC;
 
@@ -40,6 +41,7 @@ public static class DependencyContainer
         services.AddScoped<IPlanService, PlanService>();
         services.AddScoped<IUsuarioService, UsuarioService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IEmpresaService, EmpresaService>(); // HU-006: autoconfiguración del tenant (D2)
 
         // PlanLimitValidator es STATELESS (lógica pura, D4): Singleton.
         // TenantService (nueva dependencia, HU-002 §9.1) y PlanService lo consumen vía
@@ -56,6 +58,27 @@ public static class DependencyContainer
         // TenantContext: Scoped — poblado por TenantMiddleware desde los claims del JWT
         // (SEC-06, ARCH-04) y consumido por los servicios BLL para la auditoría (D6).
         services.AddScoped<TenantContext>();
+
+        // ── Infraestructura de storage del logo (HU-006, ADR-005) ─────────────────────
+        // SupabaseStorageOptions: Singleton enlazado desde la sección "Supabase" de appsettings
+        // (Url, ServiceKey, LogoBucket="logos-tenant"). El bucket del logo NUNCA es StorageBucket.
+        // StorageHelper: Singleton stateless (ADR-005) — el Lazy<Supabase.Client> interno se
+        // construye una sola vez; el client NO requiere InitializeAsync para Storage (8.1.1).
+        services.AddSingleton(sp =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+            var url = config["Supabase:Url"]
+                ?? throw new InvalidOperationException("Supabase:Url no está configurada. Defínala en appsettings.json o en la variable de entorno SUPABASE_URL.");
+            var serviceKey = config["Supabase:ServiceKey"]
+                ?? throw new InvalidOperationException("Supabase:ServiceKey no está configurada. Defínala en appsettings.json o en la variable de entorno SUPABASE_SERVICE_KEY.");
+            return new SupabaseStorageOptions
+            {
+                Url = url,
+                ServiceKey = serviceKey,
+                LogoBucket = config["Supabase:LogoBucket"] ?? "logos-tenant"
+            };
+        });
+        services.AddSingleton<IStorageHelper, StorageHelper>();
 
         return services;
     }

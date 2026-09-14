@@ -9,8 +9,18 @@
 
   <ItemGroup>
     <!-- ADR-004 (HU-004): emisión/validación de JWT en la capa Utility. Versión alineada con
-         Microsoft.AspNetCore.Authentication.JwtBearer 8.0.10 (PE-GOL.API) → Microsoft.IdentityModel.* 7.x. -->
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.1.2" />
+         Microsoft.AspNetCore.Authentication.JwtBearer 8.0.10 (PE-GOL.API) → Microsoft.IdentityModel.* 7.x.
+         7.5.1 (2026-09-14): bump requerido por Supabase.Gotrue 8.1.1 (>= 7.5.1) — NU1605. Sigue siendo 7.x,
+         compatible con JwtBearer 8.0.10 (Protocols.OpenIdConnect 7.1.2 acepta System.IdentityModel.Tokens.Jwt >= 7.1.2). -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.5.1" />
+    <!-- ADR-005 (HU-006): StorageHelper del logo de empresa. Paquete `Supabase` 8.1.1
+         (renombrado de `supabase-csharp`, .NET Standard 2.1 — compatible net8.0). Versión
+         fijada por @BackendDev en ADR-005 durante la implementación (2026-09-14).
+         Supabase.Realtime → Websocket.Client 5.5.0 arrastra Microsoft.Extensions.* 10.0.8:
+         referencias directas aquí (punto único del grafo) para evitar NU1605 en IOC/BLL/API/Tests. -->
+    <PackageReference Include="Supabase" Version="8.1.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
   </ItemGroup>
 
 </Project>

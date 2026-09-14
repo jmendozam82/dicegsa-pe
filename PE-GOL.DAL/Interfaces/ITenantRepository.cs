@@ -53,4 +53,12 @@ public interface ITenantRepository
 
     /// <summary>DAL-7: INSERT log_auditoria. Retorna filas afectadas.</summary>
     Task<int> InsertLogAsync(LogAuditoriaInsert dto, IDbTransaction? tx = null, CancellationToken ct = default);
+
+    /// <summary>DAL-E2 (HU-006): UPDATE configuración de empresa (nombre, eslogan, zona_horaria).
+    /// Retorna filas afectadas. Stub de contrato — implementación real de @BackendDev.</summary>
+    Task<int> ActualizarConfiguracionAsync(TenantConfiguracionUpdateDto dto, IDbTransaction? tx = null, CancellationToken ct = default);
+
+    /// <summary>DAL-E3 (HU-006): UPDATE logo_url (solo logo). Retorna filas afectadas.
+    /// Stub de contrato — implementación real de @BackendDev.</summary>
+    Task<int> ActualizarLogoUrlAsync(Guid tenantId, string logoUrl, IDbTransaction? tx = null, CancellationToken ct = default);
 }
