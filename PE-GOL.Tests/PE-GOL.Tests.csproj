@@ -20,6 +20,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- HU-004 casos #39/#40: TenantMiddleware (HttpContext/RequestDelegate). El middleware
+         real vive en PE-GOL.API (proyecto Web SDK no referenciado por tests) → se testea el
+         stub de contrato en PE_GOL.Tests.Stubs con los tipos de Microsoft.AspNetCore.App. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 

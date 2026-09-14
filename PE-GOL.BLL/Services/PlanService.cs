@@ -12,6 +12,7 @@ using PE_GOL.DTO.Requests;
 using PE_GOL.DTO.Responses;
 using PE_GOL.Entity.Saas;
 using PE_GOL.Utility.Exceptions;
+using PE_GOL.Utility.Security;
 
 namespace PE_GOL.BLL.Services;
 
@@ -50,6 +51,7 @@ public class PlanService : IPlanService
 
     private readonly IPlanRepository _repository;
     private readonly PlanLimitValidator _validator;
+    private readonly TenantContext? _tenantContext; // D6 (HU-004): actor en log_auditoria.usuario_id
     private readonly ILogger<PlanService>? _logger;
 
     /// <summary>Ctor usado por @QA en fase TDD: tests = especificación (TEST-01/03/05).</summary>
@@ -61,6 +63,18 @@ public class PlanService : IPlanService
     {
         _repository = repository;
         _validator = validator;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Ctor con TenantContext (D6 — HU-004): overload opcional que permite cablear
+    /// TenantContext.UserId en log_auditoria.usuario_id (el SuperAdmin autenticado).
+    /// </summary>
+    public PlanService(IPlanRepository repository, PlanLimitValidator validator, TenantContext tenantContext, ILogger<PlanService>? logger = null)
+    {
+        _repository = repository;
+        _validator = validator;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -100,7 +114,7 @@ public class PlanService : IPlanService
             await _repository.InsertLogAsync(new LogAuditoriaInsert
             {
                 TenantId = null, // acción GLOBAL del SuperAdmin: log_auditoria.tenant_id = NULL (DAL-P9)
-                UsuarioId = null, // TenantContext.UserId se cableará con HU-004 (autenticación)
+                UsuarioId = _tenantContext?.UserId, // D6 (HU-004): actor desde el JWT
                 Accion = "CREATE",
                 Entidad = EntidadAuditoria,
                 EntidadId = id.ToString(),
@@ -191,7 +205,7 @@ public class PlanService : IPlanService
             await _repository.InsertLogAsync(new LogAuditoriaInsert
             {
                 TenantId = null, // acción GLOBAL del SuperAdmin (DAL-P9)
-                UsuarioId = null, // TenantContext.UserId se cableará con HU-004
+                UsuarioId = _tenantContext?.UserId, // D6 (HU-004): actor desde el JWT
                 Accion = "UPDATE",
                 Entidad = EntidadAuditoria,
                 EntidadId = id.ToString(),
@@ -256,7 +270,7 @@ public class PlanService : IPlanService
             await _repository.InsertLogAsync(new LogAuditoriaInsert
             {
                 TenantId = null, // acción GLOBAL del SuperAdmin (DAL-P9)
-                UsuarioId = null, // TenantContext.UserId se cableará con HU-004
+                UsuarioId = _tenantContext?.UserId, // D6 (HU-004): actor desde el JWT
                 Accion = "DELETE",
                 Entidad = EntidadAuditoria,
                 EntidadId = id.ToString(),

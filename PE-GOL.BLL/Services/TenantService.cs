@@ -10,6 +10,7 @@ using PE_GOL.DTO.Requests;
 using PE_GOL.DTO.Responses;
 using PE_GOL.Entity.Saas;
 using PE_GOL.Utility.Exceptions;
+using PE_GOL.Utility.Security;
 
 namespace PE_GOL.BLL.Services;
 
@@ -28,6 +29,7 @@ public class TenantService : ITenantService
 
     private readonly ITenantRepository _repository;
     private readonly IPlanService _planService;
+    private readonly TenantContext? _tenantContext; // D6 (HU-004): actor en log_auditoria.usuario_id
     private readonly ILogger<TenantService>? _logger;
 
     /// <summary>
@@ -40,6 +42,18 @@ public class TenantService : ITenantService
     {
         _repository = repository;
         _planService = planService;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Ctor con TenantContext (D6 — HU-004): overload opcional que permite cablear
+    /// TenantContext.UserId en log_auditoria.usuario_id (el SuperAdmin autenticado).
+    /// </summary>
+    public TenantService(ITenantRepository repository, IPlanService planService, TenantContext tenantContext, ILogger<TenantService>? logger = null)
+    {
+        _repository = repository;
+        _planService = planService;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -79,7 +93,7 @@ public class TenantService : ITenantService
             await _repository.InsertLogAsync(new LogAuditoriaInsert
             {
                 TenantId = id,
-                UsuarioId = null, // TenantContext.UserId se cableará con HU-004 (autenticación)
+                UsuarioId = _tenantContext?.UserId, // D6 (HU-004): actor desde el JWT
                 Accion = "CREATE",
                 Entidad = EntidadAuditoria,
                 EntidadId = id.ToString(),
@@ -171,7 +185,7 @@ public class TenantService : ITenantService
             await _repository.InsertLogAsync(new LogAuditoriaInsert
             {
                 TenantId = id,
-                UsuarioId = null, // TenantContext.UserId se cableará con HU-004
+                UsuarioId = _tenantContext?.UserId, // D6 (HU-004): actor desde el JWT
                 Accion = "UPDATE",
                 Entidad = EntidadAuditoria,
                 EntidadId = id.ToString(),
@@ -239,7 +253,7 @@ public class TenantService : ITenantService
             await _repository.InsertLogAsync(new LogAuditoriaInsert
             {
                 TenantId = id,
-                UsuarioId = null, // TenantContext.UserId se cableará con HU-004
+                UsuarioId = _tenantContext?.UserId, // D6 (HU-004): actor desde el JWT
                 Accion = "DEACTIVATE",
                 Entidad = EntidadAuditoria,
                 EntidadId = id.ToString(),
@@ -286,7 +300,7 @@ public class TenantService : ITenantService
             await _repository.InsertLogAsync(new LogAuditoriaInsert
             {
                 TenantId = id,
-                UsuarioId = null, // TenantContext.UserId se cableará con HU-004
+                UsuarioId = _tenantContext?.UserId, // D6 (HU-004): actor desde el JWT
                 Accion = "ACTIVATE",
                 Entidad = EntidadAuditoria,
                 EntidadId = id.ToString(),

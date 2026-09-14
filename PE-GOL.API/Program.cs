@@ -105,6 +105,12 @@ app.UseMiddleware<ExceptionMiddleware>();
 
 app.UseCors("Default");
 app.UseAuthentication();
+
+// ARCH-04/SEC-06: TenantMiddleware corre DESPUÉS de UseAuthentication — el JwtBearer ya
+// validó el token (si era inválido, la request se rechazó con 401) y este middleware mapea
+// los claims YA validados al TenantContext scoped (D6/D17, HU-004).
+app.UseMiddleware<TenantMiddleware>();
+
 app.UseAuthorization();
 
 app.MapControllers();

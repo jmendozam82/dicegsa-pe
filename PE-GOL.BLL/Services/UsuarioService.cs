@@ -13,6 +13,7 @@ using PE_GOL.DTO.Requests;
 using PE_GOL.DTO.Responses;
 using PE_GOL.Entity.Saas;
 using PE_GOL.Utility.Exceptions;
+using PE_GOL.Utility.Security;
 
 namespace PE_GOL.BLL.Services;
 
@@ -69,17 +70,36 @@ public class UsuarioService : IUsuarioService
 
     private readonly IUsuarioRepository _repository;
     private readonly IPlanService _planService;
+    private readonly TenantContext? _tenantContext; // D6 (HU-004): se cablea en la auditoría en fase 4
     private readonly ILogger<UsuarioService>? _logger;
 
     /// <summary>Ctor usado por @QA en fase TDD: tests = especificación (TEST-01/03/05).</summary>
     public UsuarioService(IUsuarioRepository repository, IPlanService planService)
-        : this(repository, planService, null) { }
+        : this(repository, planService, (ILogger<UsuarioService>?)null) { }
 
     /// <summary>Ctor con ILogger opcional para RNF-023 (logging estructurado en producción vía IOC).</summary>
     public UsuarioService(IUsuarioRepository repository, IPlanService planService, ILogger<UsuarioService>? logger)
     {
         _repository = repository;
         _planService = planService;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Ctor con TenantContext (D6 — HU-004): overload opcional que permite cablear
+    /// TenantContext.UserId en log_auditoria.usuario_id. Stub TDD fase roja: el campo se
+    /// almacena pero la auditoría aún registra UsuarioId=null — @BackendDev cablea
+    /// _tenantContext?.UserId en los InsertLogAsync de HU-004 (fase 4, caso @QA #41).
+    /// </summary>
+    public UsuarioService(IUsuarioRepository repository, IPlanService planService, TenantContext tenantContext)
+        : this(repository, planService, tenantContext, null) { }
+
+    /// <summary>Ctor completo: repositorio + plan + TenantContext (D6) + ILogger opcional (RNF-023).</summary>
+    public UsuarioService(IUsuarioRepository repository, IPlanService planService, TenantContext tenantContext, ILogger<UsuarioService>? logger)
+    {
+        _repository = repository;
+        _planService = planService;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -141,7 +161,7 @@ public class UsuarioService : IUsuarioService
             await _repository.InsertLogAsync(new LogAuditoriaInsert
             {
                 TenantId = dto.TenantId, // tenant del usuario creado (filtrable en HU-005)
-                UsuarioId = null,        // TenantContext.UserId (SA) se cableará con HU-004
+                UsuarioId = _tenantContext?.UserId, // D6 (HU-004): actor desde el JWT
                 Accion = "CREATE",
                 Entidad = EntidadAuditoria,
                 EntidadId = nuevoId.ToString(),
@@ -234,7 +254,7 @@ public class UsuarioService : IUsuarioService
             await _repository.InsertLogAsync(new LogAuditoriaInsert
             {
                 TenantId = dto.TenantId, // tenant del usuario gestionado
-                UsuarioId = null,        // TenantContext.UserId (SA) se cableará con HU-004
+                UsuarioId = _tenantContext?.UserId, // D6 (HU-004): actor desde el JWT
                 Accion = "UPDATE",
                 Entidad = EntidadAuditoria,
                 EntidadId = id.ToString(),
@@ -296,7 +316,7 @@ public class UsuarioService : IUsuarioService
             await _repository.InsertLogAsync(new LogAuditoriaInsert
             {
                 TenantId = actual.TenantId, // tenant del usuario gestionado
-                UsuarioId = null,           // TenantContext.UserId (SA) se cableará con HU-004
+                UsuarioId = _tenantContext?.UserId, // D6 (HU-004): actor desde el JWT
                 Accion = "DEACTIVATE",
                 Entidad = EntidadAuditoria,
                 EntidadId = id.ToString(),
@@ -348,7 +368,7 @@ public class UsuarioService : IUsuarioService
             await _repository.InsertLogAsync(new LogAuditoriaInsert
             {
                 TenantId = actual.TenantId, // tenant del usuario gestionado
-                UsuarioId = null,           // TenantContext.UserId (SA) se cableará con HU-004
+                UsuarioId = _tenantContext?.UserId, // D6 (HU-004): actor desde el JWT
                 Accion = "ACTIVATE",
                 Entidad = EntidadAuditoria,
                 EntidadId = id.ToString(),
@@ -402,7 +422,7 @@ public class UsuarioService : IUsuarioService
             await _repository.InsertLogAsync(new LogAuditoriaInsert
             {
                 TenantId = actual.TenantId, // tenant del usuario gestionado
-                UsuarioId = null,           // TenantContext.UserId (SA) se cableará con HU-004
+                UsuarioId = _tenantContext?.UserId, // D6 (HU-004): actor desde el JWT
                 Accion = "UPDATE",
                 Entidad = EntidadAuditoria,
                 EntidadId = id.ToString(),

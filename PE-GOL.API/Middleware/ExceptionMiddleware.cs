@@ -8,7 +8,8 @@ namespace PE_GOL.API.Middleware;
 /// <summary>
 /// Middleware global de excepciones (04_ARQUITECTURA.md § 3 — ExceptionMiddleware).
 /// Traduce excepciones de dominio al wrapper estándar ApiResponse&lt;T&gt; (ARCH-07):
-/// ValidacionException → 422 · NotFoundException → 404 · resto → 500.
+/// ValidacionException → 422 · NotFoundException → 404 · UnauthorizedException → 401 (HU-004) ·
+/// resto → 500.
 /// </summary>
 public class ExceptionMiddleware
 {
@@ -36,6 +37,12 @@ public class ExceptionMiddleware
         {
             _logger.LogWarning(ex, "Recurso no encontrado. Modulo=Saas, Mensaje={Message}", ex.Message);
             await EscribirErrorAsync(context, HttpStatusCode.NotFound, ex.Message);
+        }
+        catch (UnauthorizedException ex)
+        {
+            // HU-004: credenciales inválidas / sesión no autorizada → 401 (SEC-01).
+            _logger.LogWarning(ex, "Autenticación fallida. Modulo=Saas, Mensaje={Message}", ex.Message);
+            await EscribirErrorAsync(context, HttpStatusCode.Unauthorized, ex.Message);
         }
         catch (Exception ex)
         {

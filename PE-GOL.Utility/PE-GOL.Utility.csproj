@@ -7,4 +7,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- ADR-004 (HU-004): emisión/validación de JWT en la capa Utility. Versión alineada con
+         Microsoft.AspNetCore.Authentication.JwtBearer 8.0.10 (PE-GOL.API) → Microsoft.IdentityModel.* 7.x. -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.1.2" />
+  </ItemGroup>
+
 </Project>

@@ -6,6 +6,7 @@ using PE_GOL.BLL.Services;
 using PE_GOL.DAL.Infrastructure;
 using PE_GOL.DAL.Interfaces;
 using PE_GOL.DAL.Repositories.Saas;
+using PE_GOL.Utility.Security;
 
 namespace PE_GOL.IOC;
 
@@ -32,16 +33,29 @@ public static class DependencyContainer
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<IPlanRepository, PlanRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddScoped<IAuthRepository, AuthRepository>();
 
         // Servicios de negocio (Scoped: estado por request).
         services.AddScoped<ITenantService, TenantService>();
         services.AddScoped<IPlanService, PlanService>();
         services.AddScoped<IUsuarioService, UsuarioService>();
+        services.AddScoped<IAuthService, AuthService>();
 
         // PlanLimitValidator es STATELESS (lógica pura, D4): Singleton.
         // TenantService (nueva dependencia, HU-002 §9.1) y PlanService lo consumen vía
         // IPlanService/PlanService — la inyección se resuelve automáticamente por el DI.
         services.AddSingleton<PlanLimitValidator>();
+
+        // ── Infraestructura de autenticación (HU-004) ──────────────────────────────
+        // JwtOptions: Singleton enlazado desde la sección "Jwt" de appsettings
+        // (AccessTokenMinutes=60, RefreshTokenDays=7, Key — SEC-01). El valor por defecto
+        // de Key es SOLO dev/tests; Program.cs lanza si Jwt:Key falta en producción.
+        services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
+        services.AddSingleton(sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<JwtOptions>>().Value);
+
+        // TenantContext: Scoped — poblado por TenantMiddleware desde los claims del JWT
+        // (SEC-06, ARCH-04) y consumido por los servicios BLL para la auditoría (D6).
+        services.AddScoped<TenantContext>();
 
         return services;
     }

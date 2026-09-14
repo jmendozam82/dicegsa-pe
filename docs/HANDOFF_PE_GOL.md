@@ -200,6 +200,23 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
+## HU-004 · Autenticación y Seguridad — CERRADA
+
+**Fecha de cierre:** 2026-09-13 · **Cerrada por:** @Documenter (LOOP-05) · **Spec:** `specs/sprint-01/HU-004.spec.md` → `Implementado`
+
+**Entregado:** 4 endpoints `/api/v1/auth` (login, refresh, logout, cambiar-contrasena), `AuthService`/`AuthRepository` (DAL-A1..A10), `JwtTokenHelper`/`JwtOptions` en `PE-GOL.Utility` (ADR-004), `TenantContext` con `TenantId` nullable (D17), `TenantMiddleware` registrado tras `UseAuthentication` (ARCH-04), 4 validators FluentValidation, `ExceptionMiddleware` → 401 para `UnauthorizedException`, wiring D6 (`TenantContext.UserId`) en `UsuarioService`/`TenantService`/`PlanService`.
+
+**Verificación:** build 0/0 · tests 130/130 (41 HU-004 + 89 regresión HU-001/002/003) · cobertura BLL 86.86% (≥ 70%, TEST-02) · ADR-004 aceptado e implementado.
+
+**Flags menores no bloqueantes (de @QA en Review):**
+1. La descripción de Swagger en `Program.cs` L39 aún menciona solo HU-001/HU-002 — cosmético, se actualizará en el siguiente ciclo.
+2. Limpieza de refresh tokens huérfanos diferida a hardening por decisión de Jorge (Flag #7 del spec HU-004): el rechazo en validación ya cubre el riesgo; solo deuda de almacenamiento.
+3. Incidente resuelto en Review: bug del helper de tests `CrearUsuarioAuth` (Caso 13) corregido por @QA (línea 70: `tenantId ?? (rol == "SuperAdmin" ? null : Guid.NewGuid())`) — sin cambio de contrato.
+
+**Siguientes dependencias:** HU-006 (Configuración de Empresa, Sprint 1) es la próxima HU; HU-005 (Log de Auditoría, Sprint 2) consumirá la auditoría LOGIN/LOGOUT ya registrada; la UI de login pertenece a las HUs de frontend.
+
+---
+
 ## Decisiones de Jorge — 2026-09-13 (resuelven flags del Sprint 1)
 
 **Contexto:** Jorge resolvió los 5 puntos bloqueantes del Sprint 1 señalados como flags en la sección HU-002. Ninguna decisión obliga a cambios de esquema ni de seed; la única pieza nueva es el **ADR-003** (aplicable a partir de HU-003).
