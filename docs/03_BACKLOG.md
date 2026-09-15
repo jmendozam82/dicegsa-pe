@@ -160,6 +160,8 @@
 - [ ] El GER puede cerrar el ciclo activo (pasa a Cerrado → solo lectura)
 - [ ] Clonar ciclo anterior: copia áreas, responsables y umbrales al nuevo ciclo
 
+> **Nota (2026-09-14, decisión de Jorge):** UI diferida a HUs de frontend (HU-045 y siguientes) — HU-007 se entrega **100% backend** en Sprint 1; la vista Razor de gestión de ciclos se planificará con el cimiento de frontend. Pts y sprint sin cambios.
+
 **Pts:** 5 · **Prioridad:** Alta · **Sprint:** 2
 
 ---
@@ -191,6 +193,8 @@
 - [ ] Validar que un responsable no esté asignado a más de un área en el mismo ciclo
 - [ ] Límite de áreas según plan de suscripción del tenant
 - [ ] Al desactivar un área, sus datos permanecen en solo lectura
+
+> **Nota (2026-09-14):** la clonación de áreas del CA #5 de HU-007 se completa en esta HU (contrato `ClonarAsync` de HU-007 queda abierto para extenderlo).
 
 **Pts:** 5 · **Prioridad:** Alta · **Sprint:** 2
 

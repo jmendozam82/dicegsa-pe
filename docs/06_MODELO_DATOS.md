@@ -139,6 +139,7 @@ CREATE TABLE ciclo (
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     UNIQUE (tenant_id, año_fiscal)
+    -- Índice parcial (ADR-006/V003): CREATE UNIQUE INDEX uq_ciclo_unico_activo ON ciclo (tenant_id) WHERE estado = 'Activo';  -- RC-01: solo un ciclo Activo por tenant
 );
 CREATE INDEX idx_ciclo_tenant ON ciclo(tenant_id);
 

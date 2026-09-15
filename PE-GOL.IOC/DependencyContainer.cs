@@ -5,6 +5,7 @@ using PE_GOL.BLL.Limites;
 using PE_GOL.BLL.Services;
 using PE_GOL.DAL.Infrastructure;
 using PE_GOL.DAL.Interfaces;
+using PE_GOL.DAL.Repositories.Ciclo;
 using PE_GOL.DAL.Repositories.Saas;
 using PE_GOL.Utility.Security;
 using PE_GOL.Utility.Storage;
@@ -35,6 +36,7 @@ public static class DependencyContainer
         services.AddScoped<IPlanRepository, PlanRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IAuthRepository, AuthRepository>();
+        services.AddScoped<ICicloRepository, CicloRepository>(); // HU-007: dominio Ciclo (D2)
 
         // Servicios de negocio (Scoped: estado por request).
         services.AddScoped<ITenantService, TenantService>();
@@ -42,6 +44,7 @@ public static class DependencyContainer
         services.AddScoped<IUsuarioService, UsuarioService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IEmpresaService, EmpresaService>(); // HU-006: autoconfiguración del tenant (D2)
+        services.AddScoped<ICicloService, CicloService>(); // HU-007: gestión de ciclos anuales (D2)
 
         // PlanLimitValidator es STATELESS (lógica pura, D4): Singleton.
         // TenantService (nueva dependencia, HU-002 §9.1) y PlanService lo consumen vía

@@ -32,7 +32,7 @@
 
 | ID | Requerimiento | Prioridad |
 |----|---------------|-----------|
-| RF-007 | El sistema debe permitir al Gerente configurar los **parámetros globales del ciclo**: nombre del ciclo, año fiscal, mes de inicio, nombre de la empresa/gerencia y eslogan. | Alta |
+| RF-007 | El sistema debe permitir al **AdminTenant** configurar los **parámetros globales del ciclo**: nombre del ciclo, año fiscal y mes de inicio (estructura del ciclo, HU-006/HU-007). El **Gerente** gestiona el contenido del ciclo (Filosofía: Visión, Misión y Valores, HU-011/HU-012). *(Actualizado 2026-09-14 por decisión de Jorge: el ADM gestiona la estructura del ciclo; el GER gestiona el contenido — ver spec HU-007 Flag #1.)* | Alta |
 | RF-008 | El sistema debe permitir configurar los **umbrales de semáforo** para KPIs y Plan de Acción de forma independiente, definiendo los valores de corte para Verde, Amarillo y Rojo (expresados en escala 0.0–1.0). | Alta |
 | RF-009 | El sistema debe permitir registrar y gestionar el **catálogo de Áreas Estratégicas** del ciclo, con campos: ID, nombre del área y responsable (Jefe de Área). | Alta |
 | RF-010 | El sistema debe permitir registrar y gestionar el **catálogo de Responsables** (Jefes de Área) del ciclo, con nombre completo y correo electrónico. | Alta |
@@ -257,7 +257,7 @@
 |----|-------|
 | RN-001 | Cada **Gerencia (Tenant)** tiene datos completamente aislados. No existe visibilidad cruzada entre tenants bajo ningún rol, incluyendo el Administrador SaaS (quien solo gestiona metadatos del tenant, no sus datos). |
 | RN-002 | Un **ciclo anual** tiene exactamente un año fiscal asociado. No pueden existir dos ciclos activos para el mismo año en el mismo tenant. |
-| RN-003 | Un ciclo puede estar en estado: **Borrador** (en construcción), **Activo** (en ejecución, año en curso) o **Cerrado** (año concluido, solo lectura). Solo el Gerente puede cambiar el estado del ciclo. |
+| RN-003 | Un ciclo puede estar en estado: **Borrador** (en construcción), **Activo** (en ejecución, año en curso) o **Cerrado** (año concluido, solo lectura). **Solo el AdminTenant puede activar un ciclo (Borrador → Activo); solo el Gerente puede cerrarlo (Activo → Cerrado).** *(Actualizado 2026-09-14 por decisión de Jorge: la activación es del ADM, el cierre del GER — ver spec HU-007 Flag #1.)* |
 | RN-004 | Los datos de un ciclo **Cerrado** son de solo lectura. No se pueden crear, editar ni eliminar registros en un ciclo cerrado. |
 
 ---

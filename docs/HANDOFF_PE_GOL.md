@@ -234,6 +234,23 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
+## HU-007 · Gestión de Ciclos Anuales — SPEC APROBADO
+
+**Fecha de aprobación:** 2026-09-14 · **Aprobado por:** Jorge · **Spec:** `specs/sprint-01/HU-007.spec.md` → `Aprobado`
+
+**Alcance:** 7 endpoints `/api/v1/ciclos` (CRUD sin DELETE + activar/cerrar/clonar), `CicloService`/`CicloRepository`/`CicloController`, entidades `CicloEntity`/`UmbralSemaforoEntity`, **35 tests para @QA (TDD)**, sin migración obligatoria (UNIQUE año fiscal ya existe en DDL).
+
+**Las 5 decisiones de Jorge (flags resueltos):**
+1. **ADM activa / GER cierra** → RN-003 y RF-007 actualizados en `02_REQUERIMIENTOS.md` (Flag #1).
+2. **CA #5 parcial:** umbrales se clonan en HU-007; áreas/responsables se completan en HU-009/HU-010 (Sprint 2). Contrato `ClonarAsync` queda abierto para extenderlo (Flag #2).
+3. **UI diferida:** HU-007 se entrega **100% backend**; la vista Razor de gestión de ciclos se planificará con el cimiento de frontend (HU-045+). **@Orquestador: reflejar en el planning del Sprint 2** (Flag #3).
+4. **ADR-006 + `V003__unico_ciclo_activo.sql` aprobados** (índice parcial `uq_ciclo_unico_activo`, RC-01 a nivel BD). Requisito para @BackendDev antes de implementar `ActivarAsync` (Flag #4).
+5. **RC-01 estricto en Sprint 1 — nota de revisión futura:** `max_ciclos_activos=2` del plan Premium no es alcanzable con RC-01; revisar cuando un cliente real necesite más de un ciclo activo (Flag #5).
+
+**Siguiente paso:** fase TESTS de HU-007 (@QA escribe los 35 tests, TDD rojo) → IMPLEMENT (@BackendDev, con ADR-006/V003 como requisito antes de `ActivarAsync`).
+
+---
+
 ## Decisiones de Jorge — 2026-09-13 (resuelven flags del Sprint 1)
 
 **Contexto:** Jorge resolvió los 5 puntos bloqueantes del Sprint 1 señalados como flags en la sección HU-002. Ninguna decisión obliga a cambios de esquema ni de seed; la única pieza nueva es el **ADR-003** (aplicable a partir de HU-003).
