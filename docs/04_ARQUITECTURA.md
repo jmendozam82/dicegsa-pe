@@ -114,7 +114,7 @@ PE-GOL.sln
 │   │   │   └── NotificacionController.cs
 │   ├── Middleware/
 │   │   ├── TenantMiddleware.cs       ← inyecta tenant_id en contexto HTTP
-│   │   ├── AuditMiddleware.cs        ← registra log de auditoría
+│   │   ├── AuditMiddleware.cs        ← [diseño — NO implementado] la auditoría vive en BLL vía InsertLogAsync transaccional (patrón HU-001..008, ver ADR-003)
 │   │   └── ExceptionMiddleware.cs    ← manejo global de errores
 │   ├── Filters/
 │   │   └── ValidationFilter.cs
@@ -153,14 +153,14 @@ PE-GOL.sln
 │       └── [Entidad]Repository.cs   (Dapper + SQL parametrizado)
 │
 ├── PE-GOL.Entity/
-│   ├── Saas/        (Tenant, Plan, Usuario, Rol)
+│   ├── Saas/        (Tenant, Plan, Usuario, Rol, LogAuditoria)
 │   ├── Ciclo/       (Ciclo, Configuracion, Umbral)
 │   ├── Estrategia/  (Filosofia, Pilar, Area, ObjetivoCG)
 │   ├── Plan/        (AccionPlan, Entregable, HistorialProgreso)
 │   ├── OKR/         (OKR, KeyResult, ValorMensualKR)
 │   ├── Presupuesto/ (ProyectoCapex, DesembolsoCapex, CuentaOpex,
 │   │                 SubcuentaOpex, PresupuestoOpex, MemoriaCalculo)
-│   └── Sistema/     (Notificacion, LogAuditoria, Alerta)
+│   └── Sistema/     (Notificacion, Alerta)
 │
 ├── PE-GOL.DTO/
 │   ├── Request/     ([Modulo]CreateRequest, [Modulo]UpdateRequest)

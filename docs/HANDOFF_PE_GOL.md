@@ -267,6 +267,27 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
+## HU-005 · Log de Auditoría — CERRADA
+
+**Fecha de cierre:** 2026-09-17 · **Cerrada por:** @Documenter (LOOP-05) · **Spec:** `specs/sprint-02/HU-005.spec.md` → `Implementado`
+
+**Entregado (100% backend — misma decisión de UI diferida de HU-006/HU-007/HU-008):** 2 endpoints GET `/api/v1/log-auditoria` — listado paginado con filtros (tenant, usuario, rango de fechas, acción) + detalle por id (con `valor_anterior`/`valor_nuevo` como JSON crudo, ADR-003); `LogAuditoriaService`/`ILogAuditoriaService` (solo lectura — CA #3 inmutabilidad, sin métodos de escritura); `LogAuditoriaRepository`/`ILogAuditoriaRepository` (DAL-L1..L4, Dapper, LEFT JOIN a tenant/usuario, `ORDER BY created_at DESC`); `LogAuditoriaLimpiezaService` (HostedService ARCH-05, batch diario 03:00, `Auditoria:RetencionDias` default 90 — CA #4); `LogAuditoriaFiltrosValidator` (FluentValidation); `LogAuditoriaController` (zona Saas, `[Authorize(Roles="SuperAdmin")]`); registros IOC; `LogAuditoriaEntity` en `PE-GOL.Entity/Saas/`; DTOs (`LogAuditoriaFiltrosRequest`/`LogAuditoriaResponse`/`LogAuditoriaDetalleResponse`/`LogAuditoriaFiltrosDto`).
+
+**Verificación:** build 0/0 · tests **243/243** (24 HU-005 + 219 regresión/contrato HU-001..HU-008) · cobertura BLL **88.61%** (≥ 70%, TEST-02 — mejora el 87.98% de HU-008) · commit `ba07c81` `[HU-005] feat: log de auditoría (API+BLL+DAL+DTO+Entity+HostedService)` · **sin ADR nuevo ni migración** (el DDL de `log_auditoria` ya cubre todo; decisiones enmarcadas en ARCH-05, ADR-003 y la decisión de Jorge sobre RLS global).
+
+**Flags resueltos por Jorge en la aprobación del spec (2026-09-17):**
+1. **Alcance de roles:** solo SuperAdmin (fiel al backlog). Acceso de AdminTenant a su log diferido al Sprint de hardening — requeriría ADR (RLS en `log_auditoria`) y no es deseable por riesgo de negocio (el ADM podría ver cuándo/cómo intervino el SA sobre su tenant).
+2. **Retención vía HostedService confirmada** (`Auditoria:RetencionDias` configurable, default 90) — margen para clientes con retención más larga sin tocar código.
+3. **Batch de limpieza no viola CA #3:** la inmutabilidad aplica a roles vía API; la retención es política de almacenamiento del sistema. Blindado por tests de contrato #18/#19 (reflexión: `ILogAuditoriaService`/`ILogAuditoriaRepository` sin Update/Delete públicos).
+
+**Hallazgos de arquitectura documentados (para @Orquestador):**
+1. `AuditMiddleware.cs` (`04_ARQUITECTURA.md` L117) **no existe en el código** — la auditoría vive en BLL vía `InsertLogAsync` transaccional (patrón HU-001..008). `04_ARQUITECTURA.md` actualizado para reflejar la realidad.
+2. `LogAuditoria` ubicada en `PE-GOL.Entity/Saas/` (no `Sistema/` como decía `04_ARQUITECTURA.md` L163) — alineado con el dominio SaaS del modelo de datos. `04_ARQUITECTURA.md` actualizado.
+
+**Siguientes dependencias:** **HU-009 (Gestión de Áreas Estratégicas, Sprint 2)** — consumirá `ValidarLimitesParaTenantAsync` de HU-002 y extenderá `ClonarAsync` de HU-007 (áreas/responsables).
+
+---
+
 ## Decisiones de Jorge — 2026-09-13 (resuelven flags del Sprint 1)
 
 **Contexto:** Jorge resolvió los 5 puntos bloqueantes del Sprint 1 señalados como flags en la sección HU-002. Ninguna decisión obliga a cambios de esquema ni de seed; la única pieza nueva es el **ADR-003** (aplicable a partir de HU-003).
@@ -279,5 +300,5 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-17 (cierre HU-008 — Sprint 1 completo) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Sprint 2 — Inicio del Loop con HU-009 (Gestión de Áreas Estratégicas · @Orquestador)*
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-17 (cierre HU-005 — Sprint 2 en curso, 1/8 HU) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Sprint 2 — Continuación del Loop con HU-009 (Gestión de Áreas Estratégicas · @Orquestador)*
