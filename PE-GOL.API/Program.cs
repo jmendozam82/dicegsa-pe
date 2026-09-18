@@ -4,6 +4,7 @@ using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using PE_GOL.API.HostedServices;
 using PE_GOL.API.Middleware;
 using PE_GOL.API.Validators;
 using PE_GOL.IOC;
@@ -90,6 +91,10 @@ builder.Services.AddCors(o => o.AddPolicy("Default", p =>
 
 // Inyección de dependencias (PE-GOL.IOC): repositorios, servicios y fábrica de conexiones.
 builder.Services.AddPEGolServices(builder.Configuration);
+
+// HU-005 (CA #4): batch diario de retención del log de auditoría (ARCH-05 — HostedService).
+// Config: Auditoria:RetencionDias (default 90) y Auditoria:HoraLimpieza (default "03:00").
+builder.Services.AddHostedService<LogAuditoriaLimpiezaService>();
 
 var app = builder.Build();
 

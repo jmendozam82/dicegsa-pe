@@ -37,6 +37,7 @@ public static class DependencyContainer
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IAuthRepository, AuthRepository>();
         services.AddScoped<ICicloRepository, CicloRepository>(); // HU-007: dominio Ciclo (D2)
+        services.AddScoped<ILogAuditoriaRepository, LogAuditoriaRepository>(); // HU-005: log de auditoría (D4, tabla global fuera de RLS)
 
         // Servicios de negocio (Scoped: estado por request).
         services.AddScoped<ITenantService, TenantService>();
@@ -45,6 +46,7 @@ public static class DependencyContainer
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IEmpresaService, EmpresaService>(); // HU-006: autoconfiguración del tenant (D2)
         services.AddScoped<ICicloService, CicloService>(); // HU-007: gestión de ciclos anuales (D2)
+        services.AddScoped<ILogAuditoriaService, LogAuditoriaService>(); // HU-005: consulta del log de auditoría (solo lectura, CA #3)
 
         // PlanLimitValidator es STATELESS (lógica pura, D4): Singleton.
         // TenantService (nueva dependencia, HU-002 §9.1) y PlanService lo consumen vía
