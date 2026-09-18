@@ -234,20 +234,36 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-## HU-007 · Gestión de Ciclos Anuales — SPEC APROBADO
+## HU-007 · Gestión de Ciclos Anuales — CERRADA
 
-**Fecha de aprobación:** 2026-09-14 · **Aprobado por:** Jorge · **Spec:** `specs/sprint-01/HU-007.spec.md` → `Aprobado`
+**Fecha de cierre:** 2026-09-14 · **Cerrada por:** @Documenter (LOOP-05) · **Spec:** `specs/sprint-01/HU-007.spec.md` → `Implementado`
 
-**Alcance:** 7 endpoints `/api/v1/ciclos` (CRUD sin DELETE + activar/cerrar/clonar), `CicloService`/`CicloRepository`/`CicloController`, entidades `CicloEntity`/`UmbralSemaforoEntity`, **35 tests para @QA (TDD)**, sin migración obligatoria (UNIQUE año fiscal ya existe en DDL).
+**Entregado (100% backend — UI diferida a HU-045+):** 7 endpoints `api/v1/ciclos` (CRUD sin DELETE + activar/cerrar/clonar), `CicloService`/`ICicloService`/`CicloRepository`/`ICicloRepository`/`CicloController`, entidades `CicloEntity`/`UmbralSemaforoEntity`, DTOs y validators FluentValidation, registro IOC. `CrearAsync` inserta 2 filas default de umbrales (0.90/0.70) por ciclo; `ClonarAsync` copia los umbrales del origen con defensivo de defaults (contrato abierto para extenderlo en HU-009/HU-010).
 
-**Las 5 decisiones de Jorge (flags resueltos):**
-1. **ADM activa / GER cierra** → RN-003 y RF-007 actualizados en `02_REQUERIMIENTOS.md` (Flag #1).
-2. **CA #5 parcial:** umbrales se clonan en HU-007; áreas/responsables se completan en HU-009/HU-010 (Sprint 2). Contrato `ClonarAsync` queda abierto para extenderlo (Flag #2).
-3. **UI diferida:** HU-007 se entrega **100% backend**; la vista Razor de gestión de ciclos se planificará con el cimiento de frontend (HU-045+). **@Orquestador: reflejar en el planning del Sprint 2** (Flag #3).
-4. **ADR-006 + `V003__unico_ciclo_activo.sql` aprobados** (índice parcial `uq_ciclo_unico_activo`, RC-01 a nivel BD). Requisito para @BackendDev antes de implementar `ActivarAsync` (Flag #4).
-5. **RC-01 estricto en Sprint 1 — nota de revisión futura:** `max_ciclos_activos=2` del plan Premium no es alcanzable con RC-01; revisar cuando un cliente real necesite más de un ciclo activo (Flag #5).
+**Verificación:** build 0/0 · tests **192/192** (35 HU-007 + regresión HU-001..HU-006) · cobertura BLL **87.26%** (≥ 70%, TEST-02) · commit `5b4c447` `[HU-007] feat: gestión de ciclos anuales (API+BLL+DAL+DTO+Entity+IOC)` · ADR-006 aceptado e implementado · migración `V003__unico_ciclo_activo.sql` **pendiente de aplicar en Supabase** (junto con V001/V002).
 
-**Siguiente paso:** fase TESTS de HU-007 (@QA escribe los 35 tests, TDD rojo) → IMPLEMENT (@BackendDev, con ADR-006/V003 como requisito antes de `ActivarAsync`).
+**Decisiones de Jorge (flags resueltos, 2026-09-14):**
+1. **ADM activa / GER cierra** → RN-003 y RF-007 actualizados en `02_REQUERIMIENTOS.md`.
+2. **CA #5 parcial:** umbrales se clonan en HU-007; áreas/responsables se completan en HU-009/HU-010 (Sprint 2). Contrato `ClonarAsync` queda abierto para extenderlo.
+3. **UI diferida:** HU-007 se entregó **100% backend**; la vista Razor de gestión de ciclos se planificará con el cimiento de frontend (HU-045+). @Orquestador lo reflejó en el planning del Sprint 2.
+4. **ADR-006 + `V003__unico_ciclo_activo.sql` aprobados** (índice parcial `uq_ciclo_unico_activo`, RC-01 a nivel BD) — requisito aplicado antes de implementar `ActivarAsync`.
+5. **RC-01 estricto en Sprint 1 — nota de revisión futura:** `max_ciclos_activos=2` del plan Premium no es alcanzable con RC-01; revisar cuando un cliente real necesite más de un ciclo activo.
+
+**Siguientes dependencias:** HU-008 (Umbrales de Semáforo, Sprint 1) consumió los defaults/clonación de umbrales de HU-007; HU-009 (Sprint 2) extenderá `ClonarAsync` para áreas/responsables.
+
+---
+
+## HU-008 · Configuración de Umbrales de Semáforo — CERRADA
+
+**Fecha de cierre:** 2026-09-17 · **Cerrada por:** @Documenter (LOOP-05) · **Spec:** `specs/sprint-01/HU-008.spec.md` → `Implementado`
+
+**Entregado (100% backend — misma decisión de UI diferida de HU-006/HU-007):** 2 endpoints `api/v1/ciclos/{cicloId}/umbrales` — GET (multi-rol `AdminTenant,Gerente,JefeArea`) · PUT (`AdminTenant`); `CicloService.ObtenerUmbralesAsync`/`ActualizarUmbralesAsync` (UPSERT conjunto KPI+PlanAccion + auditoría `UPDATE` entidad `UmbralSemaforo` en UNA transacción · normalización 2 decimales AwayFromZero · captura 23514 → 422 · defensivo de defaults sin escritura); `CicloRepository.UpsertUmbralAsync` (DAL-U2 `ON CONFLICT (ciclo_id, tipo) DO UPDATE`); validators `UmbralesUpdateRequestValidator`/`UmbralCategoriaRequestValidator`; DTOs `UmbralesUpdateRequest`/`UmbralCategoriaRequest`/`UmbralesCicloResponse`/`UmbralCategoriaResponse`.
+
+**Verificación:** build 0/0 · tests **219/219** (27 HU-008 + 192 regresión HU-001..HU-007) · cobertura BLL **87.98%** (≥ 70%, TEST-02 — mejora el 87.26% de HU-007). **Sin migración ni ADR nuevos** (el DDL `umbral_semaforo` ya cubre CHECKs rango/estricto, defaults 0.90/0.70 y `UNIQUE (ciclo_id, tipo)`).
+
+**Flags:** **ninguno.** Spec aprobado por Jorge el 2026-09-17 sin observaciones; única corrección de Review aplicada: caso de prueba #21 sin ejemplos negativos (con `MidpointRounding.AwayFromZero`, `-0.005` redondearía a `-0.01` y el validador de rango lo rechazaría antes de persistir).
+
+**Siguientes dependencias:** **HU-009 (Gestión de Áreas Estratégicas, Sprint 2)** — consumirá `ValidarLimitesParaTenantAsync` de HU-002 y extenderá `ClonarAsync` de HU-007.
 
 ---
 
@@ -263,5 +279,5 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-14 (cierre HU-006) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Sprint 1 — Implementación HU-007 (Gestión de Ciclos Anuales, fase 4 · @BackendDev)*
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-17 (cierre HU-008 — Sprint 1 completo) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Sprint 2 — Inicio del Loop con HU-009 (Gestión de Áreas Estratégicas · @Orquestador)*

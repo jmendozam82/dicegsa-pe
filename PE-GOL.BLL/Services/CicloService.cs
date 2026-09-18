@@ -42,6 +42,7 @@ public class CicloService : ICicloService
     private const string RolAdminTenant = "AdminTenant";
     private const string RolGerente = "Gerente";
     private const string EntidadAuditoria = "Ciclo";
+    private const string EntidadAuditoriaUmbral = "UmbralSemaforo"; // HU-008: auditoría de umbrales (spec §2 paso 8)
 
     /// <summary>Defaults del DDL L150-151 (HU-008 CA #4 "Valores por defecto al crear ciclo").</summary>
     private const decimal UmbralVerdeDefault = 0.90m;
@@ -514,6 +515,141 @@ public class CicloService : ICicloService
         }
     }
 
+    // ─── HU-008 · Umbrales de semáforo (spec §1-§2) ─────────────────────────
+    // GET lectura multi-rol (ADM/GER/JEF — RN-007, SEC-07: sin AND area_id) · PUT solo ADM
+    // (D12): estado Borrador (RN-039/RC-12/RN-004), rango 0.00–1.00 (CHECKs L156-157),
+    // verde > amarillo ESTRICTO (CHECK L155), normalización AwayFromZero 2 decimales (D6),
+    // UPSERT conjunto KPI+PlanAccion + auditoría UPDATE 'UmbralSemaforo' en UNA transacción
+    // (D1/D4, ADR-003), 23514 → 422 (D7), defaults de HU-007 nunca duplicados (CA #4).
+
+    /// <summary>Spec HU-008 §1 · ObtenerUmbralesAsync: tenantId (404) → DAL-C2 (404 si null) →
+    /// DAL-C10 → defaults 0.90/0.70 en memoria si vacío (D5, sin escritura) → UmbralesCicloResponse.</summary>
+    public async Task<UmbralesCicloResponse> ObtenerUmbralesAsync(Guid cicloId, CancellationToken ct = default)
+    {
+        var tenantId = ObtenerTenantIdOThrow();
+
+        // DAL-C2: el filtro por tenant_id garantiza que un ciclo de otro tenant también devuelve null → 404 sin fuga.
+        var ciclo = await _repository.ObtenerPorIdAsync(tenantId, cicloId, ct)
+            ?? throw new NotFoundException($"El ciclo '{cicloId}' no existe");
+
+        // DAL-C10: umbrales del ciclo (ambos tipos). Defensivo D5: si no hay filas (no debería
+        // ocurrir: HU-007 inserta 2 defaults al crear/clonar), se mapean los defaults 0.90/0.70
+        // EN MEMORIA sin escribir en BD — el GET es de solo lectura y el ciclo nunca se presenta
+        // sin configuración de semáforo.
+        var umbrales = (await _repository.ObtenerUmbralesAsync(tenantId, cicloId, ct)).ToList();
+        return MapToUmbralesResponse(cicloId, umbrales);
+    }
+
+    /// <summary>Spec HU-008 §2 · ActualizarUmbralesAsync: rol ADM (403, D12) → tenantId (404) →
+    /// DAL-C2 (404) → estado Borrador (422, RN-039/RC-12/RN-004) → normalizar 2 decimales
+    /// AwayFromZero (D6) → validar rango + verde &gt; amarillo ESTRICTO (422) → snapshot DAL-C10
+    /// → tx: 2 UPSERTs (DAL-U2, D4) + auditoría UPDATE 'UmbralSemaforo' (ADR-003) → commit →
+    /// 23514 → 422 (D7) → re-lectura post-commit → 200.</summary>
+    public async Task<UmbralesCicloResponse> ActualizarUmbralesAsync(Guid cicloId, UmbralesUpdateRequest request, CancellationToken ct = default)
+    {
+        // D12: re-validación defensiva de rol (el [Authorize(Roles)] es la primera capa; la BLL es la fuente de verdad).
+        if (!string.Equals(_tenantContext.Rol, RolAdminTenant, StringComparison.Ordinal))
+            throw new AccesoDenegadoException("Solo el administrador del tenant puede configurar los umbrales");
+
+        var tenantId = ObtenerTenantIdOThrow();
+
+        // DAL-C2: 404 si el ciclo no existe o pertenece a otro tenant (sin fuga de información).
+        var ciclo = await _repository.ObtenerPorIdAsync(tenantId, cicloId, ct)
+            ?? throw new NotFoundException($"El ciclo '{cicloId}' no existe");
+
+        // RN-039/CA #5 + RC-12/RN-004: los umbrales solo se configuran en Borrador. Cubre Activo
+        // (no modificables retroactivamente) y Cerrado (solo lectura). La BLL lee el estado del
+        // ciclo padre antes de persistir (mismo patrón que ActualizarAsync de HU-007, paso 4).
+        if (!string.Equals(ciclo.Estado, "Borrador", StringComparison.Ordinal))
+            throw new ValidacionException("Los umbrales solo se pueden configurar mientras el ciclo está en estado Borrador");
+
+        // D6: normalizar a 2 decimales ANTES de validar (espejo de DECIMAL(3,2) del DDL; evita
+        // sorpresas de redondeo bancario). Ej: 0.915 → 0.92. Lo que se valida es lo que se persiste.
+        var kpiVerde = NormalizarUmbral(request.Kpi.UmbralVerde);
+        var kpiAmarillo = NormalizarUmbral(request.Kpi.UmbralAmarillo);
+        var planVerde = NormalizarUmbral(request.PlanAccion.UmbralVerde);
+        var planAmarillo = NormalizarUmbral(request.PlanAccion.UmbralAmarillo);
+
+        // Validaciones de negocio por categoría (capa 1 con mensajes amigables; espejo de los
+        // CHECKs L155-157 del DDL). Rango primero, estricto después (lo que se valida es lo que se persiste).
+        ValidarCategoriaUmbral(kpiVerde, kpiAmarillo);
+        ValidarCategoriaUmbral(planVerde, planAmarillo);
+
+        // Snapshot de auditoría (DAL-C10): valor_anterior = JSON(umbrales previos por tipo) (ADR-003).
+        var previos = (await _repository.ObtenerUmbralesAsync(tenantId, cicloId, ct)).ToList();
+        var valorAnterior = SerializarUmbrales(previos);
+
+        // DTOs de los 2 upserts (KPI + PlanAccion) con los valores ya normalizados (CA #1).
+        var nuevos = new[]
+        {
+            new UmbralSemaforoDto
+            {
+                CicloId = cicloId,
+                TenantId = tenantId,
+                Tipo = "KPI",
+                UmbralVerde = kpiVerde,
+                UmbralAmarillo = kpiAmarillo
+            },
+            new UmbralSemaforoDto
+            {
+                CicloId = cicloId,
+                TenantId = tenantId,
+                Tipo = "PlanAccion",
+                UmbralVerde = planVerde,
+                UmbralAmarillo = planAmarillo
+            }
+        };
+        var valorNuevo = SerializarUmbrales(nuevos);
+
+        // Spec §2 paso 8: 2 UPSERTs + auditoría en UNA sola transacción (D1: atomicidad; el PUT
+        // reemplaza el estado completo del recurso /umbrales — semántica REST).
+        using var tx = await _repository.BeginTransactionAsync(ct);
+        try
+        {
+            await _repository.UpsertUmbralAsync(nuevos[0], tx, ct);
+            await _repository.UpsertUmbralAsync(nuevos[1], tx, ct);
+
+            _logger?.LogInformation(
+                "Umbrales del ciclo {CicloId} actualizados por {UserId}. Modulo=Ciclo, Accion=UPDATE, Entidad=UmbralSemaforo",
+                cicloId, _tenantContext.UserId);
+
+            // Auditoría (DAL-C11 reutilizada): accion=UPDATE (existe en el enum accion_auditoria,
+            // L46), entidad='UmbralSemaforo', entidad_id=cicloId, snapshot previo/nuevo (ADR-003).
+            await _repository.InsertLogAsync(new LogAuditoriaInsert
+            {
+                TenantId = tenantId,
+                UsuarioId = _tenantContext.UserId,
+                Accion = "UPDATE",
+                Entidad = EntidadAuditoriaUmbral,
+                EntidadId = cicloId.ToString(),
+                ValorAnterior = valorAnterior,
+                ValorNuevo = valorNuevo
+            }, tx, ct);
+
+            tx.Commit();
+
+            // Lectura posterior al commit para devolver el estado ya persistido (DAL-C10).
+            var actualizados = (await _repository.ObtenerUmbralesAsync(tenantId, cicloId, ct)).ToList();
+            return MapToUmbralesResponse(cicloId, actualizados);
+        }
+        catch (PostgresException ex) when (ex.SqlState == "23514")
+        {
+            // D7 · Capa 2 BD: los CHECKs de rango (L156-157) y estricto (L155) son la última línea
+            // de defensa ante carreras → rollback explícito + 422 con mensaje amigable (patrón ADR-001).
+            _logger?.LogWarning(ex, "Violación de CHECK 23514 al actualizar umbrales del ciclo {CicloId}. Modulo=Ciclo", cicloId);
+            try { tx.Rollback(); }
+            catch (Exception rollbackEx) { _logger?.LogWarning(rollbackEx, "Rollback fallido tras 23514. Modulo=Ciclo"); }
+            throw new ValidacionException("Los umbrales deben estar entre 0.00 y 1.00 y el umbral verde debe ser estrictamente mayor que el amarillo");
+        }
+        catch
+        {
+            // Rollback para garantizar atomicidad (2 upserts + auditoría).
+            try { tx.Rollback(); }
+            catch (Exception rollbackEx) { _logger?.LogWarning(rollbackEx, "Rollback fallido tras error en ActualizarUmbralesAsync. Modulo=Ciclo"); }
+            throw;
+        }
+    }
+
     // ─── Helpers ────────────────────────────────────────────────────────────
 
     /// <summary>D17: TenantId null (SuperAdmin sin tenant) → 404 defensivo (los roles autorizados
@@ -590,4 +726,69 @@ public class CicloService : ICicloService
         CreatedAt = e.CreatedAt,
         UpdatedAt = e.UpdatedAt
     };
+
+    // ─── Helpers HU-008 · Umbrales de semáforo ──────────────────────────────
+
+    /// <summary>D6: normalización a 2 decimales con AwayFromZero (espejo de DECIMAL(3,2) del DDL;
+    /// evita la sorpresa del redondeo bancario ToEven). Ej: 0.915 → 0.92.</summary>
+    private static decimal NormalizarUmbral(decimal valor)
+        => Math.Round(valor, 2, MidpointRounding.AwayFromZero);
+
+    /// <summary>Validaciones de negocio por categoría (capa 1, mensajes amigables — espejo de los
+    /// CHECKs L156-157 y L155 del DDL). Rango PRIMERO, estricto después: lo que se valida es lo
+    /// que se persiste (los valores ya normalizados). Verde == amarillo se rechaza (CHECK ESTRICTO).</summary>
+    private static void ValidarCategoriaUmbral(decimal umbralVerde, decimal umbralAmarillo)
+    {
+        if (umbralVerde < 0.00m || umbralVerde > 1.00m || umbralAmarillo < 0.00m || umbralAmarillo > 1.00m)
+            throw new ValidacionException("Los umbrales deben estar entre 0.00 y 1.00");
+
+        if (umbralVerde <= umbralAmarillo)
+            throw new ValidacionException("El umbral verde debe ser estrictamente mayor que el umbral amarillo");
+    }
+
+    /// <summary>Snapshot de auditoría (ADR-003): JSON de los umbrales por tipo con
+    /// UnsafeRelaxedJsonEscaping (legible sin escapes Unicode). Overload para entidades (previos).</summary>
+    private static string SerializarUmbrales(IEnumerable<UmbralSemaforoEntity> umbrales)
+        => JsonSerializer.Serialize(
+            umbrales.ToDictionary(u => u.Tipo, u => new { u.UmbralVerde, u.UmbralAmarillo }),
+            JsonOpcionesAuditoria);
+
+    /// <summary>Snapshot de auditoría (ADR-003): JSON de los umbrales por tipo con
+    /// UnsafeRelaxedJsonEscaping. Overload para DTOs (nuevos valores a persistir).</summary>
+    private static string SerializarUmbrales(IEnumerable<UmbralSemaforoDto> umbrales)
+        => JsonSerializer.Serialize(
+            umbrales.ToDictionary(u => u.Tipo, u => new { u.UmbralVerde, u.UmbralAmarillo }),
+            JsonOpcionesAuditoria);
+
+    /// <summary>Mapea las filas de umbral_semaforo a UmbralesCicloResponse por tipo (KPI →
+    /// kpi, PlanAccion → planAccion). Defensivo D5: si una categoría no tiene fila (o la lista
+    /// está vacía), se mapean los defaults 0.90/0.70 EN MEMORIA, sin escribir en BD.</summary>
+    private static UmbralesCicloResponse MapToUmbralesResponse(Guid cicloId, IReadOnlyCollection<UmbralSemaforoEntity> umbrales)
+    {
+        var porTipo = umbrales.ToDictionary(u => u.Tipo, u => u);
+        return new UmbralesCicloResponse
+        {
+            CicloId = cicloId,
+            Kpi = MapToCategoriaUmbral(porTipo.GetValueOrDefault("KPI")),
+            PlanAccion = MapToCategoriaUmbral(porTipo.GetValueOrDefault("PlanAccion"))
+        };
+    }
+
+    /// <summary>Mapea una fila a UmbralCategoriaResponse; si es null (defensivo D5) devuelve los
+    /// defaults 0.90/0.70 en memoria. El umbral rojo NO se expone (D3): es implícito
+    /// (valor &lt; umbralAmarillo).</summary>
+    private static UmbralCategoriaResponse MapToCategoriaUmbral(UmbralSemaforoEntity? e)
+        => e is null
+            ? new UmbralCategoriaResponse
+            {
+                UmbralVerde = UmbralVerdeDefault,
+                UmbralAmarillo = UmbralAmarilloDefault,
+                UpdatedAt = DateTimeOffset.UtcNow
+            }
+            : new UmbralCategoriaResponse
+            {
+                UmbralVerde = e.UmbralVerde,
+                UmbralAmarillo = e.UmbralAmarillo,
+                UpdatedAt = e.UpdatedAt
+            };
 }

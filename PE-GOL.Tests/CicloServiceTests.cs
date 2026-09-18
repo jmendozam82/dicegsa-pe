@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text.Json;
 using Moq;
 using Npgsql;
 using PE_GOL.BLL.Interfaces;
@@ -1128,5 +1129,776 @@ public class CicloServiceTests
                 It.IsAny<IDbTransaction?>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // HU-008 · Umbrales de semáforo (Spec HU-008 § "Tests requeridos": 26 casos)
+    // TDD fase red (TEST-01): los STUBs de CicloService lanzan NotImplementedException
+    // (Task.FromException) y UpsertUmbralAsync no existe aún en la implementación DAL
+    // → los 26 tests DEBEN fallar hasta que @BackendDev implemente (fase IMPLEMENT).
+    // GET lectura multi-rol (RN-007, SEC-07 sin AND area_id) · PUT solo ADM (D12):
+    // estado Borrador (RN-039/RC-12/RN-004), rango 0.00–1.00 (CHECKs L156-157),
+    // verde > amarillo ESTRICTO (CHECK L155), normalización AwayFromZero 2 decimales (D6),
+    // UPSERT conjunto KPI+PlanAccion + auditoría UPDATE 'UmbralSemaforo' en UNA transacción
+    // (D1/D4, ADR-003), 23514 → 422 (D7), defaults de HU-007 nunca duplicados (CA #4).
+    // ═════════════════════════════════════════════════════════════════════════
+
+    private static UmbralesUpdateRequest CrearUmbralesRequest(
+        decimal kpiVerde = 0.95m, decimal kpiAmarillo = 0.75m,
+        decimal planVerde = 0.90m, decimal planAmarillo = 0.70m)
+        => new()
+        {
+            Kpi = new UmbralCategoriaRequest { UmbralVerde = kpiVerde, UmbralAmarillo = kpiAmarillo },
+            PlanAccion = new UmbralCategoriaRequest { UmbralVerde = planVerde, UmbralAmarillo = planAmarillo }
+        };
+
+    /// <summary>Flujo feliz PUT: ciclo Borrador (DAL-C2), umbrales previos (DAL-C10), tx,
+    /// 2 UPSERTs (DAL-U2) + auditoría (DAL-C11) OK, re-lectura post-commit (DAL-C10).</summary>
+    private void ConfigurarFlujoFelizActualizarUmbrales(
+        Guid cicloId, Guid tenantId, IReadOnlyList<UmbralSemaforoEntity> filasPrevias,
+        IEnumerable<UmbralSemaforoEntity> filasNuevas, Mock<IDbTransaction>? mockTx = null)
+    {
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+        var tx = mockTx ?? new Mock<IDbTransaction>();
+        var committed = false;
+        tx.Setup(t => t.Commit()).Callback(() => committed = true);
+        _mockRepo
+            .Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(tx.Object);
+        _mockRepo
+            .Setup(r => r.UpsertUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _mockRepo
+            .Setup(r => r.InsertLogAsync(It.IsAny<LogAuditoriaInsert>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _mockRepo
+            .Setup(r => r.ObtenerUmbralesAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => committed ? filasNuevas : filasPrevias);
+    }
+
+    // ─── HU-008 · GET ObtenerUmbralesAsync (7 casos) ────────────────────────
+
+    // Caso 1 ─ ciclo Borrador con 2 filas → UmbralesCicloResponse con kpi y planAccion
+    // mapeados con sus valores y updatedAt (DAL-C10 → DTOs)
+    [Fact]
+    public async Task ObtenerUmbrales_CicloConUmbrales_RetornaAmbosTipos()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var updatedAtKpi = DateTimeOffset.UtcNow.AddDays(-1);
+        var updatedAtPlan = DateTimeOffset.UtcNow.AddHours(-5);
+        var filas = new[]
+        {
+            CrearUmbral("KPI", 0.95m, 0.75m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.85m, 0.65m, cicloId, tenantId)
+        };
+        filas[0].UpdatedAt = updatedAtKpi;
+        filas[1].UpdatedAt = updatedAtPlan;
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+        _mockRepo
+            .Setup(r => r.ObtenerUmbralesAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(filas);
+
+        // Act
+        var resultado = await _service.ObtenerUmbralesAsync(cicloId);
+
+        // Assert: ambos tipos con valores y updatedAt mapeados
+        Assert.Equal(cicloId, resultado.CicloId);
+        Assert.Equal(0.95m, resultado.Kpi.UmbralVerde);
+        Assert.Equal(0.75m, resultado.Kpi.UmbralAmarillo);
+        Assert.Equal(updatedAtKpi, resultado.Kpi.UpdatedAt);
+        Assert.Equal(0.85m, resultado.PlanAccion.UmbralVerde);
+        Assert.Equal(0.65m, resultado.PlanAccion.UmbralAmarillo);
+        Assert.Equal(updatedAtPlan, resultado.PlanAccion.UpdatedAt);
+        _mockRepo.Verify(
+            r => r.ObtenerUmbralesAsync(tenantId, cicloId, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // Caso 2 ─ ciclo existe pero ObtenerUmbralesAsync devuelve vacío → defaults 0.90/0.70
+    // en memoria en ambos tipos y NINGUNA escritura (D5 defensivo, GET solo lectura)
+    [Fact]
+    public async Task ObtenerUmbrales_CicloSinFilas_RetornaDefaultsSinEscribir()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+        _mockRepo
+            .Setup(r => r.ObtenerUmbralesAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<UmbralSemaforoEntity>)[]);
+
+        // Act
+        var resultado = await _service.ObtenerUmbralesAsync(cicloId);
+
+        // Assert: defaults 0.90/0.70 en ambos tipos (D5) y ninguna escritura en BD
+        Assert.Equal(cicloId, resultado.CicloId);
+        Assert.Equal(0.90m, resultado.Kpi.UmbralVerde);
+        Assert.Equal(0.70m, resultado.Kpi.UmbralAmarillo);
+        Assert.Equal(0.90m, resultado.PlanAccion.UmbralVerde);
+        Assert.Equal(0.70m, resultado.PlanAccion.UmbralAmarillo);
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _mockRepo.Verify(
+            r => r.InsertarUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 3 ─ DAL-C2 null → NotFoundException 404
+    [Fact]
+    public async Task ObtenerUmbrales_CicloInexistente_LanzaNoEncontrado()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CicloEntity?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ObtenerUmbralesAsync(cicloId));
+    }
+
+    // Caso 4 ─ ciclo de otro tenant → el filtro tenant_id del DAL devuelve null → 404 sin fuga
+    [Fact]
+    public async Task ObtenerUmbrales_CicloDeOtroTenant_LanzaNoEncontrado()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var cicloDeOtroTenant = CrearCiclo(cicloId, tenantId: Guid.NewGuid(), nombre: "PE 2026");
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CicloEntity?)null);
+
+        // Act & Assert: 404 y el repo se consulta SIEMPRE con el tenant del contexto (nunca el del ciclo)
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ObtenerUmbralesAsync(cicloId));
+
+        _mockRepo.Verify(
+            r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        Assert.NotEqual(tenantId, cicloDeOtroTenant.TenantId);
+    }
+
+    // Caso 5 ─ TenantContext.TenantId=null → NotFoundException 404; el repo nunca se consulta
+    [Fact]
+    public async Task ObtenerUmbrales_SinTenantEnContexto_LanzaNoEncontrado()
+    {
+        // Arrange: D17 — TenantId null (SuperAdmin sin tenant)
+        _tenantContext.TenantId = null;
+        var cicloId = Guid.NewGuid();
+
+        // Act & Assert: 404 y ninguna query del repo se ejecuta
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ObtenerUmbralesAsync(cicloId));
+
+        _mockRepo.Verify(
+            r => r.ObtenerPorIdAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _mockRepo.Verify(
+            r => r.ObtenerUmbralesAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 6 ─ Rol="JefeArea" → lectura permitida (RN-007; SEC-07: sin AND area_id)
+    [Fact]
+    public async Task ObtenerUmbrales_RolJefeArea_PermiteLectura()
+    {
+        // Arrange: RN-007 — el JefeArea solo LEE la configuración del ciclo, sin filtro de área
+        _tenantContext.Rol = "JefeArea";
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var filas = new[]
+        {
+            CrearUmbral("KPI", 0.95m, 0.75m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.85m, 0.65m, cicloId, tenantId)
+        };
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+        _mockRepo
+            .Setup(r => r.ObtenerUmbralesAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(filas);
+
+        // Act: sin excepción (200)
+        var resultado = await _service.ObtenerUmbralesAsync(cicloId);
+
+        // Assert: ambos tipos mapeados
+        Assert.Equal(cicloId, resultado.CicloId);
+        Assert.Equal(0.95m, resultado.Kpi.UmbralVerde);
+        Assert.Equal(0.75m, resultado.Kpi.UmbralAmarillo);
+        Assert.Equal(0.85m, resultado.PlanAccion.UmbralVerde);
+        Assert.Equal(0.65m, resultado.PlanAccion.UmbralAmarillo);
+    }
+
+    // Caso 7 ─ Rol="Gerente" → lectura permitida (200)
+    [Fact]
+    public async Task ObtenerUmbrales_RolGerente_PermiteLectura()
+    {
+        // Arrange: el Gerente también LEE la configuración del ciclo (RN-007)
+        _tenantContext.Rol = "Gerente";
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var filas = new[]
+        {
+            CrearUmbral("KPI", 0.95m, 0.75m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.85m, 0.65m, cicloId, tenantId)
+        };
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+        _mockRepo
+            .Setup(r => r.ObtenerUmbralesAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(filas);
+
+        // Act: sin excepción (200)
+        var resultado = await _service.ObtenerUmbralesAsync(cicloId);
+
+        // Assert: ambos tipos mapeados
+        Assert.Equal(cicloId, resultado.CicloId);
+        Assert.Equal(0.95m, resultado.Kpi.UmbralVerde);
+        Assert.Equal(0.85m, resultado.PlanAccion.UmbralVerde);
+    }
+
+    // ─── HU-008 · PUT ActualizarUmbralesAsync (19 casos) ────────────────────
+
+    // Caso 8 ─ ciclo Borrador + valores válidos → 200 con ambos tipos actualizados (re-lectura post-commit)
+    [Fact]
+    public async Task ActualizarUmbrales_ConDatosValidos_RetornaUmbralesActualizados()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest(); // KPI 0.95/0.75 · PlanAccion 0.90/0.70
+        var filasPrevias = new[]
+        {
+            CrearUmbral("KPI", 0.90m, 0.70m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.90m, 0.70m, cicloId, tenantId)
+        };
+        var filasNuevas = new[]
+        {
+            CrearUmbral("KPI", 0.95m, 0.75m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.90m, 0.70m, cicloId, tenantId)
+        };
+        ConfigurarFlujoFelizActualizarUmbrales(cicloId, tenantId, filasPrevias, filasNuevas);
+
+        // Act
+        var resultado = await _service.ActualizarUmbralesAsync(cicloId, request);
+
+        // Assert: re-lectura post-commit con los valores actualizados
+        Assert.Equal(cicloId, resultado.CicloId);
+        Assert.Equal(0.95m, resultado.Kpi.UmbralVerde);
+        Assert.Equal(0.75m, resultado.Kpi.UmbralAmarillo);
+        Assert.Equal(0.90m, resultado.PlanAccion.UmbralVerde);
+        Assert.Equal(0.70m, resultado.PlanAccion.UmbralAmarillo);
+    }
+
+    // Caso 9 ─ UpsertUmbralAsync llamado exactamente 2 veces (KPI y PlanAccion) con la MISMA
+    // instancia de transacción que InsertLogAsync (D1: atomicidad de la operación conjunta)
+    [Fact]
+    public async Task ActualizarUmbrales_ConDatosValidos_UpsertDeAmbosTiposEnUnaTransaccion()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest();
+        var mockTx = new Mock<IDbTransaction>();
+        var filasPrevias = new[]
+        {
+            CrearUmbral("KPI", 0.90m, 0.70m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.90m, 0.70m, cicloId, tenantId)
+        };
+        var filasNuevas = new[]
+        {
+            CrearUmbral("KPI", 0.95m, 0.75m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.90m, 0.70m, cicloId, tenantId)
+        };
+        ConfigurarFlujoFelizActualizarUmbrales(cicloId, tenantId, filasPrevias, filasNuevas, mockTx);
+
+        // Act
+        await _service.ActualizarUmbralesAsync(cicloId, request);
+
+        // Assert: 2 upserts (KPI y PlanAccion) + auditoría con la MISMA instancia de tx (D1)
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(
+                It.Is<UmbralSemaforoDto>(d =>
+                    d.Tipo == "KPI" && d.UmbralVerde == 0.95m && d.UmbralAmarillo == 0.75m),
+                mockTx.Object, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(
+                It.Is<UmbralSemaforoDto>(d =>
+                    d.Tipo == "PlanAccion" && d.UmbralVerde == 0.90m && d.UmbralAmarillo == 0.70m),
+                mockTx.Object, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mockRepo.Verify(
+            r => r.InsertLogAsync(
+                It.IsAny<LogAuditoriaInsert>(),
+                mockTx.Object, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // Caso 10 ─ Rol="Gerente" → AccesoDenegadoException 403 (D12); Upsert nunca llamado
+    [Fact]
+    public async Task ActualizarUmbrales_RolGerente_LanzaAccesoDenegado()
+    {
+        // Arrange: D-A — el Gerente solo LEE umbrales (RN-007), no los configura
+        _tenantContext.Rol = "Gerente";
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest();
+
+        // Act & Assert: 403 y el UPSERT nunca se ejecuta
+        await Assert.ThrowsAsync<AccesoDenegadoException>(() => _service.ActualizarUmbralesAsync(cicloId, request));
+
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 11 ─ Rol="JefeArea" → AccesoDenegadoException 403 (D12)
+    [Fact]
+    public async Task ActualizarUmbrales_RolJefeArea_LanzaAccesoDenegado()
+    {
+        // Arrange: D-A — el JefeArea solo LEE configuración del ciclo (RN-007), no la modifica
+        _tenantContext.Rol = "JefeArea";
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest();
+
+        // Act & Assert: 403 y el UPSERT nunca se ejecuta
+        await Assert.ThrowsAsync<AccesoDenegadoException>(() => _service.ActualizarUmbralesAsync(cicloId, request));
+
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 12 ─ TenantContext.TenantId=null → NotFoundException 404; el repo nunca se consulta
+    [Fact]
+    public async Task ActualizarUmbrales_SinTenantEnContexto_LanzaNoEncontrado()
+    {
+        // Arrange: D17
+        _tenantContext.TenantId = null;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest();
+
+        // Act & Assert: 404 y ninguna query del repo se ejecuta
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ActualizarUmbralesAsync(cicloId, request));
+
+        _mockRepo.Verify(
+            r => r.ObtenerPorIdAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 13 ─ DAL-C2 null → NotFoundException 404
+    [Fact]
+    public async Task ActualizarUmbrales_CicloInexistente_LanzaNoEncontrado()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest();
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CicloEntity?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ActualizarUmbralesAsync(cicloId, request));
+    }
+
+    // Caso 14 ─ ciclo de otro tenant → el filtro tenant_id del DAL devuelve null → 404 sin fuga
+    [Fact]
+    public async Task ActualizarUmbrales_CicloDeOtroTenant_LanzaNoEncontrado()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var cicloDeOtroTenant = CrearCiclo(cicloId, tenantId: Guid.NewGuid(), nombre: "PE 2026");
+        var request = CrearUmbralesRequest();
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CicloEntity?)null);
+
+        // Act & Assert: 404 y el repo se consulta SIEMPRE con el tenant del contexto (nunca el del ciclo)
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ActualizarUmbralesAsync(cicloId, request));
+
+        _mockRepo.Verify(
+            r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        Assert.NotEqual(tenantId, cicloDeOtroTenant.TenantId);
+    }
+
+    // Caso 15 ─ Estado="Activo" → 422 "solo... Borrador" (RN-039/CA #5); sin transacción ni upserts
+    [Fact]
+    public async Task ActualizarUmbrales_CicloActivo_LanzaValidacion()
+    {
+        // Arrange: RN-039 — los umbrales NO son modificables retroactivamente una vez el ciclo está Activo
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest();
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Activo"));
+
+        // Act & Assert: 422 y ni transacción ni upserts
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() => _service.ActualizarUmbralesAsync(cicloId, request));
+
+        Assert.Contains("Borrador", ex.Message, StringComparison.OrdinalIgnoreCase);
+        _mockRepo.Verify(
+            r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 16 ─ Estado="Cerrado" → 422 (RC-12/RN-004: Cerrado = solo lectura)
+    [Fact]
+    public async Task ActualizarUmbrales_CicloCerrado_LanzaValidacion()
+    {
+        // Arrange: RC-12/RN-004 — ninguna entidad hija se modifica si el ciclo está Cerrado
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest();
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Cerrado"));
+
+        // Act & Assert: 422 y ni transacción ni upserts
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() => _service.ActualizarUmbralesAsync(cicloId, request));
+
+        Assert.Contains("Borrador", ex.Message, StringComparison.OrdinalIgnoreCase);
+        _mockRepo.Verify(
+            r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 17 ─ umbralVerde fuera de 0.00..1.00 (1.01 y -0.01) → 422, sin upserts (espejo CHECK L156)
+    [Theory]
+    [InlineData(1.01)]
+    [InlineData(-0.01)]
+    public async Task ActualizarUmbrales_VerdeFueraDeRango_LanzaValidacion(decimal umbralVerde)
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest(kpiVerde: umbralVerde);
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+
+        // Act & Assert: 422 y el UPSERT nunca se ejecuta
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() => _service.ActualizarUmbralesAsync(cicloId, request));
+
+        Assert.Contains("0.00", ex.Message, StringComparison.OrdinalIgnoreCase);
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 18 ─ umbralAmarillo=-0.05 → 422 (espejo CHECK L157)
+    [Fact]
+    public async Task ActualizarUmbrales_AmarilloFueraDeRango_LanzaValidacion()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest(kpiAmarillo: -0.05m);
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+
+        // Act & Assert: 422 y el UPSERT nunca se ejecuta
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() => _service.ActualizarUmbralesAsync(cicloId, request));
+
+        Assert.Contains("0.00", ex.Message, StringComparison.OrdinalIgnoreCase);
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 19 ─ verde IGUAL a amarillo (0.90/0.90) → 422 "estrictamente mayor" (CHECK ESTRICTO L155)
+    [Fact]
+    public async Task ActualizarUmbrales_VerdeIgualAAmarillo_LanzaValidacion()
+    {
+        // Arrange: el CHECK del DDL L155 es ESTRICTO (verde > amarillo); verde == amarillo se rechaza
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest(kpiVerde: 0.90m, kpiAmarillo: 0.90m);
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+
+        // Act & Assert: 422 y el UPSERT nunca se ejecuta
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() => _service.ActualizarUmbralesAsync(cicloId, request));
+
+        Assert.Contains("estrictamente mayor", ex.Message, StringComparison.OrdinalIgnoreCase);
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 20 ─ verde MENOR que amarillo (0.80/0.90) → 422
+    [Fact]
+    public async Task ActualizarUmbrales_VerdeMenorAAmarillo_LanzaValidacion()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest(kpiVerde: 0.80m, kpiAmarillo: 0.90m);
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+
+        // Act & Assert: 422 y el UPSERT nunca se ejecuta
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() => _service.ActualizarUmbralesAsync(cicloId, request));
+
+        Assert.Contains("estrictamente mayor", ex.Message, StringComparison.OrdinalIgnoreCase);
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 21 ─ normalización AwayFromZero (D6): 0.915 → 0.92 y 0.705 → 0.71. Corrección de Jorge
+    // 2026-09-17: SIN ejemplos negativos (-0.005 redondearía a -0.01 con AwayFromZero y el validador
+    // de rango lo rechazaría antes de persistir)
+    [Fact]
+    public async Task ActualizarUmbrales_MasDeDosDecimales_SeNormalizaARedondeo()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest(kpiVerde: 0.915m, kpiAmarillo: 0.705m);
+        var filasPrevias = new[]
+        {
+            CrearUmbral("KPI", 0.90m, 0.70m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.90m, 0.70m, cicloId, tenantId)
+        };
+        var filasNuevas = new[]
+        {
+            CrearUmbral("KPI", 0.92m, 0.71m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.90m, 0.70m, cicloId, tenantId)
+        };
+        ConfigurarFlujoFelizActualizarUmbrales(cicloId, tenantId, filasPrevias, filasNuevas);
+
+        // Act
+        await _service.ActualizarUmbralesAsync(cicloId, request);
+
+        // Assert: se persiste 0.92 y 0.71 (MidpointRounding.AwayFromZero, D6 — espejo DECIMAL(3,2))
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(
+                It.Is<UmbralSemaforoDto>(d =>
+                    d.Tipo == "KPI" && d.UmbralVerde == 0.92m && d.UmbralAmarillo == 0.71m),
+                It.IsAny<IDbTransaction?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // Caso 22 ─ categorías independientes (CA #1): kpi 0.95/0.85 y planAccion 0.80/0.60 →
+    // cada upsert recibe los valores de SU categoría
+    [Fact]
+    public async Task ActualizarUmbrales_CategoriasIndependientes_PersistenValoresDistintos()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest(kpiVerde: 0.95m, kpiAmarillo: 0.85m, planVerde: 0.80m, planAmarillo: 0.60m);
+        var filasPrevias = new[]
+        {
+            CrearUmbral("KPI", 0.90m, 0.70m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.90m, 0.70m, cicloId, tenantId)
+        };
+        var filasNuevas = new[]
+        {
+            CrearUmbral("KPI", 0.95m, 0.85m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.80m, 0.60m, cicloId, tenantId)
+        };
+        ConfigurarFlujoFelizActualizarUmbrales(cicloId, tenantId, filasPrevias, filasNuevas);
+
+        // Act
+        await _service.ActualizarUmbralesAsync(cicloId, request);
+
+        // Assert: cada upsert recibe los valores de su categoría (CA #1)
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(
+                It.Is<UmbralSemaforoDto>(d =>
+                    d.Tipo == "KPI" && d.UmbralVerde == 0.95m && d.UmbralAmarillo == 0.85m),
+                It.IsAny<IDbTransaction?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(
+                It.Is<UmbralSemaforoDto>(d =>
+                    d.Tipo == "PlanAccion" && d.UmbralVerde == 0.80m && d.UmbralAmarillo == 0.60m),
+                It.IsAny<IDbTransaction?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // Caso 23 ─ auditoría UPDATE con snapshot previo (ADR-003): accion=UPDATE, entidad='UmbralSemaforo',
+    // entidad_id=cicloId, valor_anterior=JSON de filas previas, valor_nuevo=JSON de nuevas, sin escapes Unicode
+    [Fact]
+    public async Task ActualizarUmbrales_RegistraAuditoriaUpdateConSnapshotPrevio()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest();
+        var filasPrevias = new[]
+        {
+            CrearUmbral("KPI", 0.90m, 0.70m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.90m, 0.70m, cicloId, tenantId)
+        };
+        var filasNuevas = new[]
+        {
+            CrearUmbral("KPI", 0.95m, 0.75m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.90m, 0.70m, cicloId, tenantId)
+        };
+        ConfigurarFlujoFelizActualizarUmbrales(cicloId, tenantId, filasPrevias, filasNuevas);
+
+        // Act
+        await _service.ActualizarUmbralesAsync(cicloId, request);
+
+        // Assert: auditoría UPDATE con snapshot previo y JSON legible sin escapes Unicode (ADR-003)
+        _mockRepo.Verify(
+            r => r.InsertLogAsync(
+                It.Is<LogAuditoriaInsert>(l =>
+                    l.Accion == "UPDATE" &&
+                    l.Entidad == "UmbralSemaforo" &&
+                    l.EntidadId == cicloId.ToString() &&
+                    l.TenantId == tenantId &&
+                    l.UsuarioId == _tenantContext.UserId &&
+                    l.ValorAnterior != null &&
+                    l.ValorAnterior.Contains("0.90") &&
+                    l.ValorNuevo != null &&
+                    l.ValorNuevo.Contains("0.95") &&
+                    !l.ValorNuevo.Contains("\\u")),
+                It.IsAny<IDbTransaction?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // Caso 24 ─ ciclo recién creado con 2 filas default de HU-007 (0.90/0.70) → se llama
+    // UpsertUmbralAsync (NO InsertarUmbralAsync): los defaults se actualizan, nunca se duplican (CA #4 + D4)
+    [Fact]
+    public async Task ActualizarUmbrales_SobreCicloRecienCreado_HaceUpsertSinDuplicar()
+    {
+        // Arrange: el ciclo ya tiene las 2 filas default de HU-007 (0.90/0.70)
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest();
+        var filasPrevias = new[]
+        {
+            CrearUmbral("KPI", 0.90m, 0.70m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.90m, 0.70m, cicloId, tenantId)
+        };
+        var filasNuevas = new[]
+        {
+            CrearUmbral("KPI", 0.95m, 0.75m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.90m, 0.70m, cicloId, tenantId)
+        };
+        ConfigurarFlujoFelizActualizarUmbrales(cicloId, tenantId, filasPrevias, filasNuevas);
+
+        // Act
+        await _service.ActualizarUmbralesAsync(cicloId, request);
+
+        // Assert: UPSERT (nunca INSERT) — los defaults de HU-007 se actualizan sin duplicar (D4)
+        _mockRepo.Verify(
+            r => r.UpsertUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+        _mockRepo.Verify(
+            r => r.InsertarUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 25 ─ PostgresException 23514 (check_violation, capa 2 BD) → rollback + ValidacionException 422 (D7)
+    [Fact]
+    public async Task ActualizarUmbrales_CheckViolation23514_LanzaValidacion()
+    {
+        // Arrange: el 1er UPSERT lanza 23514 (los CHECKs L155-157 del DDL capturan lo que la BLL no vio)
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest();
+        var mockTx = new Mock<IDbTransaction>();
+        var filasPrevias = new[]
+        {
+            CrearUmbral("KPI", 0.90m, 0.70m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.90m, 0.70m, cicloId, tenantId)
+        };
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+        _mockRepo
+            .Setup(r => r.ObtenerUmbralesAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(filasPrevias);
+        _mockRepo
+            .Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockTx.Object);
+        _mockRepo
+            .Setup(r => r.UpsertUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new PostgresException(
+                "new row for relation \"umbral_semaforo\" violates check constraint",
+                "ERROR",
+                "ERROR",   // invariantSeverity (puede repetir "ERROR")
+                "23514")); // sqlState ← check_violation (D7, patrón ADR-001)
+
+        // Act & Assert: 422 con rollback explícito (D7); la auditoría nunca se escribe
+        await Assert.ThrowsAsync<ValidacionException>(() => _service.ActualizarUmbralesAsync(cicloId, request));
+
+        mockTx.Verify(t => t.Rollback(), Times.Once);
+        _mockRepo.Verify(
+            r => r.InsertLogAsync(It.IsAny<LogAuditoriaInsert>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 26 ─ excepción genérica en el 2º upsert → rollback explícito y la excepción original
+    // se propaga (atomicidad de 2 upserts + auditoría)
+    [Fact]
+    public async Task ActualizarUmbrales_ErrorInesperadoEnTransaccion_HaceRollbackYRelanza()
+    {
+        // Arrange: el 1er UPSERT (KPI) OK, el 2º (PlanAccion) lanza excepción genérica
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = CrearUmbralesRequest();
+        var mockTx = new Mock<IDbTransaction>();
+        var filasPrevias = new[]
+        {
+            CrearUmbral("KPI", 0.90m, 0.70m, cicloId, tenantId),
+            CrearUmbral("PlanAccion", 0.90m, 0.70m, cicloId, tenantId)
+        };
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+        _mockRepo
+            .Setup(r => r.ObtenerUmbralesAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(filasPrevias);
+        _mockRepo
+            .Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockTx.Object);
+        _mockRepo
+            .SetupSequence(r => r.UpsertUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1)  // 1er upsert (KPI) OK
+            .ThrowsAsync(new InvalidOperationException("Fallo inesperado en el 2º upsert"));
+
+        // Act & Assert: la excepción original se propaga y la tx hace rollback explícito (atomicidad)
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ActualizarUmbralesAsync(cicloId, request));
+
+        Assert.Contains("2º upsert", ex.Message, StringComparison.OrdinalIgnoreCase);
+        mockTx.Verify(t => t.Rollback(), Times.Once);
+        _mockRepo.Verify(
+            r => r.InsertLogAsync(It.IsAny<LogAuditoriaInsert>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

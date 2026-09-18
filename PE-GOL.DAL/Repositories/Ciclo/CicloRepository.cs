@@ -271,4 +271,30 @@ public sealed class CicloRepository : ICicloRepository, IDisposable
         var cmd = new CommandDefinition(sql, dto, cancellationToken: ct);
         return await conn.ExecuteAsync(cmd);
     }
+
+    /// <summary>DAL-U2 (HU-008) · UPSERT umbral_semaforo: INSERT ... ON CONFLICT (ciclo_id, tipo)
+    /// DO UPDATE (target = UNIQUE del DDL L154; espíritu DB-06, D4). Idempotente: actualiza los
+    /// defaults de HU-007 sin duplicar ni colisionar 23505; elimina la carrera TOCTOU del patrón
+    /// SELECT+UPDATE. @Tipo::tipo_umbral cast al enum del DDL (L36). Retorna filas afectadas.</summary>
+    public async Task<int> UpsertUmbralAsync(UmbralSemaforoDto dto, IDbTransaction? tx = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO umbral_semaforo (ciclo_id, tenant_id, tipo, umbral_verde, umbral_amarillo, updated_at)
+            VALUES (@CicloId, @TenantId, @Tipo::tipo_umbral, @UmbralVerde, @UmbralAmarillo, NOW())
+            ON CONFLICT (ciclo_id, tipo) DO UPDATE
+            SET umbral_verde    = EXCLUDED.umbral_verde,
+                umbral_amarillo = EXCLUDED.umbral_amarillo,
+                updated_at      = NOW();";
+
+        if (tx is not null)
+        {
+            var cmdTx = new CommandDefinition(sql, dto, tx, cancellationToken: ct);
+            return await tx.Connection!.ExecuteAsync(cmdTx);
+        }
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, dto, cancellationToken: ct);
+        return await conn.ExecuteAsync(cmd);
+    }
 }

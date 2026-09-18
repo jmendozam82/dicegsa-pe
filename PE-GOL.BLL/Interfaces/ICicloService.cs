@@ -36,4 +36,10 @@ public interface ICicloService
 
     /// <summary>POST /api/v1/ciclos/{id}/clonar — 201 con CicloResponse del nuevo (umbrales copiados) · 403 · 404 · 422 (año fiscal duplicado/forma).</summary>
     Task<CicloResponse> ClonarAsync(Guid idOrigen, ClonarCicloRequest request, CancellationToken ct = default);
+
+    /// <summary>GET /api/v1/ciclos/{cicloId}/umbrales — 200 con UmbralesCicloResponse (ambos tipos; defaults 0.90/0.70 en memoria si no hay filas, D5) · 404 (ciclo inexistente/otro tenant/sin tenant). Lectura multi-rol ADM/GER/JEF (RN-007, SEC-07: sin AND area_id).</summary>
+    Task<UmbralesCicloResponse> ObtenerUmbralesAsync(Guid cicloId, CancellationToken ct = default);
+
+    /// <summary>PUT /api/v1/ciclos/{cicloId}/umbrales — 200 con UmbralesCicloResponse (UPSERT conjunto KPI+PlanAccion + auditoría en UNA transacción, D1/D4) · 403 rol ≠ ADM (D12) · 404 · 422 (no Borrador RN-039/RC-12, rango 0.00-1.00, verde &gt; amarillo ESTRICTO, 23514 capa 2 BD — D7).</summary>
+    Task<UmbralesCicloResponse> ActualizarUmbralesAsync(Guid cicloId, UmbralesUpdateRequest request, CancellationToken ct = default);
 }

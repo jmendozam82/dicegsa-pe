@@ -47,6 +47,11 @@ public interface ICicloRepository
     /// <summary>DAL-C11 · INSERT log_auditoria (entidad 'Ciclo'). El JSON se serializa con UnsafeRelaxedJsonEscaping (ADR-003). Retorna filas afectadas.</summary>
     Task<int> InsertLogAsync(LogAuditoriaInsert dto, IDbTransaction? tx = null, CancellationToken ct = default);
 
+    /// <summary>DAL-U2 (HU-008) · UPSERT umbral_semaforo: INSERT ... ON CONFLICT (ciclo_id, tipo) DO UPDATE
+    /// (target = UNIQUE del DDL L154; espíritu DB-06, D4). Actualiza los defaults de HU-007 sin duplicar
+    /// (idempotente, sin carrera TOCTOU ni 23505). Retorna filas afectadas.</summary>
+    Task<int> UpsertUmbralAsync(UmbralSemaforoDto dto, IDbTransaction? tx = null, CancellationToken ct = default);
+
     /// <summary>Abre una conexión gestionada por el repositorio e inicia una transacción IDbTransaction (mismo patrón que ITenantRepository).</summary>
     Task<IDbTransaction> BeginTransactionAsync(CancellationToken ct = default);
 }

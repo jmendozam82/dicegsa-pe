@@ -130,4 +130,41 @@ public class CicloController : ControllerBase
         return StatusCode(StatusCodes.Status201Created,
             new ApiResponse<CicloResponse> { Success = true, Message = "Ciclo clonado", Data = data });
     }
+
+    /// <summary>GET /api/v1/ciclos/{cicloId}/umbrales — Umbrales del ciclo (ambos tipos; lectura
+    /// multi-rol ADM/GER/JEF — RN-007). 404 si el ciclo no existe/otro tenant/sin tenant. Defensivo
+    /// D5: si el ciclo no tiene filas, responde los defaults 0.90/0.70 sin escribir en BD.
+    /// SEC-07: umbral_semaforo no es entidad de área → sin AND area_id.</summary>
+    [HttpGet("{cicloId:guid}/umbrales")]
+    [Authorize(Roles = "AdminTenant,Gerente,JefeArea")]
+    [ProducesResponseType(typeof(ApiResponse<UmbralesCicloResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ObtenerUmbrales(Guid cicloId, CancellationToken ct = default)
+    {
+        var data = await _service.ObtenerUmbralesAsync(cicloId, ct);
+        return Ok(new ApiResponse<UmbralesCicloResponse> { Success = true, Data = data });
+    }
+
+    /// <summary>PUT /api/v1/ciclos/{cicloId}/umbrales — UPSERT conjunto KPI+PlanAccion + auditoría
+    /// UPDATE 'UmbralSemaforo' en UNA transacción (D1/D4; solo AdminTenant, D12). 422 si el ciclo
+    /// no está en Borrador (RN-039/RC-12/RN-004), algún valor fuera de 0.00–1.00, o
+    /// umbralVerde &lt;= umbralAmarillo (CHECKs L155-157; 23514 capa 2 BD → 422, D7).</summary>
+    [HttpPut("{cicloId:guid}/umbrales")]
+    [Authorize(Roles = "AdminTenant")]
+    [ProducesResponseType(typeof(ApiResponse<UmbralesCicloResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ActualizarUmbrales(Guid cicloId, [FromBody] UmbralesUpdateRequest request, CancellationToken ct = default)
+    {
+        var data = await _service.ActualizarUmbralesAsync(cicloId, request, ct);
+        return Ok(new ApiResponse<UmbralesCicloResponse> { Success = true, Message = "Umbrales actualizados", Data = data });
+    }
 }
