@@ -204,6 +204,7 @@ CREATE TABLE area (
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     UNIQUE (ciclo_id, codigo)
+    -- Índice parcial (ADR-007/V004): CREATE UNIQUE INDEX uq_area_responsable_unico ON area (ciclo_id, responsable_id) WHERE responsable_id IS NOT NULL AND activa = TRUE;  -- RN-012: un responsable por área activa por ciclo (migración V004, pendiente de deploy)
 );
 CREATE INDEX idx_area_ciclo ON area(ciclo_id);
 

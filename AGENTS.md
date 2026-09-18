@@ -1,6 +1,7 @@
 # AGENTS.md — Constitución del Proyecto PE-GOL SaaS
 > Este archivo es la fuente de verdad del proyecto. Todo agente, spec, ADR y plan debe leerlo antes de actuar.
-> Versión: 1.9 · Fecha: 2026-09-17 · Autor: Jorge (Dicegsa)
+> Versión: 1.10 · Fecha: 2026-09-17 · Autor: Jorge (Dicegsa)
+> v1.10 (2026-09-17): tabla de estado actualizada tras implementar HU-009 (Gestión de Áreas Estratégicas) — Sprint 2 en curso (2/8 HU).
 > v1.9 (2026-09-17): tabla de estado actualizada tras implementar HU-005 (Log de Auditoría) — Sprint 2 en curso (1/8 HU).
 > v1.8 (2026-09-17): tabla de estado actualizada tras implementar HU-008 (Configuración de Umbrales de Semáforo).
 > v1.6 (2026-09-14): tabla de estado actualizada tras implementar HU-006 (Configuración de la Empresa/Tenant).
@@ -207,7 +208,7 @@ dicegsa-pe/
 | **AGENTS.md** | Este archivo | ✅ Completo |
 | Agentes | `agents/*.md` | ✅ Completo |
 | Specs Sprint 1 | `specs/sprint-01/*.spec.md` | ✅ Completo — HU-001, HU-002, HU-003, HU-004, HU-006, HU-007 y HU-008 Implementadas (Sprint 1 sin pendientes) |
-| Specs Sprint 2 | `specs/sprint-02/*.spec.md` | 🔄 En curso — HU-005 Implementada (Sprint 2: 1/8 HU) |
+| Specs Sprint 2 | `specs/sprint-02/*.spec.md` | 🔄 En curso — HU-005 y HU-009 Implementadas (Sprint 2: 2/8 HU) |
 | Implementación | Código fuente | ⏳ Pendiente |
 
 ---
@@ -225,7 +226,8 @@ dicegsa-pe/
 
 ---
 
-*AGENTS.md — Constitución PE-GOL SaaS · Versión 1.9 · 2026-09-17*
+*AGENTS.md — Constitución PE-GOL SaaS · Versión 1.10 · 2026-09-17*
+*v1.10 (2026-09-17): tabla de estado actualizada tras implementar HU-009 (Gestión de Áreas Estratégicas) — Sprint 2 en curso (2/8 HU).*
 *v1.9 (2026-09-17): tabla de estado actualizada tras implementar HU-005 (Log de Auditoría) — Sprint 2 en curso (1/8 HU).*
 *v1.8 (2026-09-17): tabla de estado actualizada tras implementar HU-008 (Configuración de Umbrales de Semáforo).*
 *v1.6 (2026-09-14): tabla de estado actualizada tras implementar HU-006 (Configuración de la Empresa/Tenant).*

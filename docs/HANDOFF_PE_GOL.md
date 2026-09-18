@@ -288,6 +288,22 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
+## HU-009 · Gestión de Áreas Estratégicas — CERRADA
+
+**Fecha de cierre:** 2026-09-17 · **Cerrada por:** @Documenter (LOOP-05) · **Spec:** `specs/sprint-02/HU-009.spec.md` → `Implementado`
+
+**Entregado (100% backend — misma decisión de UI diferida de HU-006/HU-007/HU-008):** 6 endpoints `/api/v1/ciclos/{cicloId}/areas` — GET listado (multi-rol `AdminTenant,Gerente,JefeArea`; JEF solo su área, SEC-07) · GET detalle (multi-rol) · POST (ADM) · PUT (ADM) · PUT `.../desactivar` (ADM, sin DELETE — CA #5) · GET `.../responsables` (ADM/GER, puente HU-010); `AreaService`/`IAreaService` (BLL, ctor D13 + overload `ILogger<AreaService>?`); DAL-A1..A11 en `CicloRepository` (áreas = hijos del agregado Ciclo, D-I); `IPlanService.ObtenerLimitesAsync` (aditivo, RN-010 con doble chequeo por ciclo + tenant — D-D); `CicloService.ClonarAsync` extendido (clonación de áreas + sync `usuario.area_id` + auditoría CREATE por área — CA #5 HU-007); validators `AreaCreateRequestValidator`/`AreaUpdateRequestValidator`; registro IOC; ADR-007 aceptado + migración `V004__unico_responsable_area.sql` (pendiente de deploy junto a V001/V002/V003).
+
+**Verificación:** build 0/0 · tests **276/276** (33 HU-009 + 243 regresión/contrato HU-001..HU-008) · cobertura BLL **88.81%** (≥ 70%, TEST-02 — mejora el 88.61% de HU-005) · commit `9347188` `[HU-009] feat: gestión de áreas estratégicas (API+BLL+DAL+DTO+Entity+Validators+IOC)`.
+
+**Flags resueltos por Jorge en la aprobación del spec (2026-09-17):** los 7 — (1) ADR-007 + `V004__unico_responsable_area.sql` (RN-012 a nivel BD, patrón ADR-006/V003); (2) `IPlanService.ObtenerLimitesAsync` aditivo confirmado; (3) escritura ADM-only, GER lectura (RN-006 actualizada en `02_REQUERIMIENTOS.md`); (4) gestión de áreas en Borrador + Activo, Cerrado solo lectura (RC-12); (5) sync `usuario.area_id` confirmado con limitación de FK única; (6) puente HU-010 (candidatos = usuarios JefeArea Activos); (7) RN-012 solo sobre áreas activas (`activa = TRUE`).
+
+**Nota Flag #5 (modelo futuro):** en una versión futura con múltiples ciclos activos simultáneos, el modelo `usuario.area_id` (FK única) requiere repensarse — un JefeArea no puede tener áreas distintas en ciclos distintos (el acceso histórico a ciclos anteriores queda limitado). Aceptable para v1.0 (AS-IS: cada jefe lidera un área estable año a año).
+
+**Siguientes dependencias:** **HU-010 (Sprint 3)** reemplazará/extenderá el puente de candidatos a responsable (`GET .../areas/responsables`); la UI de gestión de áreas se planificará con el cimiento de frontend (HU-045+).
+
+---
+
 ## Decisiones de Jorge — 2026-09-13 (resuelven flags del Sprint 1)
 
 **Contexto:** Jorge resolvió los 5 puntos bloqueantes del Sprint 1 señalados como flags en la sección HU-002. Ninguna decisión obliga a cambios de esquema ni de seed; la única pieza nueva es el **ADR-003** (aplicable a partir de HU-003).
@@ -300,5 +316,5 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-17 (cierre HU-005 — Sprint 2 en curso, 1/8 HU) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Sprint 2 — Continuación del Loop con HU-009 (Gestión de Áreas Estratégicas · @Orquestador)*
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-17 (cierre HU-009 — Sprint 2 en curso, 2/8 HU) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Sprint 2 — Continuación del Loop con HU-010 (Catálogo de Responsables · @Orquestador)*
