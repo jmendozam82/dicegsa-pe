@@ -362,6 +362,19 @@ public class PlanService : IPlanService
         return ResultadoValidacionLimites.Fallo(errores);
     }
 
+    /// <summary>
+    /// HU-009 (Flag #2, aditivo — no rompe HU-002): devuelve los límites configurados del plan
+    /// (PlanLimits: MaxAreas/MaxUsuarios/MaxCiclosActivos). 404 si el plan no existe.
+    /// Consumido por AreaService.CrearAsync (RN-010, chequeo PRECISO por ciclo — D-D).
+    /// </summary>
+    public async Task<PlanLimits> ObtenerLimitesAsync(Guid planId, CancellationToken ct = default)
+    {
+        var plan = await _repository.GetByIdAsync(planId, ct)
+            ?? throw new NotFoundException($"El plan '{planId}' no existe");
+
+        return PlanLimits.Desde(plan.MaxAreas, plan.MaxUsuarios, plan.MaxCiclosActivos);
+    }
+
     // ─── Helpers ────────────────────────────────────────────────────────────
 
     /// <summary>Normalización de nombre: trim + colapso de espacios internos múltiples

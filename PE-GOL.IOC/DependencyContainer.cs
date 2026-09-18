@@ -46,6 +46,7 @@ public static class DependencyContainer
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IEmpresaService, EmpresaService>(); // HU-006: autoconfiguración del tenant (D2)
         services.AddScoped<ICicloService, CicloService>(); // HU-007: gestión de ciclos anuales (D2)
+        services.AddScoped<IAreaService, AreaService>(); // HU-009: áreas estratégicas (hijos del agregado Ciclo, D-I/D2)
         services.AddScoped<ILogAuditoriaService, LogAuditoriaService>(); // HU-005: consulta del log de auditoría (solo lectura, CA #3)
 
         // PlanLimitValidator es STATELESS (lógica pura, D4): Singleton.

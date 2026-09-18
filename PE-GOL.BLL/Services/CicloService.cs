@@ -10,6 +10,7 @@ using PE_GOL.DTO.Dtos;
 using PE_GOL.DTO.Requests;
 using PE_GOL.DTO.Responses;
 using PE_GOL.Entity.Ciclo;
+using PE_GOL.Entity.Estrategia;
 using PE_GOL.Utility.Exceptions;
 using PE_GOL.Utility.Security;
 
@@ -408,8 +409,9 @@ public class CicloService : ICicloService
     /// <summary>Spec §7 · ClonarAsync: rol ADM (403) → tenantId (404) → origen (404) →
     /// normalizar/re-validar mesInicio (422) → unicidad año fiscal (422) → umbrales del origen
     /// (DAL-C10) → tx: INSERT ciclo nuevo + umbrales copiados (o 2 defaults si origen sin
-    /// umbrales, defensivo) + auditoría CREATE con origenId (D11) → commit → re-lectura → 201.
-    /// D-B (CA #5 parcial): áreas/responsables NO se clonan (HU-009/HU-010, Flag #2).</summary>
+    /// umbrales, defensivo) + áreas del origen clonadas (HU-009 §7: DAL-A3 sin filtro → todas,
+    /// activas e inactivas; 1 auditoría CREATE por área + sync usuario.area_id si hay responsable)
+    /// + auditoría CREATE con origenId y areasClonadas (D11) → commit → re-lectura → 201.</summary>
     public async Task<CicloResponse> ClonarAsync(Guid idOrigen, ClonarCicloRequest request, CancellationToken ct = default)
     {
         // D12: re-validación defensiva de rol (D-A: solo el ADM clona).
@@ -477,7 +479,48 @@ public class CicloService : ICicloService
                 "Ciclo {CicloId} clonado desde {OrigenId} por {UserId}. Modulo=Ciclo, Accion=CREATE, Entidad={Entidad}",
                 nuevoId, idOrigen, _tenantContext.UserId, EntidadAuditoria);
 
-            // D11: el clon se audita como CREATE con trazabilidad del origen (origenId en valor_nuevo).
+            // HU-009 §7 (CA #5 HU-007): clonar las áreas del origen (DAL-A3 sin filtro → todas,
+            // activas e inactivas) dentro de la MISMA transacción, tras copiar umbrales y antes
+            // del commit (spec §7 pasos 1-3). Defensivo: 0 áreas origen → sin INSERT de áreas.
+            var areasOrigen = (await _repository.ListarAreasAsync(tenantId, idOrigen, null, ct)
+                ?? Enumerable.Empty<AreaEntity>()).ToList();
+            foreach (var area in areasOrigen)
+            {
+                var nuevoAreaId = await _repository.InsertarAreaAsync(new AreaInsertDto
+                {
+                    TenantId = tenantId,
+                    CicloId = nuevoId,
+                    Codigo = area.Codigo,
+                    Nombre = area.Nombre,
+                    Comentarios = area.Comentarios,
+                    ResponsableId = area.ResponsableId,
+                    Orden = area.Orden,
+                    Activa = area.Activa
+                }, tx, ct) ?? throw new InvalidOperationException("No se pudo insertar el área clonada: id nulo.");
+
+                // Auditoría CREATE por área (ADR-003): 1 log por área clonada (spec §7 paso 3).
+                await _repository.InsertLogAsync(new LogAuditoriaInsert
+                {
+                    TenantId = tenantId,
+                    UsuarioId = _tenantContext.UserId,
+                    Accion = "CREATE",
+                    Entidad = "Area",
+                    EntidadId = nuevoAreaId.ToString(),
+                    ValorAnterior = null,
+                    ValorNuevo = SerializarArea(
+                        nuevoAreaId, tenantId, nuevoId, area.Codigo, area.Nombre,
+                        area.Comentarios, area.ResponsableId, area.Orden, area.Activa)
+                }, tx, ct);
+
+                // Sync SEC-07 (D-J): si el área tiene responsable → usuario.area_id = nuevoAreaId.
+                if (area.ResponsableId is not null)
+                {
+                    await _repository.ActualizarAreaIdUsuarioAsync(area.ResponsableId.Value, nuevoAreaId, tx, ct);
+                }
+            }
+
+            // D11: el clon se audita como CREATE con trazabilidad del origen (origenId en valor_nuevo)
+            // y el conteo de áreas clonadas (areasClonadas — HU-009 §7 paso 3).
             await _repository.InsertLogAsync(new LogAuditoriaInsert
             {
                 TenantId = tenantId,
@@ -488,7 +531,7 @@ public class CicloService : ICicloService
                 ValorAnterior = null,
                 ValorNuevo = SerializarCiclo(
                     nuevoId, tenantId, nombre, request.AñoFiscal, request.MesInicio,
-                    "Borrador", dto.CreatedBy, idOrigen)
+                    "Borrador", dto.CreatedBy, idOrigen, areasOrigen.Count)
             }, tx, ct);
 
             tx.Commit();
@@ -683,10 +726,11 @@ public class CicloService : ICicloService
     }
 
     /// <summary>Serializa el snapshot del ciclo para la auditoría (ADR-003: JSON legible con
-    /// UnsafeRelaxedJsonEscaping). origenId solo se incluye al clonar (D11: trazabilidad del origen).</summary>
+    /// UnsafeRelaxedJsonEscaping). origenId solo se incluye al clonar (D11: trazabilidad del
+    /// origen); areasClonadas (HU-009 §7) solo se incluye al clonar (conteo de áreas copiadas).</summary>
     private static string SerializarCiclo(
         Guid id, Guid tenantId, string nombre, int añoFiscal, int mesInicio,
-        string estado, Guid createdBy, Guid? origenId = null)
+        string estado, Guid createdBy, Guid? origenId = null, int? areasClonadas = null)
         => JsonSerializer.Serialize(new
         {
             id,
@@ -696,7 +740,27 @@ public class CicloService : ICicloService
             mesInicio,
             estado,
             createdBy,
-            origenId
+            origenId,
+            areasClonadas
+        }, JsonOpcionesAuditoria);
+
+    /// <summary>Serializa el snapshot de un área para la auditoría de clonación (ADR-003: JSON
+    /// legible con UnsafeRelaxedJsonEscaping). Usado en valor_nuevo del log CREATE por área
+    /// (HU-009 §7 paso 3).</summary>
+    private static string SerializarArea(
+        Guid id, Guid tenantId, Guid cicloId, string codigo, string nombre,
+        string? comentarios, Guid? responsableId, int orden, bool activa)
+        => JsonSerializer.Serialize(new
+        {
+            id,
+            tenantId,
+            cicloId,
+            codigo,
+            nombre,
+            comentarios,
+            responsableId,
+            orden,
+            activa
         }, JsonOpcionesAuditoria);
 
     /// <summary>Snapshot del estado previo para valor_anterior en ActualizarAsync (ADR-003).</summary>

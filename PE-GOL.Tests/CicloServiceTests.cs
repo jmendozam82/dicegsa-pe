@@ -10,6 +10,7 @@ using PE_GOL.DTO.Limites;
 using PE_GOL.DTO.Requests;
 using PE_GOL.DTO.Responses;
 using PE_GOL.Entity.Ciclo;
+using PE_GOL.Entity.Estrategia;
 using PE_GOL.Utility.Exceptions;
 using PE_GOL.Utility.Security;
 
@@ -1900,5 +1901,342 @@ public class CicloServiceTests
         _mockRepo.Verify(
             r => r.InsertLogAsync(It.IsAny<LogAuditoriaInsert>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // HU-009 · Clonación de áreas (Spec HU-009 §7 — extensión de ClonarAsync)
+    // TDD fase red (TEST-01): ListarAreasAsync/InsertarAreaAsync/ActualizarAreaIdUsuarioAsync
+    // son STUBs NotImplementedException en CicloRepository → estos 4 tests DEBEN fallar
+    // hasta que @BackendDev implemente (fase IMPLEMENT).
+    // CA #5 HU-007 (backlog L197): al clonar se copian las áreas del origen (DAL-A3 sin
+    // filtro → todas, activas e inactivas) dentro de la MISMA transacción de ClonarAsync,
+    // tras copiar umbrales y antes del commit (spec §7 pasos 1-3).
+    // Sync SEC-07 (D-J): si el área tiene responsable → DAL-A11 (usuario.area_id = nuevoAreaId).
+    // Auditoría (ADR-003): 1 CREATE por área + el log CREATE del ciclo incluye areasClonadas (D11).
+
+    private static AreaEntity CrearArea(
+        Guid? id = null, Guid? cicloId = null, Guid? tenantId = null, string codigo = "GOL1",
+        string nombre = "Comercial", string? comentarios = null, Guid? responsableId = null,
+        int orden = 1, bool activa = true)
+        => new()
+        {
+            Id = id ?? Guid.NewGuid(),
+            CicloId = cicloId ?? Guid.NewGuid(),
+            TenantId = tenantId ?? Guid.NewGuid(),
+            Codigo = codigo,
+            Nombre = nombre,
+            Comentarios = comentarios,
+            ResponsableId = responsableId,
+            Orden = orden,
+            Activa = activa,
+            CreatedAt = DateTimeOffset.UtcNow.AddDays(-30),
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+    // Caso 30 ─ 3 áreas origen → 3 INSERT con codigo/nombre/comentarios/responsable_id/orden/activa
+    // copiados, en la MISMA transacción (spec §7 paso 2)
+    [Fact]
+    public async Task Clonar_CopiaAreasDelOrigen_InsertaEnNuevoCiclo()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var idOrigen = Guid.NewGuid();
+        var nuevoId = Guid.NewGuid();
+        var origen = CrearCiclo(idOrigen, tenantId, "PE 2026", 2026, 1, "Borrador",
+            createdBy: _tenantContext.UserId);
+        var nuevoCiclo = CrearCiclo(nuevoId, tenantId, "PE 2027", 2027, 1, "Borrador",
+            createdBy: _tenantContext.UserId);
+        var request = CrearClonarRequestValido(nombre: "PE 2027", añoFiscal: 2027);
+        var mockTx = new Mock<IDbTransaction>();
+        var areasOrigen = new[]
+        {
+            CrearArea(cicloId: idOrigen, tenantId: tenantId, codigo: "GOL1", nombre: "Comercial",
+                comentarios: "Ventas", responsableId: Guid.NewGuid(), orden: 1, activa: true),
+            CrearArea(cicloId: idOrigen, tenantId: tenantId, codigo: "GOL2", nombre: "Operaciones",
+                comentarios: null, responsableId: null, orden: 2, activa: true),
+            CrearArea(cicloId: idOrigen, tenantId: tenantId, codigo: "GOL3", nombre: "Finanzas",
+                comentarios: "Cerrada", responsableId: Guid.NewGuid(), orden: 3, activa: false)
+        };
+
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, idOrigen, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(origen);
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, nuevoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(nuevoCiclo);
+        _mockRepo
+            .Setup(r => r.ExisteAñoFiscalAsync(tenantId, 2027, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _mockRepo
+            .Setup(r => r.ObtenerUmbralesAsync(tenantId, idOrigen, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<UmbralSemaforoEntity>)new List<UmbralSemaforoEntity>());
+        _mockRepo
+            .Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockTx.Object);
+        _mockRepo
+            .Setup(r => r.InsertAsync(It.IsAny<CicloInsertDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid?)nuevoId);
+        _mockRepo
+            .Setup(r => r.InsertarUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _mockRepo
+            .Setup(r => r.ListarAreasAsync(tenantId, idOrigen, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<AreaEntity>)areasOrigen);
+        _mockRepo
+            .SetupSequence(r => r.InsertarAreaAsync(It.IsAny<AreaInsertDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid?)Guid.NewGuid())
+            .ReturnsAsync((Guid?)Guid.NewGuid())
+            .ReturnsAsync((Guid?)Guid.NewGuid());
+        _mockRepo
+            .Setup(r => r.InsertLogAsync(It.IsAny<LogAuditoriaInsert>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        // Act
+        var resultado = await _service.ClonarAsync(idOrigen, request);
+
+        // Assert: 3 INSERT en la MISMA tx con los campos COPIADOS del origen (spec §7 paso 2)
+        Assert.Equal(nuevoId, resultado.Id);
+        _mockRepo.Verify(
+            r => r.InsertarAreaAsync(
+                It.Is<AreaInsertDto>(d =>
+                    d.CicloId == nuevoId &&
+                    d.Codigo == "GOL1" && d.Nombre == "Comercial" &&
+                    d.Comentarios == "Ventas" && d.ResponsableId == areasOrigen[0].ResponsableId &&
+                    d.Orden == 1 && d.Activa),
+                mockTx.Object,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mockRepo.Verify(
+            r => r.InsertarAreaAsync(
+                It.Is<AreaInsertDto>(d =>
+                    d.CicloId == nuevoId &&
+                    d.Codigo == "GOL2" && d.Nombre == "Operaciones" &&
+                    d.Comentarios == null && d.ResponsableId == null &&
+                    d.Orden == 2 && d.Activa),
+                mockTx.Object,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mockRepo.Verify(
+            r => r.InsertarAreaAsync(
+                It.Is<AreaInsertDto>(d =>
+                    d.CicloId == nuevoId &&
+                    d.Codigo == "GOL3" && d.Nombre == "Finanzas" &&
+                    d.Comentarios == "Cerrada" && d.ResponsableId == areasOrigen[2].ResponsableId &&
+                    d.Orden == 3 && !d.Activa),
+                mockTx.Object,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // Caso 31 ─ origen sin áreas → sin INSERT de áreas (defensivo, D-B)
+    [Fact]
+    public async Task Clonar_OrigenSinAreas_NoInsertaAreas()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var idOrigen = Guid.NewGuid();
+        var nuevoId = Guid.NewGuid();
+        var origen = CrearCiclo(idOrigen, tenantId, "PE 2026", 2026, 1, "Borrador",
+            createdBy: _tenantContext.UserId);
+        var nuevoCiclo = CrearCiclo(nuevoId, tenantId, "PE 2027", 2027, 1, "Borrador",
+            createdBy: _tenantContext.UserId);
+        var request = CrearClonarRequestValido(nombre: "PE 2027", añoFiscal: 2027);
+
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, idOrigen, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(origen);
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, nuevoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(nuevoCiclo);
+        _mockRepo
+            .Setup(r => r.ExisteAñoFiscalAsync(tenantId, 2027, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _mockRepo
+            .Setup(r => r.ObtenerUmbralesAsync(tenantId, idOrigen, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<UmbralSemaforoEntity>)new List<UmbralSemaforoEntity>());
+        _mockRepo
+            .Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Mock<IDbTransaction>().Object);
+        _mockRepo
+            .Setup(r => r.InsertAsync(It.IsAny<CicloInsertDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid?)nuevoId);
+        _mockRepo
+            .Setup(r => r.InsertarUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _mockRepo
+            .Setup(r => r.ListarAreasAsync(tenantId, idOrigen, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<AreaEntity>)new List<AreaEntity>());
+        _mockRepo
+            .Setup(r => r.InsertLogAsync(It.IsAny<LogAuditoriaInsert>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        // Act
+        var resultado = await _service.ClonarAsync(idOrigen, request);
+
+        // Assert: el ciclo se clona pero NINGUNA área se inserta (defensivo). La verificación de
+        // ListarAreasAsync garantiza que el test NO pase en fase roja (la impl. HU-007 actual no
+        // clona áreas → nunca llama a DAL-A3; con esta Verify el test falla hasta que @BackendDev
+        // implemente la extensión del spec §7).
+        Assert.Equal(nuevoId, resultado.Id);
+        _mockRepo.Verify(
+            r => r.ListarAreasAsync(tenantId, idOrigen, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mockRepo.Verify(
+            r => r.InsertarAreaAsync(It.IsAny<AreaInsertDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 32 ─ DAL-A11 por cada área con responsable (sync SEC-07, D-J — spec §7 paso 2)
+    [Fact]
+    public async Task Clonar_CopiaAreas_SincronizaAreaIdDeUsuarios()
+    {
+        // Arrange: 2 áreas — una con responsable y otra sin él
+        var tenantId = _tenantContext.TenantId!.Value;
+        var idOrigen = Guid.NewGuid();
+        var nuevoId = Guid.NewGuid();
+        var responsableId = Guid.NewGuid();
+        var origen = CrearCiclo(idOrigen, tenantId, "PE 2026", 2026, 1, "Borrador",
+            createdBy: _tenantContext.UserId);
+        var nuevoCiclo = CrearCiclo(nuevoId, tenantId, "PE 2027", 2027, 1, "Borrador",
+            createdBy: _tenantContext.UserId);
+        var request = CrearClonarRequestValido(nombre: "PE 2027", añoFiscal: 2027);
+        var mockTx = new Mock<IDbTransaction>();
+        var areasOrigen = new[]
+        {
+            CrearArea(cicloId: idOrigen, tenantId: tenantId, codigo: "GOL1", nombre: "Comercial",
+                responsableId: responsableId, orden: 1, activa: true),
+            CrearArea(cicloId: idOrigen, tenantId: tenantId, codigo: "GOL2", nombre: "Operaciones",
+                responsableId: null, orden: 2, activa: true)
+        };
+
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, idOrigen, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(origen);
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, nuevoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(nuevoCiclo);
+        _mockRepo
+            .Setup(r => r.ExisteAñoFiscalAsync(tenantId, 2027, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _mockRepo
+            .Setup(r => r.ObtenerUmbralesAsync(tenantId, idOrigen, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<UmbralSemaforoEntity>)new List<UmbralSemaforoEntity>());
+        _mockRepo
+            .Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockTx.Object);
+        _mockRepo
+            .Setup(r => r.InsertAsync(It.IsAny<CicloInsertDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid?)nuevoId);
+        _mockRepo
+            .Setup(r => r.InsertarUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _mockRepo
+            .Setup(r => r.ListarAreasAsync(tenantId, idOrigen, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<AreaEntity>)areasOrigen);
+        _mockRepo
+            .SetupSequence(r => r.InsertarAreaAsync(It.IsAny<AreaInsertDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid?)Guid.NewGuid())
+            .ReturnsAsync((Guid?)Guid.NewGuid());
+        _mockRepo
+            .Setup(r => r.ActualizarAreaIdUsuarioAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _mockRepo
+            .Setup(r => r.InsertLogAsync(It.IsAny<LogAuditoriaInsert>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        // Act
+        var resultado = await _service.ClonarAsync(idOrigen, request);
+
+        // Assert: SOLO el área con responsable sincroniza usuario.area_id (DAL-A11), en la misma tx
+        Assert.Equal(nuevoId, resultado.Id);
+        _mockRepo.Verify(
+            r => r.ActualizarAreaIdUsuarioAsync(
+                responsableId,
+                It.Is<Guid?>(areaId => areaId != null),
+                mockTx.Object,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mockRepo.Verify(
+            r => r.ActualizarAreaIdUsuarioAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<IDbTransaction?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // Caso 33 ─ 1 auditoría CREATE por área + areasClonadas en el log CREATE del ciclo (D11)
+    [Fact]
+    public async Task Clonar_CopiaAreas_AuditaCreatePorArea()
+    {
+        // Arrange: 2 áreas clonadas
+        var tenantId = _tenantContext.TenantId!.Value;
+        var idOrigen = Guid.NewGuid();
+        var nuevoId = Guid.NewGuid();
+        var origen = CrearCiclo(idOrigen, tenantId, "PE 2026", 2026, 1, "Borrador",
+            createdBy: _tenantContext.UserId);
+        var nuevoCiclo = CrearCiclo(nuevoId, tenantId, "PE 2027", 2027, 1, "Borrador",
+            createdBy: _tenantContext.UserId);
+        var request = CrearClonarRequestValido(nombre: "PE 2027", añoFiscal: 2027);
+        var areasOrigen = new[]
+        {
+            CrearArea(cicloId: idOrigen, tenantId: tenantId, codigo: "GOL1", nombre: "Comercial",
+                responsableId: Guid.NewGuid(), orden: 1, activa: true),
+            CrearArea(cicloId: idOrigen, tenantId: tenantId, codigo: "GOL2", nombre: "Operaciones",
+                responsableId: null, orden: 2, activa: true)
+        };
+
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, idOrigen, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(origen);
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, nuevoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(nuevoCiclo);
+        _mockRepo
+            .Setup(r => r.ExisteAñoFiscalAsync(tenantId, 2027, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _mockRepo
+            .Setup(r => r.ObtenerUmbralesAsync(tenantId, idOrigen, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<UmbralSemaforoEntity>)new List<UmbralSemaforoEntity>());
+        _mockRepo
+            .Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Mock<IDbTransaction>().Object);
+        _mockRepo
+            .Setup(r => r.InsertAsync(It.IsAny<CicloInsertDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid?)nuevoId);
+        _mockRepo
+            .Setup(r => r.InsertarUmbralAsync(It.IsAny<UmbralSemaforoDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _mockRepo
+            .Setup(r => r.ListarAreasAsync(tenantId, idOrigen, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<AreaEntity>)areasOrigen);
+        _mockRepo
+            .SetupSequence(r => r.InsertarAreaAsync(It.IsAny<AreaInsertDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid?)Guid.NewGuid())
+            .ReturnsAsync((Guid?)Guid.NewGuid());
+        _mockRepo
+            .Setup(r => r.InsertLogAsync(It.IsAny<LogAuditoriaInsert>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        // Act
+        var resultado = await _service.ClonarAsync(idOrigen, request);
+
+        // Assert: 1 auditoría CREATE por área (Entidad="Area") + areasClonadas=2 en el log del ciclo
+        Assert.Equal(nuevoId, resultado.Id);
+        _mockRepo.Verify(
+            r => r.InsertLogAsync(
+                It.Is<LogAuditoriaInsert>(l =>
+                    l.Accion == "CREATE" && l.Entidad == "Area" && l.EntidadId != null),
+                It.IsAny<IDbTransaction?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+        _mockRepo.Verify(
+            r => r.InsertLogAsync(
+                It.Is<LogAuditoriaInsert>(l =>
+                    l.Accion == "CREATE" && l.Entidad == "Ciclo" &&
+                    l.ValorNuevo != null && l.ValorNuevo.Contains("areasClonadas")),
+                It.IsAny<IDbTransaction?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

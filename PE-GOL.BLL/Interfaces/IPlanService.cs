@@ -18,4 +18,13 @@ public interface IPlanService
     Task<PlanResponse?> ObtenerPorIdAsync(Guid id, CancellationToken ct = default);
     Task<ResultadoValidacionLimites> ValidarLimitesParaTenantAsync(Guid tenantId, Guid planId, CancellationToken ct = default);
     Task<ResultadoValidacionLimites> ValidarLimitesParaTenantsDelPlanAsync(Guid planId, PlanLimits nuevosLimites, CancellationToken ct = default);
+
+    /// <summary>
+    /// HU-009 (Flag #2, aditivo — no rompe HU-002): devuelve los límites configurados del plan
+    /// (PlanLimits: MaxAreas/MaxUsuarios/MaxCiclosActivos). Necesario para el chequeo PRECISO por
+    /// ciclo de RN-010 (DAL-A6 &gt;= MaxAreas → 422): ValidarLimitesParaTenantAsync (DAL-P8,
+    /// comparación estricta &gt;) NO detecta el caso "ciclo objetivo al tope de áreas".
+    /// 404 si el plan no existe (mismo criterio que ValidarLimitesParaTenantAsync).
+    /// </summary>
+    Task<PlanLimits> ObtenerLimitesAsync(Guid planId, CancellationToken ct = default);
 }

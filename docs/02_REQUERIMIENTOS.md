@@ -267,7 +267,7 @@
 | ID | Regla |
 |----|-------|
 | RN-005 | El rol **Administrador SaaS** gestiona tenants y sus suscripciones. No tiene acceso a los datos del plan estratégico ni del presupuesto de ningún tenant. |
-| RN-006 | El rol **Gerente** tiene acceso de lectura y escritura a todos los módulos del tenant: Configuración, Filosofía, Pilares, Áreas, y tiene vista consolidada de todas las áreas. Puede crear y gestionar usuarios y asignar roles dentro del tenant. |
+| RN-006 | El Gerente tiene acceso de lectura y escritura al contenido estratégico del ciclo (Filosofía, Pilares, OKRs, Plan de Acción); la configuración de la estructura (ciclos, umbrales, áreas) es responsabilidad del AdminTenant. **Nota (2026-09-17, decisión de Jorge):** RN-006 alineada con el backlog HU-009 — escritura de áreas/ciclos/umbrales es ADM-only; el Gerente tiene lectura de la estructura y escritura del contenido estratégico. Precedente: decisión D-A de HU-007 (ADM activa ciclos, GER cierra). |
 | RN-007 | El rol **Jefe de Área** tiene acceso de lectura y escritura **únicamente a los datos de su área asignada**: Objetivos CG, Plan de Acción, OKRs, CAPEX y OPEX de su área. Tiene acceso de **solo lectura** a Filosofía, Pilares y configuración del ciclo. |
 | RN-008 | Un **Jefe de Área no puede ver** los datos de otra área estratégica: objetivos, acciones, OKRs, CAPEX ni OPEX de otras áreas, salvo en reportes consolidados donde los datos son agregados sin detalle. |
 | RN-009 | Un usuario solo puede pertenecer a **un tenant** y tener **un rol activo** a la vez dentro de ese tenant. |

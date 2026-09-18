@@ -22,10 +22,12 @@ namespace PE_GOL.API.Controllers;
 public class CicloController : ControllerBase
 {
     private readonly ICicloService _service;
+    private readonly IAreaService _areaService; // HU-009: áreas estratégicas (hijos del agregado Ciclo, D-I)
 
-    public CicloController(ICicloService service)
+    public CicloController(ICicloService service, IAreaService areaService)
     {
         _service = service;
+        _areaService = areaService;
     }
 
     /// <summary>GET /api/v1/ciclos — Listado del tenant ordenado por año fiscal DESC (sin paginación, D3).</summary>
@@ -166,5 +168,117 @@ public class CicloController : ControllerBase
     {
         var data = await _service.ActualizarUmbralesAsync(cicloId, request, ct);
         return Ok(new ApiResponse<UmbralesCicloResponse> { Success = true, Message = "Umbrales actualizados", Data = data });
+    }
+
+    // ─── HU-009 · Áreas estratégicas (Spec HU-009 § Endpoints) ─────────────────
+    // Recurso hijo del agregado Ciclo (D-I): rutas anidadas bajo /api/v1/ciclos/{cicloId}/areas.
+    // Roles (D-A): GET multi-rol de lectura (AdminTenant/Gerente/JefeArea — RN-007; JefeArea solo
+    // su área, SEC-07) · POST/PUT/desactivar solo AdminTenant (D12). El tenant_id se resuelve
+    // SIEMPRE del TenantContext (SEC-06) — nunca del body ni del query string.
+    // Respuestas SIEMPRE con el wrapper ApiResponse<T> (ARCH-07).
+
+    /// <summary>GET /api/v1/ciclos/{cicloId}/areas — Listado de áreas del ciclo (ORDER BY orden ASC).
+    /// JefeArea: solo su área (SEC-07: areaIdFiltro = TenantContext.AreaId). 404 si el ciclo no
+    /// existe/otro tenant/sin tenant.</summary>
+    [HttpGet("{cicloId:guid}/areas")]
+    [Authorize(Roles = "AdminTenant,Gerente,JefeArea")]
+    [ProducesResponseType(typeof(ApiResponse<List<AreaResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ListarAreas(Guid cicloId, CancellationToken ct = default)
+    {
+        var data = await _areaService.ListarAsync(cicloId, ct);
+        return Ok(new ApiResponse<List<AreaResponse>> { Success = true, Data = data });
+    }
+
+    /// <summary>GET /api/v1/ciclos/{cicloId}/areas/{areaId} — Detalle de un área (404 si no existe
+    /// o es de otro tenant; 403 si rol JefeArea y areaId != TenantContext.AreaId — D12, SEC-07).</summary>
+    [HttpGet("{cicloId:guid}/areas/{areaId:guid}")]
+    [Authorize(Roles = "AdminTenant,Gerente,JefeArea")]
+    [ProducesResponseType(typeof(ApiResponse<AreaResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ObtenerArea(Guid cicloId, Guid areaId, CancellationToken ct = default)
+    {
+        var data = await _areaService.ObtenerPorIdAsync(cicloId, areaId, ct);
+        return Ok(new ApiResponse<AreaResponse> { Success = true, Data = data });
+    }
+
+    /// <summary>POST /api/v1/ciclos/{cicloId}/areas — Crea un área (código GOL auto-generado, CA #1;
+    /// solo AdminTenant). 422: ciclo Cerrado (RC-12), responsable inválido (RN-011), ya asignado
+    /// (RN-012), límite del plan (RN-010) o colisión 23505 (ADR-001/007).</summary>
+    [HttpPost("{cicloId:guid}/areas")]
+    [Authorize(Roles = "AdminTenant")]
+    [ProducesResponseType(typeof(ApiResponse<AreaResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CrearArea(Guid cicloId, [FromBody] AreaCreateRequest request, CancellationToken ct = default)
+    {
+        var data = await _areaService.CrearAsync(cicloId, request, ct);
+        return StatusCode(StatusCodes.Status201Created,
+            new ApiResponse<AreaResponse> { Success = true, Message = "Área creada", Data = data });
+    }
+
+    /// <summary>PUT /api/v1/ciclos/{cicloId}/areas/{areaId} — Edita nombre/comentarios/responsable
+    /// (solo AdminTenant). 422: ciclo Cerrado (RC-12), responsable inválido (RN-011), ya asignado a
+    /// otra área (RN-012 excluyendo self) o colisión 23505 (ADR-001/007).</summary>
+    [HttpPut("{cicloId:guid}/areas/{areaId:guid}")]
+    [Authorize(Roles = "AdminTenant")]
+    [ProducesResponseType(typeof(ApiResponse<AreaResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ActualizarArea(Guid cicloId, Guid areaId, [FromBody] AreaUpdateRequest request, CancellationToken ct = default)
+    {
+        var data = await _areaService.ActualizarAsync(cicloId, areaId, request, ct);
+        return Ok(new ApiResponse<AreaResponse> { Success = true, Message = "Área actualizada", Data = data });
+    }
+
+    /// <summary>PUT /api/v1/ciclos/{cicloId}/areas/{areaId}/desactivar — Desactiva el área
+    /// (activa=FALSE, sin DELETE — CA #5, D-E; solo AdminTenant). 422: ya inactiva o ciclo Cerrado.
+    /// NO limpia usuario.area_id (D-J: el JefeArea conserva lectura).</summary>
+    [HttpPut("{cicloId:guid}/areas/{areaId:guid}/desactivar")]
+    [Authorize(Roles = "AdminTenant")]
+    [ProducesResponseType(typeof(ApiResponse<AreaResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DesactivarArea(Guid cicloId, Guid areaId, CancellationToken ct = default)
+    {
+        var data = await _areaService.DesactivarAsync(cicloId, areaId, ct);
+        return Ok(new ApiResponse<AreaResponse> { Success = true, Message = "Área desactivada", Data = data });
+    }
+
+    /// <summary>GET /api/v1/ciclos/{cicloId}/areas/responsables — Candidatos a Jefe de Área
+    /// (usuarios del tenant con rol JefeArea y estado Activo, con yaAsignado por RN-012).
+    /// Puente hasta HU-010. 404 si el ciclo no existe/otro tenant/sin tenant.</summary>
+    [HttpGet("{cicloId:guid}/areas/responsables")]
+    [Authorize(Roles = "AdminTenant,Gerente")]
+    [ProducesResponseType(typeof(ApiResponse<List<ResponsableCandidatoResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ListarResponsables(Guid cicloId, CancellationToken ct = default)
+    {
+        var data = await _areaService.ListarResponsablesCandidatosAsync(cicloId, ct);
+        return Ok(new ApiResponse<List<ResponsableCandidatoResponse>> { Success = true, Data = data });
     }
 }

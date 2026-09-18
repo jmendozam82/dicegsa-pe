@@ -1,16 +1,21 @@
 using System.Data;
 using PE_GOL.DTO.Dtos;
+using PE_GOL.DTO.Responses;
 using PE_GOL.Entity.Ciclo;
+using PE_GOL.Entity.Estrategia;
+using PE_GOL.Entity.Saas;
 
 namespace PE_GOL.DAL.Interfaces;
 
 /// <summary>
-/// Contrato de acceso a datos para ciclo (Spec HU-007 § Queries DAL: DAL-C1 a DAL-C11).
+/// Contrato de acceso a datos para ciclo (Spec HU-007 § Queries DAL: DAL-C1 a DAL-C11;
+/// Spec HU-009 § Queries DAL: DAL-A1 a DAL-A11 — áreas, hijos del agregado Ciclo, D-I).
 /// Toda query incluye WHERE tenant_id = @TenantId como primera condición (SEC-06); el
 /// @TenantId proviene del TenantContext (JWT), nunca del body/query. NO aplica AND area_id
-/// (SEC-07): ciclo y umbral_semaforo no son entidades de área (RN-007: JefeArea solo lectura).
-/// Las operaciones de escritura (INSERT/UPDATE/estado/umbrales + auditoría) se ejecutan en
-/// UNA sola transacción IDbTransaction gestionada por la BLL (patrón HU-001/HU-003).
+/// (SEC-07) para ciclo/umbral_semaforo (no son entidades de área); SÍ aplica para area
+/// (DAL-A2/A3 con areaIdFiltro desde TenantContext.AreaId cuando el rol es JefeArea).
+/// Las operaciones de escritura (INSERT/UPDATE/estado/umbrales/áreas + auditoría) se ejecutan
+/// en UNA sola transacción IDbTransaction gestionada por la BLL (patrón HU-001/HU-003).
 /// </summary>
 public interface ICicloRepository
 {
@@ -51,6 +56,50 @@ public interface ICicloRepository
     /// (target = UNIQUE del DDL L154; espíritu DB-06, D4). Actualiza los defaults de HU-007 sin duplicar
     /// (idempotente, sin carrera TOCTOU ni 23505). Retorna filas afectadas.</summary>
     Task<int> UpsertUmbralAsync(UmbralSemaforoDto dto, IDbTransaction? tx = null, CancellationToken ct = default);
+
+    // ─── HU-009 · Áreas estratégicas (Spec HU-009 § Queries DAL: DAL-A1 a DAL-A11) ───
+    // Las áreas son hijos del agregado Ciclo (D-I): se extiende ICicloRepository, no se crea
+    // repositorio nuevo (mismo criterio que UmbralSemaforo en HU-008). SEC-07: area SÍ es
+    // entidad de área → AND id = @AreaId cuando el rol es JefeArea (areaIdFiltro).
+
+    /// <summary>DAL-A1 · INSERT area ... RETURNING id. Retorna el nuevo id (null si no insertó).</summary>
+    Task<Guid?> InsertarAreaAsync(AreaInsertDto dto, IDbTransaction? tx = null, CancellationToken ct = default);
+
+    /// <summary>DAL-A2 · SELECT area por id (aislada por tenant y ciclo). Retorna null si no existe o es de otro tenant (sin fuga).</summary>
+    Task<AreaEntity?> ObtenerAreaPorIdAsync(Guid tenantId, Guid cicloId, Guid areaId, CancellationToken ct = default);
+
+    /// <summary>DAL-A3 · SELECT áreas del ciclo, ORDER BY orden ASC. areaIdFiltro (SEC-07): si no es null,
+    /// AND id = @AreaIdFiltro (JefeArea solo su área). Sin filtro (null) → todas (ADM/GER y clonación).</summary>
+    Task<IEnumerable<AreaEntity>> ListarAreasAsync(Guid tenantId, Guid cicloId, Guid? areaIdFiltro = null, CancellationToken ct = default);
+
+    /// <summary>DAL-A4 · UPDATE area (nombre/comentarios/responsable_id, updated_at = NOW()). Retorna filas afectadas.</summary>
+    Task<int> ActualizarAreaAsync(AreaUpdateDto dto, IDbTransaction? tx = null, CancellationToken ct = default);
+
+    /// <summary>DAL-A5 · UPDATE area SET activa = FALSE, updated_at = NOW() (sin DELETE — CA #5, D-E). Retorna filas afectadas.</summary>
+    Task<int> DesactivarAreaAsync(Guid tenantId, Guid cicloId, Guid areaId, IDbTransaction? tx = null, CancellationToken ct = default);
+
+    /// <summary>DAL-A6 · COUNT áreas ACTIVAS del ciclo (RN-010, chequeo preciso por ciclo — D-D).</summary>
+    Task<int> ContarAreasActivasEnCicloAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default);
+
+    /// <summary>DAL-A7 · MAX(orden)+1 sobre TODAS las áreas del ciclo (incl. inactivas → sin reutilizar
+    /// códigos tras desactivar). Retorna el siguiente orden/código GOL (CA #1, DB-04).</summary>
+    Task<int> ObtenerSiguienteOrdenAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default);
+
+    /// <summary>DAL-A8 · COUNT áreas ACTIVAS del ciclo con ese responsable (RN-012). excludeAreaId excluye
+    /// self en UPDATE (DAL-A8 con excludeAreaId = areaId).</summary>
+    Task<int> ContarAreasConResponsableAsync(Guid tenantId, Guid cicloId, Guid responsableId, Guid? excludeAreaId, CancellationToken ct = default);
+
+    /// <summary>DAL-A9 · SELECT usuario por id del tenant (id, nombre, correo, rol, estado). La BLL valida
+    /// rol = 'JefeArea' y estado = 'Activo' (RN-011, CA #2). Retorna null si no existe o es de otro tenant.</summary>
+    Task<UsuarioEntity?> ObtenerResponsableAsync(Guid tenantId, Guid responsableId, CancellationToken ct = default);
+
+    /// <summary>DAL-A10 · SELECT candidatos a responsable: usuarios del tenant con rol JefeArea y estado
+    /// Activo, con ya_asignado = EXISTS(área ACTIVA del ciclo con ese responsable) (RN-012). ORDER BY nombre.</summary>
+    Task<IEnumerable<ResponsableCandidatoResponse>> ListarResponsablesCandidatosAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default);
+
+    /// <summary>DAL-A11 · UPDATE usuario SET area_id = @AreaId, updated_at = NOW() (sync SEC-07, D-J).
+    /// @AreaId null libera al responsable anterior (evita fuga de acceso SEC-07). Retorna filas afectadas.</summary>
+    Task<int> ActualizarAreaIdUsuarioAsync(Guid usuarioId, Guid? areaId, IDbTransaction? tx = null, CancellationToken ct = default);
 
     /// <summary>Abre una conexión gestionada por el repositorio e inicia una transacción IDbTransaction (mismo patrón que ITenantRepository).</summary>
     Task<IDbTransaction> BeginTransactionAsync(CancellationToken ct = default);
