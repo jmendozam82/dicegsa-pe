@@ -537,4 +537,161 @@ public sealed class CicloRepository : ICicloRepository, IDisposable
         var cmd = new CommandDefinition(sql, parametros, cancellationToken: ct);
         return await conn.ExecuteAsync(cmd);
     }
+
+    // ─── HU-010 · Responsables (Spec HU-010 § Queries DAL: DAL-R1 a DAL-R7) ───
+    // Implementación real (fase IMPLEMENT). Los responsables son hijos del agregado Ciclo (D-I):
+    // toda query incluye WHERE tenant_id = @TenantId (SEC-06) y, cuando el rol es JefeArea,
+    // AND a.id = @AreaIdFiltro (SEC-07 — responsable SÍ es entidad de área). Parámetros nombrados
+    // (SEC-05) y CancellationToken vía CommandDefinition (forma canónica de Dapper).
+    // Observación de Jorge (DAL-R2/R3): LEFT JOIN area con la condición del ciclo en el JOIN
+    // (ON a.id = u.area_id AND a.ciclo_id = @CicloId), NO en el WHERE — un usuario cuyo area_id
+    // apunta a un área de otro ciclo (clonado/reasignado) se devuelve con area_codigo/area_nombre
+    // null en lugar de perderse la fila.
+
+    /// <summary>DAL-R1 · INSERT usuario (rol JefeArea, estado Activo, requiere_cambio_pwd TRUE) ...
+    /// RETURNING id. Retorna el nuevo id (null si no insertó).</summary>
+    public async Task<Guid?> InsertarUsuarioAsync(ResponsableInsertDto dto, IDbTransaction? tx = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO usuario (tenant_id, nombre, correo, password_hash, rol, area_id, estado, requiere_cambio_pwd)
+            VALUES (@TenantId, @Nombre, @Correo, @PasswordHash, @Rol::rol_usuario, @AreaId, @Estado::estado_usuario, @RequiereCambioPwd)
+            RETURNING id;";
+
+        if (tx is not null)
+        {
+            var cmdTx = new CommandDefinition(sql, dto, tx, cancellationToken: ct);
+            return await tx.Connection!.ExecuteScalarAsync<Guid>(cmdTx);
+        }
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, dto, cancellationToken: ct);
+        return await conn.ExecuteScalarAsync<Guid>(cmd);
+    }
+
+    /// <summary>DAL-R2 · SELECT responsable por id (aislado por tenant; rol JefeArea). LEFT JOIN
+    /// area con la condición del ciclo en el JOIN (observación de Jorge). Retorna null si no existe
+    /// o es de otro tenant (sin fuga).</summary>
+    public async Task<ResponsableEntity?> ObtenerResponsablePorIdAsync(Guid tenantId, Guid cicloId, Guid responsableId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT u.id, u.tenant_id, u.nombre, u.correo, u.rol, u.estado, u.area_id,
+                   u.requiere_cambio_pwd, u.ultimo_login, u.created_at, u.updated_at,
+                   a.codigo AS area_codigo, a.nombre AS area_nombre
+            FROM usuario u
+            LEFT JOIN area a ON a.id = u.area_id AND a.ciclo_id = @CicloId
+            WHERE u.tenant_id = @TenantId
+              AND u.id = @ResponsableId
+              AND u.rol = 'JefeArea'::rol_usuario;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql,
+            new { TenantId = tenantId, CicloId = cicloId, ResponsableId = responsableId },
+            cancellationToken: ct);
+        return await conn.QuerySingleOrDefaultAsync<ResponsableEntity>(cmd);
+    }
+
+    /// <summary>DAL-R3 · SELECT responsables del ciclo (rol JefeArea), ORDER BY nombre. areaIdFiltro
+    /// (SEC-07): si no es null, AND a.id = @AreaIdFiltro (JefeArea solo su responsable). Sin filtro
+    /// (null) → todos (ADM/GER). LEFT JOIN area con la condición del ciclo en el JOIN.</summary>
+    public async Task<List<ResponsableEntity>> ListarResponsablesAsync(Guid tenantId, Guid cicloId, Guid? areaIdFiltro = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT u.id, u.tenant_id, u.nombre, u.correo, u.rol, u.estado, u.area_id,
+                   u.requiere_cambio_pwd, u.ultimo_login, u.created_at, u.updated_at,
+                   a.codigo AS area_codigo, a.nombre AS area_nombre
+            FROM usuario u
+            LEFT JOIN area a ON a.id = u.area_id AND a.ciclo_id = @CicloId
+            WHERE u.tenant_id = @TenantId
+              AND u.rol = 'JefeArea'::rol_usuario
+              AND (@AreaIdFiltro IS NULL OR a.id = @AreaIdFiltro)
+            ORDER BY u.nombre;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql,
+            new { TenantId = tenantId, CicloId = cicloId, AreaIdFiltro = areaIdFiltro },
+            cancellationToken: ct);
+        var result = await conn.QueryAsync<ResponsableEntity>(cmd);
+        return result.ToList();
+    }
+
+    /// <summary>DAL-R4 · ¿Existe un usuario con ese correo en el tenant? (case-insensitive, LOWER).</summary>
+    public async Task<bool> ExisteCorreoEnTenantAsync(Guid tenantId, string correo, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT COUNT(1) FROM usuario
+            WHERE tenant_id = @TenantId
+              AND LOWER(correo) = LOWER(@Correo);";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId, Correo = correo }, cancellationToken: ct);
+        var count = await conn.ExecuteScalarAsync<int>(cmd);
+        return count > 0;
+    }
+
+    /// <summary>DAL-R5 · COUNT usuarios ACTIVOS del tenant (RN-010, chequeo preciso por tenant — D-D).</summary>
+    public async Task<int> ContarUsuariosActivosEnTenantAsync(Guid tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT COUNT(1) FROM usuario
+            WHERE tenant_id = @TenantId
+              AND estado = 'Activo'::estado_usuario;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: ct);
+        return await conn.ExecuteScalarAsync<int>(cmd);
+    }
+
+    /// <summary>DAL-R6 · UPDATE area SET responsable_id = @ResponsableId, updated_at = NOW()
+    /// (aislada por tenant y ciclo). @ResponsableId null libera el área (queda sin responsable).</summary>
+    public async Task AsignarResponsableAreaAsync(Guid tenantId, Guid cicloId, Guid areaId, Guid? responsableId, IDbTransaction? tx = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE area
+            SET responsable_id = @ResponsableId,
+                updated_at     = NOW()
+            WHERE tenant_id = @TenantId
+              AND ciclo_id = @CicloId
+              AND id = @AreaId;";
+
+        var parametros = new { TenantId = tenantId, CicloId = cicloId, AreaId = areaId, ResponsableId = responsableId };
+
+        if (tx is not null)
+        {
+            var cmdTx = new CommandDefinition(sql, parametros, tx, cancellationToken: ct);
+            await tx.Connection!.ExecuteAsync(cmdTx);
+            return;
+        }
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, parametros, cancellationToken: ct);
+        await conn.ExecuteAsync(cmd);
+    }
+
+    /// <summary>DAL-R7 · UPDATE usuario SET estado = 'Inactivo', updated_at = NOW() (desactivar responsable).</summary>
+    public async Task DesactivarUsuarioAsync(Guid usuarioId, IDbTransaction? tx = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE usuario
+            SET estado     = 'Inactivo'::estado_usuario,
+                updated_at = NOW()
+            WHERE id = @UsuarioId;";
+
+        if (tx is not null)
+        {
+            var cmdTx = new CommandDefinition(sql, new { UsuarioId = usuarioId }, tx, cancellationToken: ct);
+            await tx.Connection!.ExecuteAsync(cmdTx);
+            return;
+        }
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, new { UsuarioId = usuarioId }, cancellationToken: ct);
+        await conn.ExecuteAsync(cmd);
+    }
 }

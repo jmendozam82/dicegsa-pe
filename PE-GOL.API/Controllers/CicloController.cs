@@ -23,11 +23,13 @@ public class CicloController : ControllerBase
 {
     private readonly ICicloService _service;
     private readonly IAreaService _areaService; // HU-009: áreas estratégicas (hijos del agregado Ciclo, D-I)
+    private readonly IResponsableService _responsableService; // HU-010: responsables (hijos del agregado Ciclo, D-I)
 
-    public CicloController(ICicloService service, IAreaService areaService)
+    public CicloController(ICicloService service, IAreaService areaService, IResponsableService responsableService)
     {
         _service = service;
         _areaService = areaService;
+        _responsableService = responsableService;
     }
 
     /// <summary>GET /api/v1/ciclos — Listado del tenant ordenado por año fiscal DESC (sin paginación, D3).</summary>
@@ -280,5 +282,107 @@ public class CicloController : ControllerBase
     {
         var data = await _areaService.ListarResponsablesCandidatosAsync(cicloId, ct);
         return Ok(new ApiResponse<List<ResponsableCandidatoResponse>> { Success = true, Data = data });
+    }
+
+    // ─── HU-010 · Responsables (Spec HU-010 § Endpoints) ─────────────────────
+    // Recurso hijo del agregado Ciclo (D-I): rutas anidadas bajo /api/v1/ciclos/{cicloId}/responsables.
+    // Roles (D-A): GET multi-rol de lectura (AdminTenant/Gerente/JefeArea — RN-007; JefeArea solo
+    // su responsable, SEC-07) · POST/PUT/desactivar solo AdminTenant (D12). El tenant_id se resuelve
+    // SIEMPRE del TenantContext (SEC-06) — nunca del body ni del query string.
+    // Respuestas SIEMPRE con el wrapper ApiResponse<T> (ARCH-07).
+    // Nota de ruteo: 'responsables' (segmento literal) no colisiona con 'areas/{areaId:guid}'.
+
+    /// <summary>GET /api/v1/ciclos/{cicloId}/responsables — Listado de responsables del ciclo
+    /// (ORDER BY nombre). JefeArea: solo su responsable (SEC-07: areaIdFiltro = TenantContext.AreaId).
+    /// 404 si el ciclo no existe/otro tenant/sin tenant.</summary>
+    [HttpGet("{cicloId:guid}/responsables")]
+    [Authorize(Roles = "AdminTenant,Gerente,JefeArea")]
+    [ProducesResponseType(typeof(ApiResponse<List<ResponsableResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ListarResponsablesDelCiclo(Guid cicloId, CancellationToken ct = default)
+    {
+        var data = await _responsableService.ListarAsync(cicloId, ct);
+        return Ok(new ApiResponse<List<ResponsableResponse>> { Success = true, Data = data });
+    }
+
+    /// <summary>GET /api/v1/ciclos/{cicloId}/responsables/{responsableId} — Detalle de un responsable
+    /// (404 si no existe o es de otro tenant; 403 si rol JefeArea y responsable.AreaId !=
+    /// TenantContext.AreaId — D12, SEC-07).</summary>
+    [HttpGet("{cicloId:guid}/responsables/{responsableId:guid}")]
+    [Authorize(Roles = "AdminTenant,Gerente,JefeArea")]
+    [ProducesResponseType(typeof(ApiResponse<ResponsableResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ObtenerResponsableDelCiclo(Guid cicloId, Guid responsableId, CancellationToken ct = default)
+    {
+        var data = await _responsableService.ObtenerPorIdAsync(cicloId, responsableId, ct);
+        return Ok(new ApiResponse<ResponsableResponse> { Success = true, Data = data });
+    }
+
+    /// <summary>POST /api/v1/ciclos/{cicloId}/responsables — Crea un usuario Jefe de Área y lo
+    /// asigna como responsable del área indicada (solo AdminTenant). 201 con el responsable creado.
+    /// 403 rol ≠ ADM · 404 ciclo inexistente/otro tenant/sin tenant · 422: ciclo Cerrado (RC-12),
+    /// área inexistente/no activa/ya con responsable (RN-011), responsable ya asignado a otra área
+    /// activa (RN-012), correo ya existe en el tenant, tenant al tope de usuarios del plan (RN-010).</summary>
+    [HttpPost("{cicloId:guid}/responsables")]
+    [Authorize(Roles = "AdminTenant")]
+    [ProducesResponseType(typeof(ApiResponse<ResponsableResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CrearResponsable(Guid cicloId, [FromBody] ResponsableCreateRequest request, CancellationToken ct = default)
+    {
+        var data = await _responsableService.CrearAsync(cicloId, request, ct);
+        return StatusCode(StatusCodes.Status201Created,
+            new ApiResponse<ResponsableResponse> { Success = true, Message = "Responsable creado", Data = data });
+    }
+
+    /// <summary>PUT /api/v1/ciclos/{cicloId}/responsables/{responsableId} — Reasigna el responsable
+    /// a otra área (cambio de area_id; solo AdminTenant). 200 con el responsable reasignado (con
+    /// Advertencia si el área origen queda sin responsable — CONTRATO #25). 403 · 404 · 422 con las
+    /// mismas reglas que POST (RN-012 excluyendo self; RN-011: área destino sin responsable).
+    /// Misma área → no-op sin auditoría (CONTRATO #23).</summary>
+    [HttpPut("{cicloId:guid}/responsables/{responsableId:guid}")]
+    [Authorize(Roles = "AdminTenant")]
+    [ProducesResponseType(typeof(ApiResponse<ResponsableResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ReasignarResponsable(Guid cicloId, Guid responsableId, [FromBody] ResponsableReassignRequest request, CancellationToken ct = default)
+    {
+        var data = await _responsableService.ReasignarAsync(cicloId, responsableId, request, ct);
+        return Ok(new ApiResponse<ResponsableResponse> { Success = true, Message = "Responsable reasignado", Data = data });
+    }
+
+    /// <summary>PUT /api/v1/ciclos/{cicloId}/responsables/{responsableId}/desactivar — Desactiva el
+    /// responsable (usuario.estado = 'Inactivo'; solo AdminTenant). Sin body. 200 con el responsable
+    /// desactivado. 403 · 404 · 422 si ya está inactivo o el ciclo está Cerrado (RC-12).
+    /// NO se limpia usuario.area_id (D-J, SEC-07: el JefeArea conserva lectura de su área).</summary>
+    [HttpPut("{cicloId:guid}/responsables/{responsableId:guid}/desactivar")]
+    [Authorize(Roles = "AdminTenant")]
+    [ProducesResponseType(typeof(ApiResponse<ResponsableResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DesactivarResponsable(Guid cicloId, Guid responsableId, CancellationToken ct = default)
+    {
+        var data = await _responsableService.DesactivarAsync(cicloId, responsableId, ct);
+        return Ok(new ApiResponse<ResponsableResponse> { Success = true, Message = "Responsable desactivado", Data = data });
     }
 }

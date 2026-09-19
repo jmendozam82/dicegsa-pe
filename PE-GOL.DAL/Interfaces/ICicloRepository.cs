@@ -101,6 +101,42 @@ public interface ICicloRepository
     /// @AreaId null libera al responsable anterior (evita fuga de acceso SEC-07). Retorna filas afectadas.</summary>
     Task<int> ActualizarAreaIdUsuarioAsync(Guid usuarioId, Guid? areaId, IDbTransaction? tx = null, CancellationToken ct = default);
 
+    // ─── HU-010 · Responsables (Spec HU-010 § Queries DAL: DAL-R1 a DAL-R7) ───
+    // Los responsables son hijos del agregado Ciclo (D-I): se extiende ICicloRepository, no se
+    // crea repositorio nuevo (mismo criterio que Area/UmbralSemaforo). Responsable = usuario del
+    // tenant con rol='JefeArea' (D-B). SEC-07: responsable SÍ es entidad de área (vinculada a
+    // area.responsable_id) → AND a.id = @AreaIdFiltro cuando el rol es JefeArea (DAL-R3).
+    // Observación de Jorge (DAL-R2/R3): LEFT JOIN area con la condición del ciclo en el JOIN
+    // (ON a.id = u.area_id AND a.ciclo_id = @CicloId), NO en el WHERE — un usuario cuyo area_id
+    // apunta a un área de otro ciclo se devuelve con area_codigo/area_nombre null (no se pierde).
+
+    /// <summary>DAL-R1 · INSERT usuario (rol JefeArea, estado Activo, requiere_cambio_pwd TRUE) ...
+    /// RETURNING id. Retorna el nuevo id (null si no insertó).</summary>
+    Task<Guid?> InsertarUsuarioAsync(ResponsableInsertDto dto, IDbTransaction? tx = null, CancellationToken ct = default);
+
+    /// <summary>DAL-R2 · SELECT responsable por id (aislado por tenant; rol JefeArea). LEFT JOIN
+    /// area con la condición del ciclo en el JOIN (observación de Jorge). Retorna null si no existe
+    /// o es de otro tenant (sin fuga).</summary>
+    Task<ResponsableEntity?> ObtenerResponsablePorIdAsync(Guid tenantId, Guid cicloId, Guid responsableId, CancellationToken ct = default);
+
+    /// <summary>DAL-R3 · SELECT responsables del ciclo (rol JefeArea), ORDER BY nombre. areaIdFiltro
+    /// (SEC-07): si no es null, AND a.id = @AreaIdFiltro (JefeArea solo su responsable). Sin filtro
+    /// (null) → todos (ADM/GER). LEFT JOIN area con la condición del ciclo en el JOIN.</summary>
+    Task<List<ResponsableEntity>> ListarResponsablesAsync(Guid tenantId, Guid cicloId, Guid? areaIdFiltro = null, CancellationToken ct = default);
+
+    /// <summary>DAL-R4 · ¿Existe un usuario con ese correo en el tenant? (case-insensitive, LOWER).</summary>
+    Task<bool> ExisteCorreoEnTenantAsync(Guid tenantId, string correo, CancellationToken ct = default);
+
+    /// <summary>DAL-R5 · COUNT usuarios ACTIVOS del tenant (RN-010, chequeo preciso por tenant — D-D).</summary>
+    Task<int> ContarUsuariosActivosEnTenantAsync(Guid tenantId, CancellationToken ct = default);
+
+    /// <summary>DAL-R6 · UPDATE area SET responsable_id = @ResponsableId, updated_at = NOW()
+    /// (aislada por tenant y ciclo). @ResponsableId null libera el área (queda sin responsable).</summary>
+    Task AsignarResponsableAreaAsync(Guid tenantId, Guid cicloId, Guid areaId, Guid? responsableId, IDbTransaction? tx = null, CancellationToken ct = default);
+
+    /// <summary>DAL-R7 · UPDATE usuario SET estado = 'Inactivo', updated_at = NOW() (desactivar responsable).</summary>
+    Task DesactivarUsuarioAsync(Guid usuarioId, IDbTransaction? tx = null, CancellationToken ct = default);
+
     /// <summary>Abre una conexión gestionada por el repositorio e inicia una transacción IDbTransaction (mismo patrón que ITenantRepository).</summary>
     Task<IDbTransaction> BeginTransactionAsync(CancellationToken ct = default);
 }
