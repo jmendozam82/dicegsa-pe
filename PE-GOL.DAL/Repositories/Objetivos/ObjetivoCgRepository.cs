@@ -151,6 +151,47 @@ public sealed class ObjetivoCgRepository : IObjetivoCgRepository, IDisposable
         return await GetConnection().ExecuteScalarAsync<string?>(sql, new { AreaId = areaId, TenantId = tenantId });
     }
 
+    public async Task<IEnumerable<ObjetivoCgConsolidadoResponse>> ListarConsolidadoGerenteAsync(Guid tenantId, Guid cicloId, ObjetivoCgFilterRequest filtros, CancellationToken ct = default)
+    {
+        var sql = @"
+            SELECT 
+                o.id, 
+                o.area_id, 
+                a.nombre AS area_nombre, 
+                a.codigo AS area_codigo,
+                o.pilar_id, 
+                p.nombre AS pilar_nombre, 
+                o.codigo, 
+                o.descripcion, 
+                o.trimestre_objetivo::text AS trimestre_objetivo, 
+                o.progreso, 
+                o.semaforo::text AS semaforo, 
+                o.created_at, 
+                o.updated_at
+            FROM objetivo_cg o
+            INNER JOIN area a ON o.area_id = a.id
+            INNER JOIN pilar p ON o.pilar_id = p.id
+            WHERE o.tenant_id = @TenantId 
+              AND o.ciclo_id = @CicloId
+              AND (@AreaId IS NULL OR o.area_id = @AreaId)
+              AND (@PilarId IS NULL OR o.pilar_id = @PilarId)
+              AND (@Trimestre IS NULL OR o.trimestre_objetivo = @Trimestre::trimestre)
+              AND (@Semaforo IS NULL OR o.semaforo = @Semaforo::semaforo_color)
+            ORDER BY a.nombre ASC, o.orden ASC, o.created_at ASC;";
+
+        var param = new
+        {
+            TenantId = tenantId,
+            CicloId = cicloId,
+            AreaId = filtros.AreaId,
+            PilarId = filtros.PilarId,
+            Trimestre = filtros.Trimestre,
+            Semaforo = filtros.Semaforo
+        };
+
+        return await GetConnection().QueryAsync<ObjetivoCgConsolidadoResponse>(sql, param);
+    }
+
     public void Dispose()
     {
         _connectionActiva?.Dispose();

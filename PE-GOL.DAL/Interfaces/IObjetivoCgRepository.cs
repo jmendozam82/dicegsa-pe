@@ -17,4 +17,5 @@ public interface IObjetivoCgRepository
 
     Task<IDbTransaction> BeginTransactionAsync(CancellationToken ct = default);
     Task<int> InsertLogAsync(PE_GOL.DTO.Dtos.LogAuditoriaInsert dto, IDbTransaction? tx = null, CancellationToken ct = default);
+    Task<IEnumerable<ObjetivoCgConsolidadoResponse>> ListarConsolidadoGerenteAsync(Guid tenantId, Guid cicloId, ObjetivoCgFilterRequest filtros, CancellationToken ct = default);
 }

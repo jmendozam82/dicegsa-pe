@@ -4,6 +4,7 @@ using PE_GOL.BLL.Interfaces;
 using PE_GOL.DAL.Interfaces;
 using PE_GOL.DTO.Requests.Objetivos;
 using PE_GOL.DTO.Responses.Objetivos;
+using PE_GOL.DTO.Common;
 using PE_GOL.Utility.Exceptions;
 using PE_GOL.Utility.Security;
 
@@ -243,5 +244,24 @@ public class ObjetivoCgService : IObjetivoCgService
             tx.Rollback();
             throw;
         }
+    }
+
+    public async Task<ApiResponse<IEnumerable<ObjetivoCgConsolidadoResponse>>> ListarConsolidadoGerenteAsync(ObjetivoCgFilterRequest filtros, CancellationToken ct = default)
+    {
+        if (_tenantContext.Rol != "Gerente" && _tenantContext.Rol != "SuperAdmin" && _tenantContext.Rol != "AdminTenant")
+            throw new AccesoDenegadoException("No tiene permisos para ver el consolidado.");
+
+        if (!_tenantContext.TenantId.HasValue)
+            throw new NotFoundException("Tenant no identificado en el contexto.");
+
+        var tenantId = _tenantContext.TenantId.Value;
+
+        var ciclo = await _cicloRepository.ObtenerCicloActivoAsync(tenantId, ct);
+        if (ciclo == null)
+            throw new NotFoundException("No existe un ciclo activo.");
+
+        var resultados = await _repo.ListarConsolidadoGerenteAsync(tenantId, ciclo.Id, filtros, ct);
+
+        return new ApiResponse<IEnumerable<ObjetivoCgConsolidadoResponse>> { Success = true, Data = resultados };
     }
 }

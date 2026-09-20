@@ -72,4 +72,13 @@ public class ObjetivoCgController : ControllerBase
         await _objetivoCgService.EliminarAsync(id);
         return Ok(new ApiResponse<bool> { Success = true, Data = true, Message = "Objetivo corporativo eliminado exitosamente." });
     }
+
+    [HttpGet("consolidado")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<ObjetivoCgConsolidadoResponse>>), 200)]
+    public async Task<IActionResult> ListarConsolidadoGerente([FromQuery] ObjetivoCgFilterRequest filtros)
+    {
+        var result = await _objetivoCgService.ListarConsolidadoGerenteAsync(filtros);
+        return Ok(result);
+    }
 }
