@@ -4,6 +4,7 @@ using PE_GOL.DAL.Infrastructure;
 using PE_GOL.DAL.Interfaces;
 using PE_GOL.DTO.Dtos;
 using PE_GOL.DTO.Responses;
+using PE_GOL.DTO.Responses.Dashboard;
 using PE_GOL.Entity.Ciclo;
 using PE_GOL.Entity.Estrategia;
 using PE_GOL.Entity.Saas;
@@ -1004,5 +1005,95 @@ public sealed class CicloRepository : ICicloRepository, IDisposable
         conn.Open();
         var cmd = new CommandDefinition(sql, dto, cancellationToken: ct);
         return await conn.ExecuteAsync(cmd);
+    }
+
+    // ─── HU-015 · Tablero del Jefe de Área (Spec HU-015 § Queries DAL: DAL-D1/D3/D4/D5) ───
+    // Implementación real (fase IMPLEMENT). Lecturas de agregación del tablero (solo lectura,
+    // sin transacción — D-H). Las entidades del tablero (okr/objetivo_cg/accion_plan) son hijas
+    // del agregado Ciclo (D-K): se extiende ICicloRepository, no se crea DashboardRepository.
+    // SEC-06: WHERE tenant_id = @TenantId como primera condición (TenantContext/JWT, nunca del
+    // cliente). SEC-07: okr/objetivo_cg/accion_plan SÍ son entidades de área → AND area_id =
+    // @AreaId (DAL-D3/D4/D5, areaId = TenantContext.AreaId). SEC-05: parámetros nombrados, sin
+    // concatenación. El semáforo/status NO se calculan aquí (DB-04: solo la BLL calcula y persiste).
+    // COUNT/AVG/FILTER son agregaciones de lectura (patrón DAL-P1 de HU-013, D-C).
+
+    /// <summary>DAL-D1 · SELECT ciclo ACTIVO del tenant (CA #4, D-G): WHERE tenant_id = @TenantId
+    /// AND estado = 'Activo' LIMIT 1. RC-01 garantiza máximo 1 fila. Retorna null si no hay ciclo activo.</summary>
+    public async Task<CicloEntity?> ObtenerCicloActivoAsync(Guid tenantId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, tenant_id, nombre, año_fiscal, mes_inicio, estado, created_by,
+                   activated_at, closed_at, created_at, updated_at
+            FROM ciclo
+            WHERE tenant_id = @TenantId
+              AND estado = 'Activo'
+            LIMIT 1;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: ct);
+        return await conn.QuerySingleOrDefaultAsync<CicloEntity>(cmd);
+    }
+
+    /// <summary>DAL-D3 · Resumen OKRs del área (D-C, SEC-07): COUNT(o.id), COUNT(o.id) FILTER
+    /// (semaforo='Verde') y COALESCE(AVG(o.puntuacion_final), 0). Lee campos calculados
+    /// PERSISTIDOS (mantenidos por la BLL de HU-024+, DB-04).</summary>
+    public async Task<ResumenOkrsAreaDto> ObtenerResumenOkrsAreaAsync(Guid tenantId, Guid cicloId, Guid areaId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT COUNT(o.id) AS total_okrs,
+                   COUNT(o.id) FILTER (WHERE o.semaforo = 'Verde') AS okrs_alcanzados,
+                   COALESCE(AVG(o.puntuacion_final), 0) AS promedio_puntuacion_okrs
+            FROM okr o
+            WHERE o.tenant_id = @TenantId
+              AND o.ciclo_id = @CicloId
+              AND o.area_id = @AreaId;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql,
+            new { TenantId = tenantId, CicloId = cicloId, AreaId = areaId },
+            cancellationToken: ct);
+        return await conn.QuerySingleAsync<ResumenOkrsAreaDto>(cmd);
+    }
+
+    /// <summary>DAL-D4 · Resumen plan de acción del área (D-C, SEC-07): COALESCE(AVG(ocg.progreso), 0).
+    /// Lee el progreso PERSISTIDO de objetivo_cg (mantenido por la BLL de HU-017+, DB-04).</summary>
+    public async Task<ResumenPlanAccionAreaDto> ObtenerResumenPlanAccionAreaAsync(Guid tenantId, Guid cicloId, Guid areaId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT COALESCE(AVG(ocg.progreso), 0) AS avance_plan_accion
+            FROM objetivo_cg ocg
+            WHERE ocg.tenant_id = @TenantId
+              AND ocg.ciclo_id = @CicloId
+              AND ocg.area_id = @AreaId;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql,
+            new { TenantId = tenantId, CicloId = cicloId, AreaId = areaId },
+            cancellationToken: ct);
+        return await conn.QuerySingleAsync<ResumenPlanAccionAreaDto>(cmd);
+    }
+
+    /// <summary>DAL-D5 · Acciones del área para el tablero (D-D, SEC-07): id, progreso,
+    /// fecha_inicio, fecha_vencimiento. SIN status persistido (el tablero recalcula atrasadas en
+    /// BLL con RN-017 regla 4 y fecha actual — el status puede estar desactualizado vs. el batch
+    /// nocturno RN-040).</summary>
+    public async Task<IEnumerable<AccionTableroDto>> ListarAccionesAreaAsync(Guid tenantId, Guid cicloId, Guid areaId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, progreso, fecha_inicio, fecha_vencimiento
+            FROM accion_plan
+            WHERE tenant_id = @TenantId
+              AND ciclo_id = @CicloId
+              AND area_id = @AreaId;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql,
+            new { TenantId = tenantId, CicloId = cicloId, AreaId = areaId },
+            cancellationToken: ct);
+        return await conn.QueryAsync<AccionTableroDto>(cmd);
     }
 }

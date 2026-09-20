@@ -1,6 +1,7 @@
 using System.Data;
 using PE_GOL.DTO.Dtos;
 using PE_GOL.DTO.Responses;
+using PE_GOL.DTO.Responses.Dashboard;
 using PE_GOL.Entity.Ciclo;
 using PE_GOL.Entity.Estrategia;
 using PE_GOL.Entity.Saas;
@@ -208,4 +209,28 @@ public interface ICicloRepository
 
     /// <summary>Abre una conexión gestionada por el repositorio e inicia una transacción IDbTransaction (mismo patrón que ITenantRepository).</summary>
     Task<IDbTransaction> BeginTransactionAsync(CancellationToken ct = default);
+
+    // ─── HU-015 · Tablero del Jefe de Área (Spec HU-015 § Queries DAL: DAL-D1/D3/D4/D5) ───
+    // Lecturas de agregación del tablero (solo lectura, sin transacción — D-H). Las entidades del
+    // tablero (okr/objetivo_cg/accion_plan) son hijas del agregado Ciclo (D-K): se extiende
+    // ICicloRepository, no se crea DashboardRepository. SEC-07: okr/objetivo_cg/accion_plan SÍ son
+    // entidades de área → AND area_id = @AreaId (DAL-D3/D4/D5, areaId = TenantContext.AreaId).
+    // ⚠️ STUB TDD (fase roja, TEST-01): @QA declaró el contrato; @BackendDev implementa el SQL en fase 4.
+
+    /// <summary>DAL-D1 · SELECT ciclo ACTIVO del tenant (CA #4, D-G): WHERE tenant_id = @TenantId
+    /// AND estado = 'Activo' LIMIT 1. RC-01 garantiza máximo 1 fila. Retorna null si no hay ciclo activo.</summary>
+    Task<CicloEntity?> ObtenerCicloActivoAsync(Guid tenantId, CancellationToken ct = default);
+
+    /// <summary>DAL-D3 · Resumen OKRs del área (D-C): COUNT(o.id), COUNT(o.id) FILTER (semaforo='Verde'),
+    /// COALESCE(AVG(o.puntuacion_final), 0) — WHERE tenant_id/ciclo_id/area_id (SEC-07).</summary>
+    Task<ResumenOkrsAreaDto> ObtenerResumenOkrsAreaAsync(Guid tenantId, Guid cicloId, Guid areaId, CancellationToken ct = default);
+
+    /// <summary>DAL-D4 · Resumen plan de acción del área (D-C): COALESCE(AVG(ocg.progreso), 0) —
+    /// WHERE tenant_id/ciclo_id/area_id (SEC-07).</summary>
+    Task<ResumenPlanAccionAreaDto> ObtenerResumenPlanAccionAreaAsync(Guid tenantId, Guid cicloId, Guid areaId, CancellationToken ct = default);
+
+    /// <summary>DAL-D5 · Acciones del área para el tablero (D-D): id, progreso, fecha_inicio,
+    /// fecha_vencimiento — WHERE tenant_id/ciclo_id/area_id (SEC-07). SIN status persistido
+    /// (el tablero recalcula atrasadas en BLL con RN-017 regla 4 y fecha actual).</summary>
+    Task<IEnumerable<AccionTableroDto>> ListarAccionesAreaAsync(Guid tenantId, Guid cicloId, Guid areaId, CancellationToken ct = default);
 }
