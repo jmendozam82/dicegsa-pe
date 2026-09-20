@@ -235,7 +235,7 @@
 - [ ] Los Jefes de Área pueden leer la Visión y Misión pero no editarlas
 - [ ] Cambios se registran en log de auditoría con versión anterior
 
-**Pts:** 3 · **Prioridad:** Alta · **Sprint:** 3
+**Pts:** 3 · **Prioridad:** Alta · **Sprint:** 2
 
 ---
 

@@ -304,6 +304,26 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
+## HU-011 · Registro de Visión y Misión — CERRADA
+
+**Fecha de cierre:** 2026-09-20 · **Cerrada por:** @Documenter (LOOP-05) · **Spec:** `specs/sprint-02/HU-011.spec.md` → `Implementado`
+
+**Entregado (100% backend — misma decisión de UI diferida de HU-006/HU-007/HU-008/HU-009/HU-010):** 2 endpoints `GET/PUT /api/v1/ciclos/{cicloId}/filosofia` — GET (multi-rol `AdminTenant,Gerente,JefeArea`; defensivo de defaults vacíos D-H, sin escritura) · PUT (solo `Gerente`, RN-006; UPSERT `ON CONFLICT (tenant_id, ciclo_id) DO UPDATE` DB-06; 422 en ciclo `Cerrado` RC-12); `FilosofiaService`/`IFilosofiaService` (BLL, ctor D13 + overload `ILogger<FilosofiaService>?`); DAL-F1/F2 en `CicloRepository` (filosofía = hija del agregado Ciclo, D-I); `HtmlSanitizerHelper` en `PE-GOL.Utility/Security/` (allowlist `p, br, b, strong, i, em, ul, ol, li`, sin atributos, máx 5000 chars — D-C, XSS SEC-05); CA #2 implementado en `CicloService.ActivarAsync` (validación dura 422 "Debe registrar la Visión y Misión del ciclo antes de activarlo", sin cambio de firma); auditoría ADR-003 (UPDATE, entidad `Filosofia`, `valor_anterior` snapshot, null en primer guardado — CA #4); `FilosofiaUpdateRequestValidator` (FluentValidation); `FilosofiaEntity` en `PE-GOL.Entity/Estrategia/`; DTOs (`FilosofiaUpdateRequest`/`FilosofiaResponse`/`FilosofiaUpsertDto`); registro IOC.
+
+**Verificación:** build 0/0 · tests **329/329** (18 HU-011 + 311 regresión/contrato HU-001..HU-010) · cobertura BLL **88.9%** (≥ 70%, TEST-02 — mejora el 88.81% de HU-009) · commit `6952053` `[HU-011] feat: registro de visión y misión (API+BLL+DAL+DTO+Entity+Validators+IOC)` · **sin ADR nuevo ni migración** (la tabla `filosofia` ya existía en el DDL con `UNIQUE (tenant_id, ciclo_id)` y RLS `filosofia_policy`; la sanitización HTML es helper propio, sin librería externa — confirmado por @Arquitecto).
+
+**Flags resueltos por Jorge en la aprobación del spec (2026-09-20):** los 5 — (1) CA #2 validación dura 422 en `ActivarAsync`; (2) UPSERT en primer guardado, sin fila default en `CrearAsync`; (3) allowlist `p, br, b, strong, i, em, ul, ol, li` sin atributos, máx 5000 chars, sin enlaces/imágenes en v1.0; (4) auditoría `UPDATE` con `valor_anterior = null` en primer guardado (sin bifurcación CREATE); (5) GET multi-rol ADM/GER/JEF, PUT solo GER, SEC-07 no aplica.
+
+**Hallazgos documentados (para @Orquestador):**
+1. **SEC-07 NO APLICA a `filosofia`** (D-E): es corporativa — una fila por ciclo por tenant, sin `area_id`; RLS `filosofia_policy` solo por tenant. El JEF lee la filosofía completa del ciclo (RN-007: solo lectura). Verificado en DAL-F1/F2.
+2. **Clonación de filosofía: NO** (decisión de Jorge, hallazgo no bloqueante): RF-011 lista "áreas, responsables y umbrales" como contenido clonable — no incluye filosofía. El GER la redacta de nuevo por ciclo. `ClonarAsync` no se toca.
+3. **Fixtures 24/25 de `CicloServiceTests` actualizados por @QA** (Review): setup de `ObtenerFilosofiaAsync` añadido al mock de `ICicloRepository` en los casos de regresión de `ActivarAsync`. Conflicto de **contrato legítimo** (la extensión de esta HU añadió la llamada DAL-F1 al flujo de activación), **no bug de producción** — sin cambio de contrato público ni de comportamiento.
+4. **Discrepancia de backlog corregida:** HU-011 figuraba con "Sprint: 3" en su encabezado (`03_BACKLOG.md` L238) pero la tabla de Sprint Planning la asigna al Sprint 2 (L896) — corregido a "Sprint: 2" al cierre (mismo patrón que HU-010 en EP-02).
+
+**Siguientes dependencias:** **HU-012 (Valores Corporativos, Sprint 2)** — usará la columna `valores` (JSONB) de la **misma tabla `filosofia`** (ya existe en el DDL, `DEFAULT '[]'`); la UI de Visión/Misión/Valores se planificará con el cimiento de frontend (HU-045+).
+
+---
+
 ## Decisiones de Jorge — 2026-09-13 (resuelven flags del Sprint 1)
 
 **Contexto:** Jorge resolvió los 5 puntos bloqueantes del Sprint 1 señalados como flags en la sección HU-002. Ninguna decisión obliga a cambios de esquema ni de seed; la única pieza nueva es el **ADR-003** (aplicable a partir de HU-003).
@@ -316,5 +336,5 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-17 (cierre HU-009 — Sprint 2 en curso, 2/8 HU) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Sprint 2 — Continuación del Loop con HU-010 (Catálogo de Responsables · @Orquestador)*
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-20 (cierre HU-011 — Sprint 2 en curso, 4/8 HU) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Sprint 2 — Continuación del Loop con HU-012 (Valores Corporativos · @Orquestador)*
