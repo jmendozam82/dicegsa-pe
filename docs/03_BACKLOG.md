@@ -285,12 +285,12 @@
 **Para** comunicar a las áreas qué se espera de ellas en cada período del año
 
 **Criterios de Aceptación:**
-- [ ] Por cada pilar, campos de texto libre para Q1, Q2, Q3 y Q4
-- [ ] Los trimestres son opcionales; no todos deben tener contenido
-- [ ] Visible en modo lectura para Jefes de Área como guía al crear sus CGs
-- [ ] Se muestran en la pantalla de creación de Objetivos CG como referencia contextual
+- [x] Por cada pilar, campos de texto libre para Q1, Q2, Q3 y Q4
+- [x] Los trimestres son opcionales; no todos deben tener contenido
+- [x] Visible en modo lectura para Jefes de Área como guía al crear sus CGs
+- [x] Se muestran en la pantalla de creación de Objetivos CG como referencia contextual
 
-**Pts:** 2 · **Prioridad:** Media · **Sprint:** 4
+**Pts:** 2 · **Prioridad:** Media · **Sprint:** 2
 
 ---
 

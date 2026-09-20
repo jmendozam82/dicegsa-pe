@@ -365,6 +365,27 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
+## HU-014 · Objetivos de Área por Trimestre en Pilares — CERRADA
+
+**Fecha de cierre:** 2026-09-20 · **Cerrada por:** @Documenter (LOOP-05) · **Spec:** `specs/sprint-02/HU-014.spec.md` → `Implementado`
+
+**Entregado (100% backend — misma decisión de UI diferida de HU-006..HU-013):** endpoint nuevo `PUT /api/v1/ciclos/{cicloId}/pilares/{pilarId}/objetivos-trimestrales` (solo `Gerente`, RN-006; body `ObjetivosTrimestralesUpdateRequest` con 4 campos opcionales CA #2; UPDATE solo `objetivo_q1..q4` + `updated_at` — contrato HU-013 intacto; 422 RC-12 ciclo `Cerrado`, >2000 chars D-C; 403 rol ≠ GER; 404 ciclo/pilar inexistente o sin tenant); GET listado/detalle **extendidos aditivamente** con `ObjetivoQ1..Q4` (`string?`) en `PilarResponse` (CA #1, CA #3: JEF lee como guía — SEC-07 NO APLICA, D-E); `PilarService.ActualizarObjetivosTrimestralesAsync` (extensión de `IPilarService`/`PilarService`, ctor D13 intacto); DAL-P10 `ActualizarObjetivosTrimestralesAsync` en `CicloRepository` (extensión del agregado Ciclo, D-J) + DAL-P1/P2/P3 extendidas aditivamente; `PilarEntity`/`PilarConteosDto`/`PilarResponse` extendidos aditivamente con `ObjetivoQ1..Q4`; `ObjetivosTrimestralesUpdateRequest`/`PilarObjetivosTrimestralesUpdateDto` (DTOs nuevos); `ObjetivosTrimestralesUpdateRequestValidator` (FluentValidation); registro IOC; auditoría ADR-003 (UPDATE, entidad `Pilar`, snapshot solo 4 campos `{"objetivo_q1","objetivo_q2","objetivo_q3","objetivo_q4"}` — D-I; `SnapshotPilar` de HU-013 sin cambios).
+
+**Verificación:** build 0/0 · tests **397/397** (16 HU-014 + 381 regresión/contrato HU-001..HU-013) · cobertura BLL **88.66%** (≥ 70%, TEST-02; `PilarService` 100%, `ActualizarObjetivosTrimestralesAsync` 85.07%) · **sin ADR nuevo ni migración** (las columnas `objetivo_q1..q4` ya existían en el DDL `06_MODELO_DATOS.md` L183-186, `TEXT` nullable; sin librería externa, sin proyecto nuevo — ARCH-01 intacto; patrón N-Tier sin cambios — confirmado por @Arquitecto).
+
+**Flags resueltos por Jorge en la aprobación del spec (2026-09-20):** los 8 — (1) endpoint de escritura NUEVO aditivo (contrato HU-013 intacto); (2) límite 2000 chars/trimestre; (3) texto plano sin HTML; (4) auditoría solo los 4 campos `{"objetivo_q1".."objetivo_q4"}`; (5) PUT solo GER, GET multi-rol ADM/GER/JEF, SEC-07 NO APLICA; (6) escritura en Borrador/Activo, bloqueada en Cerrado (RC-12); (7) null como "sin contenido" (trimestres opcionales CA #2); (8) Sprint 2 según tabla de planning (backlog L293 corregido al cierre).
+
+**Hallazgos documentados (para @Orquestador):**
+1. **Discrepancia de backlog corregida:** HU-014 figuraba con "Sprint: 4" en su encabezado (`03_BACKLOG.md` L293) pero la tabla de Sprint Planning la asigna al Sprint 2 (L899) — corregido a "Sprint: 2" al cierre (mismo patrón que HU-011 L238, HU-012 L254 y HU-013 L278).
+2. **Sin migración ni ADR de esquema:** las columnas `objetivo_q1..q4` ya existían en el DDL (`06_MODELO_DATOS.md` L183-186, `TEXT` nullable) — HU-013 las declaró fuera de alcance y no las tocó; HU-014 las gestiona aditivamente (entidad + DTOs + DAL) sin romper el contrato HU-013.
+3. **Contrato HU-013 intacto (verificado):** `PilarUpdateRequest` sin cambios · `PUT /pilares/{pilarId}` sin cambios · `PilarResponse` solo aditivo (4 campos) · `PilarEntity` solo aditivo · `SnapshotPilar` sin cambios · DAL-P1/P2/P3 solo ganan columnas en el SELECT — los 34 tests de HU-013 en verde lo confirman.
+4. **SEC-07 NO APLICA** (D-E): `pilar` es corporativa — sin `area_id`, RLS `pilar_policy` solo por tenant. El JEF lee **todos** los pilares del ciclo con sus objetivos trimestrales (RN-007, CA #3). Verificado en DAL-P10 (sin `AND area_id` para ningún rol).
+5. **CA #4 → HU-017 (Sprint 4):** el CA #4 de HU-014 ("se muestran en la pantalla de creación de Objetivos CG como referencia contextual") es el CA #3 de HU-017 (backlog L343-355, L351). HU-014 entrega el **contrato de datos** (GET /pilares con `ObjetivoQ1..Q4`) para que HU-017 los consuma. No se crea UI ni endpoint adicional en esta HU.
+
+**Siguientes dependencias:** **HU-017 (CRUD de Objetivos CG, Sprint 4)** — consumirá `ObjetivoQ1..Q4` del GET /pilares como referencia contextual en su pantalla de creación de CGs (CA #3 de HU-017); la UI de Pilares se planificará con el cimiento de frontend (HU-045+).
+
+---
+
 ## Decisiones de Jorge — 2026-09-13 (resuelven flags del Sprint 1)
 
 **Contexto:** Jorge resolvió los 5 puntos bloqueantes del Sprint 1 señalados como flags en la sección HU-002. Ninguna decisión obliga a cambios de esquema ni de seed; la única pieza nueva es el **ADR-003** (aplicable a partir de HU-003).
@@ -377,5 +398,5 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-20 (cierre HU-013 — Sprint 2 en curso, 6/8 HU) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Sprint 2 — Continuación del Loop con HU-014 (Objetivos de Área por Trimestre en Pilares · @Orquestador)*
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-20 (cierre HU-014 — Sprint 2 en curso, 7/8 HU) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Sprint 2 — Continuación del Loop con HU-015 (Tablero de Inicio Jefe de Área · @Orquestador)*
