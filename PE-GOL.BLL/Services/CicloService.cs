@@ -265,8 +265,9 @@ public class CicloService : ICicloService
     }
 
     /// <summary>Spec §5 · ActivarAsync: rol ADM (403) → tenantId (404) → ciclo (404) → ya Activo
-    /// (422) → Cerrado (422, RC-12) → RC-01 DAL-C7 (422) → límite del plan vía IPlanService
-    /// (422, D-C) → tx: UPDATE estado + auditoría ACTIVATE → commit → re-lectura → 200.
+    /// (422) → Cerrado (422, RC-12) → RC-01 DAL-C7 (422) → HU-011 CA #2: filosofía (Visión y
+    /// Misión) registrada (422, DAL-F1) → límite del plan vía IPlanService (422, D-C) → tx:
+    /// UPDATE estado + auditoría ACTIVATE → commit → re-lectura → 200.
     /// Captura 23505 del índice parcial uq_ciclo_unico_activo (ADR-006/V003) → 422.</summary>
     public async Task<CicloResponse> ActivarAsync(Guid id, CancellationToken ct = default)
     {
@@ -290,6 +291,16 @@ public class CicloService : ICicloService
         // RC-01: solo un Activo por tenant (DAL-C7; excludeId excluye el ciclo que se activa, aún Borrador).
         if (await _repository.ContarCiclosActivosAsync(tenantId, id, ct) > 0)
             throw new ValidacionException("Ya existe un ciclo activo en este tenant");
+
+        // HU-011 CA #2 (Flag #1 — validación dura): la filosofía (Visión y Misión) debe estar
+        // registrada antes de activar el ciclo (DAL-F1 reutilizada). El texto visible tras
+        // quitar etiquetas no puede quedar vacío (D-C, StripHtml). SEC-07 NO APLICA (D-E):
+        // filosofia es corporativa (sin area_id) → sin filtro por área para ningún rol.
+        var filosofia = await _repository.ObtenerFilosofiaAsync(tenantId, id, ct);
+        if (filosofia is null ||
+            string.IsNullOrWhiteSpace(HtmlSanitizerHelper.StripHtml(filosofia.Vision)) ||
+            string.IsNullOrWhiteSpace(HtmlSanitizerHelper.StripHtml(filosofia.Mision)))
+            throw new ValidacionException("Debe registrar la Visión y Misión del ciclo antes de activarlo");
 
         // D-C (CA #2 HU-002): límite max_ciclos_activos del plan vía IPlanService (DAL-C8 evita
         // acoplar a ITenantRepository). Si el plan no está asignado → 404 defensivo.

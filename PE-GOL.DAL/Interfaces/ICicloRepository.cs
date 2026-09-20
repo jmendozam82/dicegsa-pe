@@ -137,6 +137,21 @@ public interface ICicloRepository
     /// <summary>DAL-R7 · UPDATE usuario SET estado = 'Inactivo', updated_at = NOW() (desactivar responsable).</summary>
     Task DesactivarUsuarioAsync(Guid usuarioId, IDbTransaction? tx = null, CancellationToken ct = default);
 
+    // ─── HU-011 · Filosofía (Spec HU-011 § Queries DAL: DAL-F1/F2) ───
+    // La filosofía es hija del agregado Ciclo (D-I): se extiende ICicloRepository, no se crea
+    // repositorio nuevo (mismo criterio que UmbralSemaforo/Area/Responsable). SEC-07 NO APLICA
+    // (D-E): filosofia es corporativa (una fila por ciclo por tenant, sin area_id; RLS solo por
+    // tenant — 06 L561) → sin AND area_id para ningún rol (el JEF lee la filosofía completa, RN-007).
+
+    /// <summary>DAL-F1 · SELECT filosofia del ciclo (LEFT JOIN usuario para updated_by_nombre).
+    /// Retorna null si no existe fila (D-H — el GET defensivo cubre la ausencia con defaults).</summary>
+    Task<FilosofiaEntity?> ObtenerFilosofiaAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default);
+
+    /// <summary>DAL-F2 · UPSERT filosofia: INSERT ... ON CONFLICT (tenant_id, ciclo_id) DO UPDATE
+    /// (target = UNIQUE del DDL L173; DB-06, D-B — crea la fila en el primer guardado, sin fila
+    /// default en CrearAsync). Retorna filas afectadas.</summary>
+    Task<int> UpsertFilosofiaAsync(FilosofiaUpsertDto dto, IDbTransaction? tx = null, CancellationToken ct = default);
+
     /// <summary>Abre una conexión gestionada por el repositorio e inicia una transacción IDbTransaction (mismo patrón que ITenantRepository).</summary>
     Task<IDbTransaction> BeginTransactionAsync(CancellationToken ct = default);
 }

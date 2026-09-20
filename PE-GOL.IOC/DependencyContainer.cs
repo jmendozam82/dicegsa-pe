@@ -49,6 +49,7 @@ public static class DependencyContainer
         services.AddScoped<ICicloService, CicloService>(); // HU-007: gestión de ciclos anuales (D2)
         services.AddScoped<IAreaService, AreaService>(); // HU-009: áreas estratégicas (hijos del agregado Ciclo, D-I/D2)
         services.AddScoped<IResponsableService, ResponsableService>(); // HU-010: responsables (hijos del agregado Ciclo, D-I/D2)
+        services.AddScoped<IFilosofiaService, FilosofiaService>(); // HU-011: visión y misión (hija del agregado Ciclo, D-I/D2)
         services.AddScoped<IEmailService, EmailService>(); // HU-010: correo de activación (STACK-10, D-C)
         services.AddScoped<ILogAuditoriaService, LogAuditoriaService>(); // HU-005: consulta del log de auditoría (solo lectura, CA #3)
 

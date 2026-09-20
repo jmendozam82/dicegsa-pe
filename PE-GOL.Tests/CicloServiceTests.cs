@@ -33,7 +33,7 @@ namespace PE_GOL.Tests;
 /// Auditoría (ADR-003): Entidad="Ciclo", JSON legible con UnsafeRelaxedJsonEscaping; cerrar se
 /// audita como UPDATE y clonar como CREATE con origenId (D11).
 /// </summary>
-public class CicloServiceTests
+public partial class CicloServiceTests
 {
     private readonly Mock<ICicloRepository> _mockRepo;
     private readonly Mock<IPlanService> _mockPlanService;
@@ -731,6 +731,10 @@ public class CicloServiceTests
         _mockRepo
             .Setup(r => r.ContarCiclosActivosAsync(tenantId, id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
+        // HU-011 CA #2: la filosofía debe estar registrada antes del límite del plan (spec §3 paso 3)
+        _mockRepo
+            .Setup(r => r.ObtenerFilosofiaAsync(tenantId, id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FilosofiaEntity { Vision = "Visión", Mision = "Misión" });
         _mockRepo
             .Setup(r => r.ObtenerPlanIdDelTenantAsync(tenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(planId);
@@ -774,6 +778,10 @@ public class CicloServiceTests
         _mockRepo
             .Setup(r => r.ContarCiclosActivosAsync(tenantId, id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
+        // HU-011 CA #2: la filosofía debe estar registrada antes del límite del plan (spec §3 paso 3)
+        _mockRepo
+            .Setup(r => r.ObtenerFilosofiaAsync(tenantId, id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FilosofiaEntity { Vision = "Visión", Mision = "Misión" });
         _mockRepo
             .Setup(r => r.ObtenerPlanIdDelTenantAsync(tenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(planId);

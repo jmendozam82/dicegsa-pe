@@ -694,4 +694,56 @@ public sealed class CicloRepository : ICicloRepository, IDisposable
         var cmd = new CommandDefinition(sql, new { UsuarioId = usuarioId }, cancellationToken: ct);
         await conn.ExecuteAsync(cmd);
     }
+
+    // ─── HU-011 · Filosofía (Spec HU-011 § Queries DAL: DAL-F1/F2) ───
+    // Implementación real (fase IMPLEMENT). La filosofía es hija del agregado Ciclo (D-I):
+    // toda query incluye WHERE tenant_id = @TenantId como primera condición (SEC-06). SEC-07 NO
+    // APLICA (D-E): filosofia es corporativa (sin area_id; RLS solo por tenant — 06 L561) → sin
+    // AND area_id para ningún rol. Parámetros nombrados (SEC-05) y CancellationToken vía
+    // CommandDefinition (forma canónica de Dapper).
+
+    /// <summary>DAL-F1 · SELECT filosofia del ciclo (LEFT JOIN usuario para updated_by_nombre).
+    /// Retorna null si no existe fila (D-H — el GET defensivo cubre la ausencia con defaults).</summary>
+    public async Task<FilosofiaEntity?> ObtenerFilosofiaAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT f.id, f.tenant_id, f.ciclo_id, f.vision, f.mision, f.valores, f.updated_by,
+                   u.nombre AS updated_by_nombre, f.updated_at
+            FROM filosofia f
+            LEFT JOIN usuario u ON u.id = f.updated_by
+            WHERE f.tenant_id = @TenantId
+              AND f.ciclo_id = @CicloId;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId, CicloId = cicloId }, cancellationToken: ct);
+        return await conn.QuerySingleOrDefaultAsync<FilosofiaEntity>(cmd);
+    }
+
+    /// <summary>DAL-F2 · UPSERT filosofia: INSERT ... ON CONFLICT (tenant_id, ciclo_id) DO UPDATE
+    /// (target = UNIQUE del DDL L173; DB-06, D-B — crea la fila en el primer guardado, sin fila
+    /// default en CrearAsync). Retorna filas afectadas.</summary>
+    public async Task<int> UpsertFilosofiaAsync(FilosofiaUpsertDto dto, IDbTransaction? tx = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO filosofia (tenant_id, ciclo_id, vision, mision, updated_by, updated_at)
+            VALUES (@TenantId, @CicloId, @Vision, @Mision, @UpdatedBy, NOW())
+            ON CONFLICT (tenant_id, ciclo_id) DO UPDATE
+            SET vision     = EXCLUDED.vision,
+                mision     = EXCLUDED.mision,
+                updated_by = EXCLUDED.updated_by,
+                updated_at = NOW()
+            RETURNING id, updated_at;";
+
+        if (tx is not null)
+        {
+            var cmdTx = new CommandDefinition(sql, dto, tx, cancellationToken: ct);
+            return await tx.Connection!.ExecuteAsync(cmdTx);
+        }
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, dto, cancellationToken: ct);
+        return await conn.ExecuteAsync(cmd);
+    }
 }

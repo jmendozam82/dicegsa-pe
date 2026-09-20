@@ -24,12 +24,16 @@ public class CicloController : ControllerBase
     private readonly ICicloService _service;
     private readonly IAreaService _areaService; // HU-009: áreas estratégicas (hijos del agregado Ciclo, D-I)
     private readonly IResponsableService _responsableService; // HU-010: responsables (hijos del agregado Ciclo, D-I)
+    private readonly IFilosofiaService _filosofiaService; // HU-011: visión y misión (hija del agregado Ciclo, D-I)
 
-    public CicloController(ICicloService service, IAreaService areaService, IResponsableService responsableService)
+    public CicloController(
+        ICicloService service, IAreaService areaService, IResponsableService responsableService,
+        IFilosofiaService filosofiaService)
     {
         _service = service;
         _areaService = areaService;
         _responsableService = responsableService;
+        _filosofiaService = filosofiaService;
     }
 
     /// <summary>GET /api/v1/ciclos — Listado del tenant ordenado por año fiscal DESC (sin paginación, D3).</summary>
@@ -116,6 +120,39 @@ public class CicloController : ControllerBase
     {
         var data = await _service.CerrarAsync(id, ct);
         return Ok(new ApiResponse<CicloResponse> { Success = true, Message = "Ciclo cerrado", Data = data });
+    }
+
+    /// <summary>GET /api/v1/ciclos/{cicloId}/filosofia — Visión y Misión del ciclo (HU-011 §1).
+    /// Multi-rol de lectura (AdminTenant/Gerente/JefeArea — RN-007). SEC-07 NO APLICA (D-E):
+    /// filosofia es corporativa (sin area_id) → el JefeArea lee la filosofía completa.
+    /// Defensivo D-H: si no existe fila → 200 con Id=Guid.Empty, Vision/Mision="", UpdatedBy/UpdatedAt=null.</summary>
+    [HttpGet("{cicloId:guid}/filosofia")]
+    [Authorize(Roles = "AdminTenant,Gerente,JefeArea")]
+    [ProducesResponseType(typeof(ApiResponse<FilosofiaResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ObtenerFilosofia(Guid cicloId, CancellationToken ct = default)
+    {
+        var data = await _filosofiaService.ObtenerAsync(cicloId, ct);
+        return Ok(new ApiResponse<FilosofiaResponse> { Success = true, Data = data });
+    }
+
+    /// <summary>PUT /api/v1/ciclos/{cicloId}/filosofia — Registra/edita Visión y Misión (HU-011 §2;
+    /// solo Gerente, D-A). 422 si el ciclo está Cerrado (RC-12), el texto visible queda vacío (CA #2)
+    /// o excede 5000 caracteres. UPSERT (DB-06): crea la fila en el primer guardado (D-B).</summary>
+    [HttpPut("{cicloId:guid}/filosofia")]
+    [Authorize(Roles = "Gerente")]
+    [ProducesResponseType(typeof(ApiResponse<FilosofiaResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ActualizarFilosofia(Guid cicloId, [FromBody] FilosofiaUpdateRequest request, CancellationToken ct = default)
+    {
+        var data = await _filosofiaService.ActualizarAsync(cicloId, request, ct);
+        return Ok(new ApiResponse<FilosofiaResponse> { Success = true, Message = "Visión y Misión actualizadas", Data = data });
     }
 
     /// <summary>POST /api/v1/ciclos/{id}/clonar — Clona el ciclo origen: nuevo en Borrador + umbrales
