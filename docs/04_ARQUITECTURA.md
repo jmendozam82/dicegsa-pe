@@ -110,7 +110,7 @@ PE-GOL.sln
 │   │   │   ├── CAPEXController.cs
 │   │   │   ├── OPEXController.cs
 │   │   │   ├── ReporteController.cs
-│   │   │   ├── DashboardController.cs
+│   │   │   ├── DashboardController.cs   ← [implementado — HU-015, 2026-09-20]
 │   │   │   └── NotificacionController.cs
 │   ├── Middleware/
 │   │   ├── TenantMiddleware.cs       ← inyecta tenant_id en contexto HTTP
@@ -131,7 +131,7 @@ PE-GOL.sln
 │   │   ├── ICAPEXService.cs
 │   │   ├── IOPEXService.cs
 │   │   ├── IReporteService.cs
-│   │   ├── IDashboardService.cs
+│   │   ├── IDashboardService.cs     ← [implementado — HU-015, 2026-09-20]
 │   │   └── INotificacionService.cs
 │   └── Services/
 │       ├── TenantService.cs
@@ -143,7 +143,7 @@ PE-GOL.sln
 │       ├── CAPEXService.cs           ← cálculo desembolsos, status proyecto
 │       ├── OPEXService.cs            ← cálculo memoria de cálculo, variación
 │       ├── ReporteService.cs         ← generación PDF/XLSX
-│       ├── DashboardService.cs       ← agregación de métricas
+│       ├── DashboardService.cs       ← agregación de métricas [implementado — HU-015, 2026-09-20]
 │       └── NotificacionService.cs    ← alertas correo, notificaciones in-app
 │
 ├── PE-GOL.DAL/
@@ -170,7 +170,7 @@ PE-GOL.sln
 │   └── DependencyContainer.cs       ← registro de todos los servicios y repos
 │
 └── PE-GOL.Utility/
-    ├── SemaforoHelper.cs             ← evalúa umbrales, retorna color
+    ├── SemaforoHelper.cs             ← evalúa umbrales, retorna color [implementado — HU-015, 2026-09-20]
     ├── JwtHelper.cs                  ← generación y validación de tokens
     ├── EmailService.cs               ← envío de correos (SMTP / SendGrid)
     ├── StorageHelper.cs              ← URLs firmadas Supabase Storage

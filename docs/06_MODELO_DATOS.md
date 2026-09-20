@@ -669,5 +669,20 @@ GROUP BY co.area_id, co.ciclo_id, co.id, co.nombre;
 
 ---
 
+## 7. Índices adicionales aplicados vía migraciones versionadas (V001-V004)
+
+Los siguientes índices **no forman parte del DDL base** (sección 2): se aplican como **migraciones versionadas** en `db/migrations/` conforme a [DB-02], cada una respaldada por su ADR aprobado. El DDL base de la sección 2 se mantiene intacto; los comentarios inline en cada tabla referencian estos artefactos.
+
+| Índice | Migración | ADR | Definición | Regla que garantiza |
+|--------|-----------|-----|------------|---------------------|
+| `uq_tenant_nombre` | `V001__unique_tenant_nombre.sql` | ADR-001 | `CREATE UNIQUE INDEX uq_tenant_nombre ON tenant (LOWER(nombre));` | HU-001 CA #4 — unicidad case-insensitive de nombre de tenant |
+| `uq_plan_nombre` | `V002__unique_plan_nombre.sql` | ADR-002 | `CREATE UNIQUE INDEX uq_plan_nombre ON plan (LOWER(nombre));` | HU-002 CA #1 — unicidad case-insensitive de nombre de plan |
+| `uq_ciclo_unico_activo` | `V003__unico_ciclo_activo.sql` | ADR-006 | `CREATE UNIQUE INDEX uq_ciclo_unico_activo ON ciclo (tenant_id) WHERE estado = 'Activo';` | RC-01 — máximo 1 ciclo `Activo` por tenant |
+| `uq_area_responsable_unico` | `V004__unico_responsable_area.sql` | ADR-007 | `CREATE UNIQUE INDEX uq_area_responsable_unico ON area (ciclo_id, responsable_id) WHERE responsable_id IS NOT NULL AND activa = TRUE;` | RN-012 — un responsable por área activa por ciclo |
+
+> **Estado de deploy:** las 4 migraciones están **pendientes de aplicar en Supabase** (deploy, junto con la configuración del connection string `service_role` del DAL SaaS — ver `docs/HANDOFF_PE_GOL.md` «Decisiones de Jorge — 2026-09-13», punto 4). El equipo desarrolla contra Postgres 15 local (Docker) con las migraciones aplicadas localmente.
+
+---
+
 *Documento generado el 13/09/2026 · Fase 2 — Modelo de Datos.*
 *Compatible con Supabase PostgreSQL 15 · RLS habilitado en todas las tablas de negocio.*

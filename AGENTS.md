@@ -1,6 +1,7 @@
 # AGENTS.md — Constitución del Proyecto PE-GOL SaaS
 > Este archivo es la fuente de verdad del proyecto. Todo agente, spec, ADR y plan debe leerlo antes de actuar.
-> Versión: 1.15 · Fecha: 2026-09-20 · Autor: Jorge (Dicegsa)
+> Versión: 1.16 · Fecha: 2026-09-20 · Autor: Jorge (Dicegsa)
+> v1.16 (2026-09-20): tabla de estado actualizada tras implementar HU-015 (Tablero de Inicio Jefe de Área) — Sprint 2 completado (8/8 HU).
 > v1.15 (2026-09-20): tabla de estado actualizada tras implementar HU-014 (Objetivos de Área por Trimestre en Pilares) — Sprint 2 en curso (7/8 HU).
 > v1.14 (2026-09-20): tabla de estado actualizada tras implementar HU-013 (CRUD de Pilares Estratégicos) — Sprint 2 en curso (6/8 HU).
 > v1.13 (2026-09-20): tabla de estado actualizada tras implementar HU-012 (Gestión de Valores Corporativos) — Sprint 2 en curso (5/8 HU).
@@ -213,7 +214,7 @@ dicegsa-pe/
 | **AGENTS.md** | Este archivo | ✅ Completo |
 | Agentes | `agents/*.md` | ✅ Completo |
 | Specs Sprint 1 | `specs/sprint-01/*.spec.md` | ✅ Completo — HU-001, HU-002, HU-003, HU-004, HU-006, HU-007 y HU-008 Implementadas (Sprint 1 sin pendientes) |
-| Specs Sprint 2 | `specs/sprint-02/*.spec.md` | 🔄 En curso — HU-005, HU-009, HU-010, HU-011, HU-012, HU-013 y HU-014 Implementadas (Sprint 2: 7/8 HU) |
+| Specs Sprint 2 | `specs/sprint-02/*.spec.md` | ✅ Completo — HU-005, HU-009..HU-015 Implementadas (Sprint 2: 8/8 HU — Sprint 2 sin pendientes) |
 | Implementación | Código fuente | ⏳ Pendiente |
 
 ---
@@ -231,7 +232,8 @@ dicegsa-pe/
 
 ---
 
-*AGENTS.md — Constitución PE-GOL SaaS · Versión 1.15 · 2026-09-20*
+*AGENTS.md — Constitución PE-GOL SaaS · Versión 1.16 · 2026-09-20*
+*v1.16 (2026-09-20): tabla de estado actualizada tras implementar HU-015 (Tablero de Inicio Jefe de Área) — Sprint 2 completado (8/8 HU).*
 *v1.15 (2026-09-20): tabla de estado actualizada tras implementar HU-014 (Objetivos de Área por Trimestre en Pilares) — Sprint 2 en curso (7/8 HU).*
 *v1.14 (2026-09-20): tabla de estado actualizada tras implementar HU-013 (CRUD de Pilares Estratégicos) — Sprint 2 en curso (6/8 HU).*
 *v1.13 (2026-09-20): tabla de estado actualizada tras implementar HU-012 (Gestión de Valores Corporativos) — Sprint 2 en curso (5/8 HU).*

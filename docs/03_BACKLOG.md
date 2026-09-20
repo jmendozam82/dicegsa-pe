@@ -313,7 +313,7 @@
 - [ ] Acceso directo desde el tablero a: mis Objetivos CG, Plan de Acción, OKRs, CAPEX, OPEX
 - [ ] El tablero solo muestra datos del ciclo activo
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 4
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 2
 
 ---
 

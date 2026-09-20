@@ -386,6 +386,26 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
+## HU-015 · Tablero de Inicio del Jefe de Área — CERRADA
+
+**Fecha de cierre:** 2026-09-20 · **Cerrada por:** @Documenter (LOOP-05) · **Spec:** `specs/sprint-02/HU-015.spec.md` → `Implementado`
+
+**Entregado (100% backend — misma decisión de UI diferida de HU-006..HU-014):** endpoint `GET /api/v1/dashboard/jefe-area` (solo `JefeArea`, ruta standalone F6, sin body/query params SEC-06); `DashboardService`/`IDashboardService` (BLL, D12 rol 403 → tenant 404 → DAL-D1 ciclo activo CA #4 → AreaId SEC-07 → DAL-A2 área → DAL-C10 umbrales con defaults 0.90/0.70 → DAL-D3/D4/D5 → atrasadas RN-017 regla 4 recalculadas en BLL D-D → semáforos D-E con `SemaforoHelper`); `SemaforoHelper` en `PE-GOL.Utility/Helpers/` (puro, D-I, reutilizable HU-016/017/024/038/039); DAL-D1/D3/D4/D5 en `CicloRepository` (agregado Ciclo, D-K, SEC-07 `AND area_id`); `DashboardController` (Swagger completo); 6 DTOs en `PE-GOL.DTO/Responses/Dashboard/`; registro IOC. 100% backend — vista Razor diferida a HU-045+ (Sprint 3, `.kpi-card` DS § 6.1).
+
+**Verificación:** build 0/0 · tests **422/422** (25 HU-015 + 397 regresión) · cobertura BLL **88.9%** (≥ 70%, TEST-02 — mejora el 88.66% de HU-014; `DashboardService` 85.71%) · **sin ADR nuevo ni migración** (`SemaforoHelper` es código propio pre-documentado en `04_ARQUITECTURA.md` L173; ARCH-01 intacto).
+
+**Flags resueltos por Jorge (2026-09-20):** los 8 — (1) F1 backend-only confirmado; (2) F2 promedio numérico vs umbrales KPI; (3) F3 solo JefeArea; (4) F4 atrasadas recalculadas en BLL; (5) F5 vacío → "Rojo" fórmula pura; (6) F6 ruta standalone; (7) F7 Sprint 2 según planning; (8) F8 TenantContext sin CicloId no se corrige.
+
+**Hallazgos documentados (para @Orquestador):**
+1. **Semántica `DiasAlVencimientoMasCercano` fijada por tests 10/11/12/17 y confirmada por Jorge (2026-09-20):** *"mínimo sobre pendientes futuras; si todas vencidas, máximo fecha de vencimiento (más reciente) como días negativos; null si sin pendientes"* — la fórmula literal del spec (`min` sobre todas las pendientes) quedó reemplazada.
+2. **Discrepancia de backlog corregida:** HU-015 figuraba con "Sprint: 4" en su encabezado (`03_BACKLOG.md` L316) pero la tabla de Sprint Planning la asigna al Sprint 2 (L900) — corregido a "Sprint: 2" al cierre (mismo patrón que HU-011 L238, HU-012 L254, HU-013 L278 y HU-014 L293).
+3. **H1:** `TenantContext` sin `CicloId` (discrepancia con `04_ARQUITECTURA.md` § 4.2) — no corregido; DAL-D1 resuelve el ciclo activo (F8).
+4. **H2:** `DashboardController`/`DashboardService`/`SemaforoHelper` creados completando `04_ARQUITECTURA.md` L113/L134/L146/L173.
+
+**Siguientes dependencias:** **HU-016 (Tablero de Inicio Gerente, Sprint 3)** — el `DashboardController` puede albergar su endpoint sin romper contratos; `SemaforoHelper` reutilizable; la vista Razor del tablero JEF se planifica con el cimiento de frontend (HU-045+, Sprint 3).
+
+---
+
 ## Decisiones de Jorge — 2026-09-13 (resuelven flags del Sprint 1)
 
 **Contexto:** Jorge resolvió los 5 puntos bloqueantes del Sprint 1 señalados como flags en la sección HU-002. Ninguna decisión obliga a cambios de esquema ni de seed; la única pieza nueva es el **ADR-003** (aplicable a partir de HU-003).
@@ -398,5 +418,5 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-20 (cierre HU-014 — Sprint 2 en curso, 7/8 HU) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Sprint 2 — Continuación del Loop con HU-015 (Tablero de Inicio Jefe de Área · @Orquestador)*
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-20 (cierre HU-015 — Sprint 2 completado, 8/8 HU) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Sprint 3 — Inicio del Loop con HU-016 (Tablero de Inicio Gerente · @Orquestador)*
