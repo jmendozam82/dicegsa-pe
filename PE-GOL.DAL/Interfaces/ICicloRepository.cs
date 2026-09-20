@@ -152,6 +152,15 @@ public interface ICicloRepository
     /// default en CrearAsync). Retorna filas afectadas.</summary>
     Task<int> UpsertFilosofiaAsync(FilosofiaUpsertDto dto, IDbTransaction? tx = null, CancellationToken ct = default);
 
+    /// <summary>DAL-F3 (HU-012) · UPSERT valores corporativos: INSERT ... ON CONFLICT
+    /// (tenant_id, ciclo_id) DO UPDATE (target = UNIQUE del DDL L173; DB-06, D-B). El INSERT
+    /// inicial crea la fila con vision=''/mision='' (el GER puede registrar valores sin haber
+    /// escrito visión/misión aún); el branch DO UPDATE SOLO toca valores/updated_by/updated_at —
+    /// NO pisa vision/mision (D-B). @Valores es un string JSON serializado por la BLL con cast
+    /// ::jsonb (SEC-05: parametrizado, sin concatenación). SEC-07 NO APLICA (D-E): filosofia es
+    /// corporativa (sin area_id) → sin AND area_id. Retorna filas afectadas.</summary>
+    Task<int> UpsertFilosofiaValoresAsync(FilosofiaValoresUpsertDto dto, IDbTransaction? tx = null, CancellationToken ct = default);
+
     /// <summary>Abre una conexión gestionada por el repositorio e inicia una transacción IDbTransaction (mismo patrón que ITenantRepository).</summary>
     Task<IDbTransaction> BeginTransactionAsync(CancellationToken ct = default);
 }

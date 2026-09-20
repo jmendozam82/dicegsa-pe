@@ -155,6 +155,28 @@ public class CicloController : ControllerBase
         return Ok(new ApiResponse<FilosofiaResponse> { Success = true, Message = "Visión y Misión actualizadas", Data = data });
     }
 
+    /// <summary>PUT /api/v1/ciclos/{cicloId}/filosofia/valores — Registra/ordena/elimina los
+    /// Valores Corporativos del ciclo (HU-012; solo Gerente, RN-006/D12). Body: lista YA ordenada
+    /// (D-C — el orden del array es el orden final). 422: ciclo Cerrado (RC-12), 0 valores, >15
+    /// valores, valor vacío tras trim, valor >100 chars o duplicados case-insensitive (CA #4).
+    /// UPSERT (DB-06, D-B): crea la fila en el primer guardado con vision=''/mision='' y solo
+    /// actualiza valores/updated_by/updated_at (no pisa vision/mision). SEC-07 NO APLICA (D-E):
+    /// filosofia es corporativa (sin area_id) → sin AND area_id.</summary>
+    [HttpPut("{cicloId:guid}/filosofia/valores")]
+    [Authorize(Roles = "Gerente")]
+    [ProducesResponseType(typeof(ApiResponse<FilosofiaResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ActualizarValores(Guid cicloId, [FromBody] ValoresUpdateRequest request, CancellationToken ct = default)
+    {
+        var data = await _filosofiaService.ActualizarValoresAsync(cicloId, request, ct);
+        return Ok(new ApiResponse<FilosofiaResponse> { Success = true, Message = "Valores corporativos actualizados", Data = data });
+    }
+
     /// <summary>POST /api/v1/ciclos/{id}/clonar — Clona el ciclo origen: nuevo en Borrador + umbrales
     /// copiados (D-B, CA #5 parcial; solo AdminTenant). Áreas/responsables se difieren a HU-009/HU-010.</summary>
     [HttpPost("{id:guid}/clonar")]

@@ -746,4 +746,35 @@ public sealed class CicloRepository : ICicloRepository, IDisposable
         var cmd = new CommandDefinition(sql, dto, cancellationToken: ct);
         return await conn.ExecuteAsync(cmd);
     }
+
+    /// <summary>DAL-F3 (HU-012) · UPSERT valores corporativos: INSERT ... ON CONFLICT
+    /// (tenant_id, ciclo_id) DO UPDATE (target = UNIQUE del DDL L173; DB-06, D-B). El INSERT
+    /// inicial crea la fila con vision=''/mision='' (el GER puede registrar valores sin haber
+    /// escrito visión/misión aún); el branch DO UPDATE SOLO toca valores/updated_by/updated_at —
+    /// NO pisa vision/mision (D-B). @Valores es un string JSON serializado por la BLL con cast
+    /// ::jsonb (SEC-05: parametrizado, sin concatenación). SEC-07 NO APLICA (D-E): filosofia es
+    /// corporativa (sin area_id; RLS solo por tenant — 06 L561) → sin AND area_id para ningún rol.
+    /// Retorna filas afectadas.</summary>
+    public async Task<int> UpsertFilosofiaValoresAsync(FilosofiaValoresUpsertDto dto, IDbTransaction? tx = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO filosofia (tenant_id, ciclo_id, vision, mision, valores, updated_by, updated_at)
+            VALUES (@TenantId, @CicloId, '', '', @Valores::jsonb, @UpdatedBy, NOW())
+            ON CONFLICT (tenant_id, ciclo_id) DO UPDATE
+            SET valores     = EXCLUDED.valores,
+                updated_by  = EXCLUDED.updated_by,
+                updated_at  = NOW()
+            RETURNING id, updated_at;";
+
+        if (tx is not null)
+        {
+            var cmdTx = new CommandDefinition(sql, dto, tx, cancellationToken: ct);
+            return await tx.Connection!.ExecuteAsync(cmdTx);
+        }
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, dto, cancellationToken: ct);
+        return await conn.ExecuteAsync(cmd);
+    }
 }
