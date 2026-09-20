@@ -324,6 +324,26 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
+## HU-012 · Gestión de Valores Corporativos — CERRADA
+
+**Fecha de cierre:** 2026-09-20 · **Cerrada por:** @Documenter (LOOP-05) · **Spec:** `specs/sprint-02/HU-012.spec.md` → `Implementado`
+
+**Entregado (100% backend — misma decisión de UI diferida de HU-006/HU-007/HU-008/HU-009/HU-010/HU-011):** endpoint nuevo `PUT /api/v1/ciclos/{cicloId}/filosofia/valores` (solo `Gerente`, RN-006; UPSERT `ON CONFLICT (tenant_id, ciclo_id) DO UPDATE` DB-06 que **solo toca `valores`/`updated_by`/`updated_at`**, sin pisar vision/mision; 422 en ciclo `Cerrado` RC-12, 0 valores, >15, valor vacío tras trim, >100 chars, duplicados case-insensitive — CA #4); `GET /api/v1/ciclos/{cicloId}/filosofia` **extendido aditivamente** con `Valores` (`List<string>`, parseo del JSONB en `MapToResponse`; `[]` defensivo si no existe fila — D-H); `FilosofiaService.ActualizarValoresAsync` (extensión de `IFilosofiaService`/`FilosofiaService`, ctor D13 intacto); DAL-F3 `UpsertFilosofiaValoresAsync` en `CicloRepository` (extensión del agregado Ciclo, D-I); auditoría ADR-003 (UPDATE, entidad `Filosofia`, snapshot `{"valores":[...]}`, `valor_anterior = null` en primer guardado — D-D); `ValoresUpdateRequestValidator` (FluentValidation); DTOs (`ValoresUpdateRequest`/`FilosofiaValoresUpsertDto`/`FilosofiaResponse` aditivo); registro IOC.
+
+**Verificación:** build 0/0 · tests **347/347** (18 HU-012 + 329 regresión/contrato HU-001..HU-011) · cobertura BLL **88.6%** (≥ 70%, TEST-02) · commit `727386c` `[HU-012] feat: gestión de valores corporativos (API+BLL+DAL+DTO+Validators)` · **sin ADR nuevo ni migración** (la columna `valores` JSONB ya existía en el DDL con `DEFAULT '[]'` y el `UNIQUE (tenant_id, ciclo_id)` sirve de target del `ON CONFLICT` — confirmado por @Arquitecto).
+
+**Flags resueltos por Jorge en la aprobación del spec (2026-09-20):** los 7 — (1) endpoints aditivos (contrato HU-011 intacto); (2) orden = índice del array JSONB, sin columna `orden`; (3) validaciones CA #4 (min 1, max 15, trim, 100 chars, sin duplicados case-insensitive); (4) auditoría solo del array `valores` como `{"valores":[...]}`; (5) PUT solo GER, GET multi-rol ADM/GER/JEF, SEC-07 no aplica; (6) PUT en Borrador/Activo, bloqueado en Cerrado (RC-12); (7) activación NO exige ≥1 valor (el "mínimo 1" aplica solo al guardar).
+
+**Hallazgos documentados (para @Orquestador):**
+1. **Contrato HU-011 intacto (verificado):** `FilosofiaUpdateRequest` sin cambios · `PUT /filosofia` sin cambios · `FilosofiaResponse` solo aditivo (campo `Valores`) — los 329 tests de regresión HU-001..HU-011 en verde lo confirman.
+2. **Fix sintáctico CS0854 en tests de @QA (validado, no bloqueante):** 4 ocurrencias de `Deserialize(..., (JsonSerializerOptions?)null)` en `FilosofiaServiceTests.cs` corregidas por @BackendDev — puramente sintáctico (sobrecarga de `JsonSerializer.Deserialize`), **sin cambio de contrato ni de comportamiento**.
+3. **Cobertura de `FilosofiaService` en 83.2%** (por debajo del promedio BLL 88.6%) por caminos de error fuera del alcance del spec (UPSERT 0 filas, 23505, catch general, JSON inválido). @QA recomienda **4 tests suplementarios** para el próximo ciclo (no bloqueantes): `ActualizarValores_UpsertCeroFilas_LanzaInvalidOperation`, `ActualizarValores_23505_LanzaValidacion`, `ActualizarValores_CatchGeneral_Rethrow`, `Obtener_JsonInvalido_RetornaListaVacia`.
+4. **SEC-07 NO APLICA** (D-E): `filosofia` es corporativa — sin `area_id`, RLS `filosofia_policy` solo por tenant. Verificado en DAL-F3 (sin `AND area_id` para ningún rol).
+
+**Siguientes dependencias:** **HU-013 (CRUD Pilares Estratégicos, Sprint 2)** — nueva tabla `pilar` (EP-04); la UI de Visión/Misión/Valores se planificará con el cimiento de frontend (HU-045+).
+
+---
+
 ## Decisiones de Jorge — 2026-09-13 (resuelven flags del Sprint 1)
 
 **Contexto:** Jorge resolvió los 5 puntos bloqueantes del Sprint 1 señalados como flags en la sección HU-002. Ninguna decisión obliga a cambios de esquema ni de seed; la única pieza nueva es el **ADR-003** (aplicable a partir de HU-003).
@@ -336,5 +356,5 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-20 (cierre HU-011 — Sprint 2 en curso, 4/8 HU) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Sprint 2 — Continuación del Loop con HU-012 (Valores Corporativos · @Orquestador)*
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-20 (cierre HU-012 — Sprint 2 en curso, 5/8 HU) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Sprint 2 — Continuación del Loop con HU-013 (CRUD Pilares Estratégicos · @Orquestador)*

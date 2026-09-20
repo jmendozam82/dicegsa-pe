@@ -251,7 +251,7 @@
 - [ ] Mínimo 1 valor requerido; máximo 15
 - [ ] Visualización en modo lectura para Jefes de Área
 
-**Pts:** 3 · **Prioridad:** Alta · **Sprint:** 3
+**Pts:** 3 · **Prioridad:** Alta · **Sprint:** 2
 
 ---
 
