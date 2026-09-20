@@ -344,6 +344,27 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
+## HU-013 · CRUD de Pilares Estratégicos — CERRADA
+
+**Fecha de cierre:** 2026-09-20 · **Cerrada por:** @Documenter (LOOP-05) · **Spec:** `specs/sprint-02/HU-013.spec.md` → `Implementado`
+
+**Entregado (100% backend — misma decisión de UI diferida de HU-006..HU-012):** 5 endpoints `/api/v1/ciclos/{cicloId}/pilares` — GET listado (multi-rol `AdminTenant,Gerente,JefeArea`, conteos CG/OKRs CA #5, `ORDER BY orden ASC, codigo ASC`) · GET detalle (multi-rol, conteos) · POST (solo `Gerente`, RN-006; código PEC-N auto-generado CA #1, máx 8 CA #2, 422 RC-12) · PUT (solo `Gerente`; código NO editable) · DELETE (solo `Gerente`; DELETE físico D-A, validación de dependencias CA #3 DAL-P9 + capa 2 FK 23503 → 422); `PilarService`/`IPilarService` (BLL, ctor D13 + overload `ILogger<PilarService>?`); DAL-P1..P9 en `CicloRepository` (extensión del agregado Ciclo, D-I); `PilarEntity` en `PE-GOL.Entity/Estrategia/`; 8 DTOs (`PilarCreateRequest`/`PilarUpdateRequest`/`PilarResponse`/`PilarInsertDto`/`PilarUpdateDto`/`SiguienteSecuenciaPilarDto`/`PilarConteosDto`/`PilarDependenciasDto`); 2 validators FluentValidation (`PilarCreateRequestValidator`/`PilarUpdateRequestValidator`); registro IOC; auditoría ADR-003 (CREATE/UPDATE/DELETE, entidad `Pilar`, snapshot `{"codigo","nombre","estrategia_victoria","orden"}` — D-K).
+
+**Verificación:** build 0/0 · tests **381/381** (34 HU-013 + 347 regresión/contrato HU-001..HU-012) · cobertura BLL **88.68%** (≥ 70%, TEST-02 — mejora el 88.6% de HU-012) · **sin ADR nuevo ni migración** (la tabla `pilar` ya existía en el DDL con `UNIQUE (ciclo_id, codigo)` y RLS `pilar_policy`; sin librería externa, sin proyecto nuevo — ARCH-01 intacto; el patrón 23505/23503 → 422 ya está en ADR-007/HU-002 — confirmado por @Arquitecto).
+
+**Flags resueltos por Jorge en la aprobación del spec (2026-09-20):** los 8 — (1) DELETE físico (sin columna `activa`, validación BLL + FK 23503 como capa 2); (2) código PEC-N auto-generado secuencial por ciclo sin padding, capa 2 `UNIQUE (ciclo_id, codigo)` 23505 → 422; (3) máximo 8 pilares por ciclo en BLL con carrera TOCTOU aceptada; (4) límite 2000 chars para `estrategia_victoria`; (5) POST/PUT/DELETE solo GER, GET multi-rol ADM/GER/JEF, SEC-07 NO APLICA; (6) escritura en Borrador/Activo, bloqueada en Cerrado (RC-12); (7) `orden` opcional con default secuencial, sin endpoint de reordenación masiva; (8) auditoría solo del alcance HU-013 (sin `objetivo_q1..q4`).
+
+**Hallazgos documentados (para @Orquestador):**
+1. **Discrepancia de backlog corregida:** HU-013 figuraba con "Sprint: 3" en su encabezado (`03_BACKLOG.md` L278) pero la tabla de Sprint Planning la asigna al Sprint 2 (L898) — corregido a "Sprint: 2" al cierre (mismo patrón que HU-011 L238 y HU-012 L254).
+2. **FK 23503 como capa 2 del CA #3:** `objetivo_cg.pilar_id` (L220) y `okr.pilar_id` (L238) son `UUID NOT NULL REFERENCES pilar(id)` **sin `ON DELETE CASCADE`** → el DELETE físico de un pilar con dependencias falla en BD con `foreign_key_violation` (23503) → 422 amigable (patrón ADR-007 extendido a 23503, precedente HU-002 D2). La BLL DAL-P9 es la capa 1 con mensaje específico.
+3. **Carrera TOCTOU en CA #2 (máximo 8) aceptada:** sin constraint BD viable (DB-04 prohíbe triggers; un CHECK no puede contar filas), dos GER creando en paralelo pueden superar el límite (peor caso: 9 pilares). Aceptada como limitación documentada — regla de negocio blanda, impacto mínimo.
+4. **`objetivo_q1..q4` fuera de alcance (explícito):** las columnas existen en el DDL (L183-186) pero pertenecen a HU-014. HU-013 no las lee, no las escribe, no las expone en DTOs/entidad/snapshot de auditoría. HU-014 las añadirá aditivamente sin romper este contrato.
+5. **SEC-07 NO APLICA** (D-E): `pilar` es corporativa — sin `area_id`, RLS `pilar_policy` solo por tenant. El JEF lee **todos** los pilares del ciclo (RN-007: solo lectura). Verificado en DAL-P1..P9 (sin `AND area_id` para ningún rol).
+
+**Siguientes dependencias:** **HU-014 (Objetivos de Área por Trimestre en Pilares, Sprint 2)** — usará las columnas `objetivo_q1..q4` de la **misma tabla `pilar`** (ya existen en el DDL, L183-186, intocadas por HU-013); la UI de Pilares se planificará con el cimiento de frontend (HU-045+).
+
+---
+
 ## Decisiones de Jorge — 2026-09-13 (resuelven flags del Sprint 1)
 
 **Contexto:** Jorge resolvió los 5 puntos bloqueantes del Sprint 1 señalados como flags en la sección HU-002. Ninguna decisión obliga a cambios de esquema ni de seed; la única pieza nueva es el **ADR-003** (aplicable a partir de HU-003).
@@ -356,5 +377,5 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-20 (cierre HU-012 — Sprint 2 en curso, 5/8 HU) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Sprint 2 — Continuación del Loop con HU-013 (CRUD Pilares Estratégicos · @Orquestador)*
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-20 (cierre HU-013 — Sprint 2 en curso, 6/8 HU) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Sprint 2 — Continuación del Loop con HU-014 (Objetivos de Área por Trimestre en Pilares · @Orquestador)*

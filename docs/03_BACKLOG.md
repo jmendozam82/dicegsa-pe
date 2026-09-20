@@ -275,7 +275,7 @@
 - [ ] Visualización de pilares en modo lectura para Jefes de Área
 - [ ] Listado con indicador de cuántos CG y OKRs tiene cada pilar
 
-**Pts:** 3 · **Prioridad:** Alta · **Sprint:** 3
+**Pts:** 3 · **Prioridad:** Alta · **Sprint:** 2
 
 ---
 
