@@ -25,15 +25,17 @@ public class CicloController : ControllerBase
     private readonly IAreaService _areaService; // HU-009: áreas estratégicas (hijos del agregado Ciclo, D-I)
     private readonly IResponsableService _responsableService; // HU-010: responsables (hijos del agregado Ciclo, D-I)
     private readonly IFilosofiaService _filosofiaService; // HU-011: visión y misión (hija del agregado Ciclo, D-I)
+    private readonly IPilarService _pilarService; // HU-013: pilares estratégicos (hijos del agregado Ciclo, D-I)
 
     public CicloController(
         ICicloService service, IAreaService areaService, IResponsableService responsableService,
-        IFilosofiaService filosofiaService)
+        IFilosofiaService filosofiaService, IPilarService pilarService)
     {
         _service = service;
         _areaService = areaService;
         _responsableService = responsableService;
         _filosofiaService = filosofiaService;
+        _pilarService = pilarService;
     }
 
     /// <summary>GET /api/v1/ciclos — Listado del tenant ordenado por año fiscal DESC (sin paginación, D3).</summary>
@@ -443,5 +445,106 @@ public class CicloController : ControllerBase
     {
         var data = await _responsableService.DesactivarAsync(cicloId, responsableId, ct);
         return Ok(new ApiResponse<ResponsableResponse> { Success = true, Message = "Responsable desactivado", Data = data });
+    }
+
+    // ─── HU-013 · Pilares Estratégicos (Spec HU-013 § Endpoints) ─────────────
+    // Recurso hijo del agregado Ciclo (D-I): rutas anidadas bajo /api/v1/ciclos/{cicloId}/pilares.
+    // Roles (D-G): GET multi-rol de lectura (AdminTenant/Gerente/JefeArea — CA #4; JefeArea ve
+    // TODOS los pilares, SEC-07 NO APLICA, D-E) · POST/PUT/DELETE solo Gerente (RN-006, D12).
+    // El tenant_id se resuelve SIEMPRE del TenantContext (SEC-06) — nunca del body ni del query.
+    // Respuestas SIEMPRE con el wrapper ApiResponse<T> (ARCH-07).
+    // Nota de ruteo: 'pilares' (segmento literal) no colisiona con 'filosofia',
+    // 'areas/{areaId:guid}' ni 'responsables/{responsableId:guid}' (constraints :guid).
+
+    /// <summary>GET /api/v1/ciclos/{cicloId}/pilares — Listado de pilares del ciclo con conteos de
+    /// CG y OKRs (CA #5, RF-017), ORDER BY orden ASC, codigo ASC. JefeArea: ve TODOS los pilares
+    /// (SEC-07 NO APLICA, D-E). 404 si el ciclo no existe/pertenece a otro tenant/sin tenant.</summary>
+    [HttpGet("{cicloId:guid}/pilares")]
+    [Authorize(Roles = "AdminTenant,Gerente,JefeArea")]
+    [ProducesResponseType(typeof(ApiResponse<List<PilarResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ListarPilares(Guid cicloId, CancellationToken ct = default)
+    {
+        var data = await _pilarService.ListarAsync(cicloId, ct);
+        return Ok(new ApiResponse<List<PilarResponse>> { Success = true, Data = data });
+    }
+
+    /// <summary>GET /api/v1/ciclos/{cicloId}/pilares/{pilarId} — Detalle de un pilar con conteos
+    /// (CA #5). 404 si el ciclo/pilar no existe o es de otro tenant (sin fuga).</summary>
+    [HttpGet("{cicloId:guid}/pilares/{pilarId:guid}")]
+    [Authorize(Roles = "AdminTenant,Gerente,JefeArea")]
+    [ProducesResponseType(typeof(ApiResponse<PilarResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ObtenerPilar(Guid cicloId, Guid pilarId, CancellationToken ct = default)
+    {
+        var data = await _pilarService.ObtenerAsync(cicloId, pilarId, ct);
+        return Ok(new ApiResponse<PilarResponse> { Success = true, Data = data });
+    }
+
+    /// <summary>POST /api/v1/ciclos/{cicloId}/pilares — Crea un pilar (CA #1, RF-015, RN-006;
+    /// solo Gerente). El código PEC-N se auto-genera en BLL (CA #1, D-B) — el request NO lo incluye.
+    /// 201 con el pilar creado. 403 rol ≠ GER (D12) · 404 ciclo inexistente/otro tenant/sin tenant ·
+    /// 422: ciclo Cerrado (RC-12), nombre vacío/&gt;150, estrategia &gt;2000, orden negativo, ya hay
+    /// 8 pilares (CA #2) o colisión de código PEC-N por concurrencia (23505 → 422, ADR-007).</summary>
+    [HttpPost("{cicloId:guid}/pilares")]
+    [Authorize(Roles = "Gerente")]
+    [ProducesResponseType(typeof(ApiResponse<PilarResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CrearPilar(Guid cicloId, [FromBody] PilarCreateRequest request, CancellationToken ct = default)
+    {
+        var data = await _pilarService.CrearAsync(cicloId, request, ct);
+        return StatusCode(StatusCodes.Status201Created,
+            new ApiResponse<PilarResponse> { Success = true, Message = "Pilar creado", Data = data });
+    }
+
+    /// <summary>PUT /api/v1/ciclos/{cicloId}/pilares/{pilarId} — Edita nombre, estrategia de victoria
+    /// y orden (RF-015, RN-006; solo Gerente). El código NO es editable (auto-generado, CA #1).
+    /// 200 con el pilar actualizado. 403 · 404 · 422 con las mismas reglas que POST (RC-12, nombre,
+    /// estrategia, orden).</summary>
+    [HttpPut("{cicloId:guid}/pilares/{pilarId:guid}")]
+    [Authorize(Roles = "Gerente")]
+    [ProducesResponseType(typeof(ApiResponse<PilarResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ActualizarPilar(Guid cicloId, Guid pilarId, [FromBody] PilarUpdateRequest request, CancellationToken ct = default)
+    {
+        var data = await _pilarService.ActualizarAsync(cicloId, pilarId, request, ct);
+        return Ok(new ApiResponse<PilarResponse> { Success = true, Message = "Pilar actualizado", Data = data });
+    }
+
+    /// <summary>DELETE /api/v1/ciclos/{cicloId}/pilares/{pilarId} — Elimina físicamente un pilar
+    /// (RF-015, RN-006; solo Gerente). CA #3: 422 si tiene Objetivos CG u OKRs asociados (validación
+    /// BLL DAL-P9 + red de seguridad FK 23503 → 422). 200 con el snapshot del pilar eliminado
+    /// (conteos 0). 403 · 404 · 422 si: ciclo Cerrado (RC-12), tiene CGs/OKRs (CA #3).</summary>
+    [HttpDelete("{cicloId:guid}/pilares/{pilarId:guid}")]
+    [Authorize(Roles = "Gerente")]
+    [ProducesResponseType(typeof(ApiResponse<PilarResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> EliminarPilar(Guid cicloId, Guid pilarId, CancellationToken ct = default)
+    {
+        var data = await _pilarService.EliminarAsync(cicloId, pilarId, ct);
+        return Ok(new ApiResponse<PilarResponse> { Success = true, Message = "Pilar eliminado", Data = data });
     }
 }

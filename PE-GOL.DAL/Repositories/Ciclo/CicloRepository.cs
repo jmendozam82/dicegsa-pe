@@ -777,4 +777,198 @@ public sealed class CicloRepository : ICicloRepository, IDisposable
         var cmd = new CommandDefinition(sql, dto, cancellationToken: ct);
         return await conn.ExecuteAsync(cmd);
     }
+
+    // ─── HU-013 · Pilares Estratégicos (Spec HU-013 § Queries DAL: DAL-P1 a DAL-P9) ───
+    // Implementación real (fase IMPLEMENT). Los pilares son hijos del agregado Ciclo (D-I):
+    // toda query incluye WHERE tenant_id = @TenantId como primera condición (SEC-06). SEC-07 NO
+    // APLICA (D-E): pilar es corporativa (sin area_id; RLS pilar_policy solo por tenant — 06 L562)
+    // → sin AND area_id para ningún rol (el JEF lee TODOS los pilares del ciclo, RN-007).
+    // Parámetros nombrados (SEC-05) y CancellationToken vía CommandDefinition (forma canónica de
+    // Dapper). Los conteos de DAL-P1/P2 son datos derivados de lectura que NO se persisten (D-D).
+
+    /// <summary>DAL-P1 · SELECT pilares del ciclo con conteos de CG y OKRs (CA #5, D-D — LEFT JOIN
+    /// + COUNT(DISTINCT) evita duplicar filas cuando un pilar tiene CGs y OKRs simultáneamente),
+    /// ORDER BY orden ASC, codigo ASC.</summary>
+    public async Task<IEnumerable<PilarConteosDto>> ListarPilaresConConteosAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT p.id, p.ciclo_id, p.codigo, p.nombre, p.estrategia_victoria, p.orden,
+                   p.created_at, p.updated_at,
+                   COUNT(DISTINCT oc.id) AS total_objetivos_cg,
+                   COUNT(DISTINCT ok.id) AS total_okrs
+            FROM pilar p
+            LEFT JOIN objetivo_cg oc ON oc.pilar_id = p.id
+            LEFT JOIN okr ok ON ok.pilar_id = p.id
+            WHERE p.tenant_id = @TenantId
+              AND p.ciclo_id = @CicloId
+            GROUP BY p.id
+            ORDER BY p.orden ASC, p.codigo ASC;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId, CicloId = cicloId }, cancellationToken: ct);
+        return await conn.QueryAsync<PilarConteosDto>(cmd);
+    }
+
+    /// <summary>DAL-P2 · SELECT pilar por id con conteos (misma query que DAL-P1 + AND p.id = @PilarId).
+    /// Retorna null si no existe o es de otro tenant (sin fuga).</summary>
+    public async Task<PilarConteosDto?> ObtenerPilarConConteosAsync(Guid tenantId, Guid cicloId, Guid pilarId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT p.id, p.ciclo_id, p.codigo, p.nombre, p.estrategia_victoria, p.orden,
+                   p.created_at, p.updated_at,
+                   COUNT(DISTINCT oc.id) AS total_objetivos_cg,
+                   COUNT(DISTINCT ok.id) AS total_okrs
+            FROM pilar p
+            LEFT JOIN objetivo_cg oc ON oc.pilar_id = p.id
+            LEFT JOIN okr ok ON ok.pilar_id = p.id
+            WHERE p.tenant_id = @TenantId
+              AND p.ciclo_id = @CicloId
+              AND p.id = @PilarId
+            GROUP BY p.id
+            ORDER BY p.orden ASC, p.codigo ASC;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql,
+            new { TenantId = tenantId, CicloId = cicloId, PilarId = pilarId },
+            cancellationToken: ct);
+        return await conn.QuerySingleOrDefaultAsync<PilarConteosDto>(cmd);
+    }
+
+    /// <summary>DAL-P3 · SELECT pilar por id SIN conteos (para validaciones/update/delete).
+    /// Retorna null si no existe o es de otro tenant (sin fuga).</summary>
+    public async Task<PilarEntity?> ObtenerPilarAsync(Guid tenantId, Guid cicloId, Guid pilarId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, tenant_id, ciclo_id, codigo, nombre, estrategia_victoria, orden,
+                   created_at, updated_at
+            FROM pilar
+            WHERE tenant_id = @TenantId
+              AND ciclo_id = @CicloId
+              AND id = @PilarId;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql,
+            new { TenantId = tenantId, CicloId = cicloId, PilarId = pilarId },
+            cancellationToken: ct);
+        return await conn.QuerySingleOrDefaultAsync<PilarEntity>(cmd);
+    }
+
+    /// <summary>DAL-P4 · COUNT pilares del ciclo (CA #2 — máximo 8, D-C).</summary>
+    public async Task<int> ContarPilaresDelCicloAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT COUNT(1) FROM pilar
+            WHERE tenant_id = @TenantId
+              AND ciclo_id = @CicloId;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId, CicloId = cicloId }, cancellationToken: ct);
+        return await conn.ExecuteScalarAsync<int>(cmd);
+    }
+
+    /// <summary>DAL-P5 · Siguiente secuencia del ciclo: MAX(regexp_match(codigo,'^PEC-(\d+)$'))+1
+    /// (CA #1, D-B — extrae el N del código PEC-N de forma defensiva, solo filas con formato exacto
+    /// 'PEC-<dígitos>') y MAX(orden)+1 (D-H) — una sola query.</summary>
+    public async Task<SiguienteSecuenciaPilarDto> ObtenerSiguienteSecuenciaPilarAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT COALESCE(MAX((regexp_match(codigo, '^PEC-(\d+)$'))[1]::INT), 0) + 1 AS siguiente_n,
+                   COALESCE(MAX(orden), 0) + 1 AS siguiente_orden
+            FROM pilar
+            WHERE tenant_id = @TenantId
+              AND ciclo_id = @CicloId;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId, CicloId = cicloId }, cancellationToken: ct);
+        return await conn.QuerySingleAsync<SiguienteSecuenciaPilarDto>(cmd);
+    }
+
+    /// <summary>DAL-P6 · INSERT pilar ... RETURNING id. Retorna el nuevo id (null si no insertó).</summary>
+    public async Task<Guid?> InsertarPilarAsync(PilarInsertDto dto, IDbTransaction? tx = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO pilar (tenant_id, ciclo_id, codigo, nombre, estrategia_victoria, orden)
+            VALUES (@TenantId, @CicloId, @Codigo, @Nombre, @EstrategiaVictoria, @Orden)
+            RETURNING id, created_at, updated_at;";
+
+        if (tx is not null)
+        {
+            var cmdTx = new CommandDefinition(sql, dto, tx, cancellationToken: ct);
+            return await tx.Connection!.ExecuteScalarAsync<Guid>(cmdTx);
+        }
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, dto, cancellationToken: ct);
+        return await conn.ExecuteScalarAsync<Guid>(cmd);
+    }
+
+    /// <summary>DAL-P7 · UPDATE pilar (nombre/estrategia_victoria/orden, updated_at = NOW()).
+    /// NO toca codigo (auto-generado, CA #1). Retorna filas afectadas.</summary>
+    public async Task<int> ActualizarPilarAsync(PilarUpdateDto dto, IDbTransaction? tx = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE pilar
+            SET nombre              = @Nombre,
+                estrategia_victoria = @EstrategiaVictoria,
+                orden               = @Orden,
+                updated_at          = NOW()
+            WHERE tenant_id = @TenantId
+              AND ciclo_id = @CicloId
+              AND id = @PilarId
+            RETURNING updated_at;";
+
+        if (tx is not null)
+        {
+            var cmdTx = new CommandDefinition(sql, dto, tx, cancellationToken: ct);
+            return await tx.Connection!.ExecuteAsync(cmdTx);
+        }
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, dto, cancellationToken: ct);
+        return await conn.ExecuteAsync(cmd);
+    }
+
+    /// <summary>DAL-P8 · DELETE físico de pilar (D-A). Retorna filas afectadas.</summary>
+    public async Task<int> EliminarPilarAsync(Guid tenantId, Guid cicloId, Guid pilarId, IDbTransaction? tx = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            DELETE FROM pilar
+            WHERE tenant_id = @TenantId
+              AND ciclo_id = @CicloId
+              AND id = @PilarId;";
+
+        var parametros = new { TenantId = tenantId, CicloId = cicloId, PilarId = pilarId };
+
+        if (tx is not null)
+        {
+            var cmdTx = new CommandDefinition(sql, parametros, tx, cancellationToken: ct);
+            return await tx.Connection!.ExecuteAsync(cmdTx);
+        }
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, parametros, cancellationToken: ct);
+        return await conn.ExecuteAsync(cmd);
+    }
+
+    /// <summary>DAL-P9 · COUNT dependencias del pilar: objetivo_cg y okr por pilar_id (CA #3).
+    /// Subqueries COUNT — la BLL valida > 0 → 422 antes del DELETE (capa 1).</summary>
+    public async Task<PilarDependenciasDto> ContarDependenciasPilarAsync(Guid tenantId, Guid pilarId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT (SELECT COUNT(1) FROM objetivo_cg WHERE tenant_id = @TenantId AND pilar_id = @PilarId) AS total_objetivos_cg,
+                   (SELECT COUNT(1) FROM okr WHERE tenant_id = @TenantId AND pilar_id = @PilarId) AS total_okrs;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId, PilarId = pilarId }, cancellationToken: ct);
+        return await conn.QuerySingleAsync<PilarDependenciasDto>(cmd);
+    }
 }

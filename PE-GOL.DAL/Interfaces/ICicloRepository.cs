@@ -161,6 +161,45 @@ public interface ICicloRepository
     /// corporativa (sin area_id) → sin AND area_id. Retorna filas afectadas.</summary>
     Task<int> UpsertFilosofiaValoresAsync(FilosofiaValoresUpsertDto dto, IDbTransaction? tx = null, CancellationToken ct = default);
 
+    // ─── HU-013 · Pilares Estratégicos (Spec HU-013 § Queries DAL: DAL-P1 a DAL-P9) ───
+    // Los pilares son hijos del agregado Ciclo (D-I): se extiende ICicloRepository, no se crea
+    // repositorio nuevo (mismo criterio que UmbralSemaforo/Area/Responsable/Filosofia). SEC-07 NO
+    // APLICA (D-E): pilar es corporativa (sin area_id; RLS pilar_policy solo por tenant — 06 L562)
+    // → sin AND area_id para ningún rol (el JEF lee TODOS los pilares del ciclo, RN-007).
+    // Toda query incluye WHERE tenant_id = @TenantId como primera condición (SEC-06).
+
+    /// <summary>DAL-P1 · SELECT pilares del ciclo con conteos de CG y OKRs (CA #5, D-D — LEFT JOIN
+    /// + COUNT(DISTINCT)), ORDER BY orden ASC, codigo ASC.</summary>
+    Task<IEnumerable<PilarConteosDto>> ListarPilaresConConteosAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default);
+
+    /// <summary>DAL-P2 · SELECT pilar por id con conteos (misma query que DAL-P1 + AND p.id = @PilarId).
+    /// Retorna null si no existe o es de otro tenant (sin fuga).</summary>
+    Task<PilarConteosDto?> ObtenerPilarConConteosAsync(Guid tenantId, Guid cicloId, Guid pilarId, CancellationToken ct = default);
+
+    /// <summary>DAL-P3 · SELECT pilar por id SIN conteos (para validaciones/update/delete). Retorna
+    /// null si no existe o es de otro tenant (sin fuga).</summary>
+    Task<PilarEntity?> ObtenerPilarAsync(Guid tenantId, Guid cicloId, Guid pilarId, CancellationToken ct = default);
+
+    /// <summary>DAL-P4 · COUNT pilares del ciclo (CA #2 — máximo 8, D-C).</summary>
+    Task<int> ContarPilaresDelCicloAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default);
+
+    /// <summary>DAL-P5 · Siguiente secuencia del ciclo: MAX(regexp_match(codigo,'^PEC-(\d+)$'))+1
+    /// (CA #1, D-B) y MAX(orden)+1 (D-H) — una sola query.</summary>
+    Task<SiguienteSecuenciaPilarDto> ObtenerSiguienteSecuenciaPilarAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default);
+
+    /// <summary>DAL-P6 · INSERT pilar ... RETURNING id. Retorna el nuevo id (null si no insertó).</summary>
+    Task<Guid?> InsertarPilarAsync(PilarInsertDto dto, IDbTransaction? tx = null, CancellationToken ct = default);
+
+    /// <summary>DAL-P7 · UPDATE pilar (nombre/estrategia_victoria/orden, updated_at = NOW()).
+    /// NO toca codigo (auto-generado, CA #1). Retorna filas afectadas.</summary>
+    Task<int> ActualizarPilarAsync(PilarUpdateDto dto, IDbTransaction? tx = null, CancellationToken ct = default);
+
+    /// <summary>DAL-P8 · DELETE físico de pilar (D-A). Retorna filas afectadas.</summary>
+    Task<int> EliminarPilarAsync(Guid tenantId, Guid cicloId, Guid pilarId, IDbTransaction? tx = null, CancellationToken ct = default);
+
+    /// <summary>DAL-P9 · COUNT dependencias del pilar: objetivo_cg y okr por pilar_id (CA #3).</summary>
+    Task<PilarDependenciasDto> ContarDependenciasPilarAsync(Guid tenantId, Guid pilarId, CancellationToken ct = default);
+
     /// <summary>Abre una conexión gestionada por el repositorio e inicia una transacción IDbTransaction (mismo patrón que ITenantRepository).</summary>
     Task<IDbTransaction> BeginTransactionAsync(CancellationToken ct = default);
 }
