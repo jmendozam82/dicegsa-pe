@@ -45,6 +45,15 @@ namespace PE_GOL.Tests;
 /// valor_nuevo=null en DELETE.
 /// SEC-07 NO APLICA (D-E): pilar es corporativa (sin area_id; RLS solo por tenant) → el JEF lee
 /// TODOS los pilares del ciclo (RN-007: solo lectura), sin AND area_id.
+/// HU-014 (2026-09-20): extensión aditiva — 16 casos nuevos (ActualizarObjetivosTrimestrales
+/// + mapeo ObjetivoQ1..Q4 en Listar/Obtener). Contrato DAL-P10 y DTOs nuevos que @BackendDev
+/// debe implementar en fase 4 (rojo esperado por compilación, mismo patrón TDD):
+///   · Task&lt;int&gt; ActualizarObjetivosTrimestralesAsync(PilarObjetivosTrimestralesUpdateDto dto, IDbTransaction? tx = null, CancellationToken ct = default)
+///   · ObjetivosTrimestralesUpdateRequest (Requests) y PilarObjetivosTrimestralesUpdateDto (Dtos) NUEVOS
+///   · PilarEntity/PilarConteosDto/PilarResponse se extienden ADITIVAMENTE con ObjetivoQ1..Q4 (string?)
+///   · IPilarService gana ActualizarObjetivosTrimestralesAsync(Guid cicloId, Guid pilarId, ObjetivosTrimestralesUpdateRequest request, CancellationToken ct = default)
+///   · Auditoría (ADR-003, D-I): UPDATE, entidad "Pilar", snapshot SOLO del alcance HU-014
+///     {"objetivo_q1","objetivo_q2","objetivo_q3","objetivo_q4"} — SnapshotPilar de HU-013 intacto.
 /// </summary>
 public class PilarServiceTests
 {
@@ -94,7 +103,8 @@ public class PilarServiceTests
     private static PilarConteosDto CrearPilarConteos(
         Guid? id = null, Guid? cicloId = null, string codigo = "PEC-1", string nombre = "Crecimiento",
         string? estrategiaVictoria = null, int orden = 1, int totalObjetivosCg = 0, int totalOkrs = 0,
-        DateTimeOffset? createdAt = null, DateTimeOffset? updatedAt = null)
+        DateTimeOffset? createdAt = null, DateTimeOffset? updatedAt = null,
+        string? objetivoQ1 = null, string? objetivoQ2 = null, string? objetivoQ3 = null, string? objetivoQ4 = null)
         => new()
         {
             Id = id ?? Guid.NewGuid(),
@@ -102,6 +112,10 @@ public class PilarServiceTests
             Codigo = codigo,
             Nombre = nombre,
             EstrategiaVictoria = estrategiaVictoria,
+            ObjetivoQ1 = objetivoQ1,
+            ObjetivoQ2 = objetivoQ2,
+            ObjetivoQ3 = objetivoQ3,
+            ObjetivoQ4 = objetivoQ4,
             Orden = orden,
             TotalObjetivosCg = totalObjetivosCg,
             TotalOkrs = totalOkrs,
@@ -113,7 +127,8 @@ public class PilarServiceTests
     private static PilarEntity CrearPilarEntity(
         Guid? id = null, Guid? tenantId = null, Guid? cicloId = null, string codigo = "PEC-1",
         string nombre = "Crecimiento", string? estrategiaVictoria = null, int orden = 1,
-        DateTimeOffset? createdAt = null, DateTimeOffset? updatedAt = null)
+        DateTimeOffset? createdAt = null, DateTimeOffset? updatedAt = null,
+        string? objetivoQ1 = null, string? objetivoQ2 = null, string? objetivoQ3 = null, string? objetivoQ4 = null)
         => new()
         {
             Id = id ?? Guid.NewGuid(),
@@ -122,6 +137,10 @@ public class PilarServiceTests
             Codigo = codigo,
             Nombre = nombre,
             EstrategiaVictoria = estrategiaVictoria,
+            ObjetivoQ1 = objetivoQ1,
+            ObjetivoQ2 = objetivoQ2,
+            ObjetivoQ3 = objetivoQ3,
+            ObjetivoQ4 = objetivoQ4,
             Orden = orden,
             CreatedAt = createdAt ?? DateTimeOffset.UtcNow.AddDays(-10),
             UpdatedAt = updatedAt ?? DateTimeOffset.UtcNow
@@ -143,6 +162,18 @@ public class PilarServiceTests
             Nombre = nombre ?? "Crecimiento",
             EstrategiaVictoria = estrategiaVictoria,
             Orden = orden
+        };
+
+    /// <summary>Request de HU-014 (Spec § DTOs): los 4 trimestres son opcionales (CA #2) —
+    /// null o string vacío tras trim se persiste null (D-H).</summary>
+    private static ObjetivosTrimestralesUpdateRequest CrearObjetivosTrimestralesRequest(
+        string? objetivoQ1 = null, string? objetivoQ2 = null, string? objetivoQ3 = null, string? objetivoQ4 = null)
+        => new()
+        {
+            ObjetivoQ1 = objetivoQ1,
+            ObjetivoQ2 = objetivoQ2,
+            ObjetivoQ3 = objetivoQ3,
+            ObjetivoQ4 = objetivoQ4
         };
 
     /// <summary>Configura el flujo feliz de CrearAsync (spec §3): ciclo Borrador (D-F), conteo &lt; 8
@@ -227,6 +258,34 @@ public class PilarServiceTests
         _mockRepo
             .Setup(r => r.InsertLogAsync(It.IsAny<LogAuditoriaInsert>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
+    }
+
+    /// <summary>Configura el flujo feliz de ActualizarObjetivosTrimestralesAsync (Spec HU-014 §3):
+    /// ciclo Borrador (D-F), pilar original (DAL-P3, paso 5), tx con UPDATE de los 4 campos
+    /// (DAL-P10) + auditoría UPDATE (DAL-C11, snapshot del alcance HU-014 — D-I), re-lectura
+    /// post-commit (DAL-P2, paso 10).</summary>
+    private void ConfigurarFlujoFelizActualizarObjetivosTrimestrales(
+        Guid cicloId, Guid tenantId, Guid pilarId, PilarEntity original,
+        PilarConteosDto postCommit, Mock<IDbTransaction>? mockTx = null)
+    {
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+        _mockRepo
+            .Setup(r => r.ObtenerPilarAsync(tenantId, cicloId, pilarId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(original);
+        _mockRepo
+            .Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync((mockTx ?? new Mock<IDbTransaction>()).Object);
+        _mockRepo
+            .Setup(r => r.ActualizarObjetivosTrimestralesAsync(It.IsAny<PilarObjetivosTrimestralesUpdateDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _mockRepo
+            .Setup(r => r.InsertLogAsync(It.IsAny<LogAuditoriaInsert>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _mockRepo
+            .Setup(r => r.ObtenerPilarConConteosAsync(tenantId, cicloId, pilarId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(postCommit);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -1129,5 +1188,504 @@ public class PilarServiceTests
         Assert.Equal(3, resultado.TotalObjetivosCg);
         Assert.Equal(5, resultado.TotalOkrs);
         Assert.Equal(tenantId, resultado.TenantId);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ActualizarObjetivosTrimestrales (PUT /objetivos-trimestrales) — Spec HU-014
+    // § "Tests requeridos" casos 1-13
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Caso 1 ─ rol ≠ Gerente → AccesoDenegadoException 403 (D12, D-G/RN-006); DAL-P10 nunca se llama
+    [Fact]
+    public async Task ActualizarObjetivosTrimestrales_RolNoGerente_LanzaAccesoDenegado()
+    {
+        // Arrange: RN-006 — el ADM gestiona estructura, NO escribe contenido estratégico
+        _tenantContext.Rol = "AdminTenant";
+        var cicloId = Guid.NewGuid();
+        var pilarId = Guid.NewGuid();
+        var request = CrearObjetivosTrimestralesRequest();
+
+        // Act & Assert: 403 y el UPDATE de objetivos trimestrales nunca se ejecuta
+        await Assert.ThrowsAsync<AccesoDenegadoException>(() => _service.ActualizarObjetivosTrimestralesAsync(cicloId, pilarId, request));
+
+        _mockRepo.Verify(
+            r => r.ActualizarObjetivosTrimestralesAsync(It.IsAny<PilarObjetivosTrimestralesUpdateDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 2 ─ TenantContext.TenantId=null → NotFoundException 404 (D17); el repo nunca se consulta
+    [Fact]
+    public async Task ActualizarObjetivosTrimestrales_SinTenant_LanzaNotFound()
+    {
+        // Arrange: D17 — TenantId null (SuperAdmin sin tenant)
+        _tenantContext.TenantId = null;
+        var cicloId = Guid.NewGuid();
+        var pilarId = Guid.NewGuid();
+        var request = CrearObjetivosTrimestralesRequest();
+
+        // Act & Assert: 404 y ninguna query del repo se ejecuta
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ActualizarObjetivosTrimestralesAsync(cicloId, pilarId, request));
+
+        _mockRepo.Verify(
+            r => r.ObtenerPorIdAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _mockRepo.Verify(
+            r => r.ActualizarObjetivosTrimestralesAsync(It.IsAny<PilarObjetivosTrimestralesUpdateDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 3 ─ ciclo inexistente (DAL-C2 null) → NotFoundException 404 (el filtro tenant evita fuga)
+    [Fact]
+    public async Task ActualizarObjetivosTrimestrales_CicloInexistente_LanzaNotFound()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var pilarId = Guid.NewGuid();
+        var request = CrearObjetivosTrimestralesRequest();
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CicloEntity?)null);
+
+        // Act & Assert: 404 y DAL-P10 nunca se ejecuta
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ActualizarObjetivosTrimestralesAsync(cicloId, pilarId, request));
+
+        _mockRepo.Verify(
+            r => r.ActualizarObjetivosTrimestralesAsync(It.IsAny<PilarObjetivosTrimestralesUpdateDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 4 ─ ciclo Cerrado → ValidacionException 422 (RC-12, D-F: Borrador y Activo permitidos); sin UPDATE
+    [Fact]
+    public async Task ActualizarObjetivosTrimestrales_CicloCerrado_LanzaValidacion()
+    {
+        // Arrange: RC-12 — un ciclo Cerrado es de solo lectura (congela los objetivos trimestrales)
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var pilarId = Guid.NewGuid();
+        var request = CrearObjetivosTrimestralesRequest();
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Cerrado"));
+
+        // Act & Assert: 422 y DAL-P10 nunca se ejecuta
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() => _service.ActualizarObjetivosTrimestralesAsync(cicloId, pilarId, request));
+
+        Assert.Contains("solo lectura", ex.Message, StringComparison.OrdinalIgnoreCase);
+        _mockRepo.Verify(
+            r => r.ActualizarObjetivosTrimestralesAsync(It.IsAny<PilarObjetivosTrimestralesUpdateDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 5 ─ pilar inexistente (DAL-P3 null) → NotFoundException 404
+    [Fact]
+    public async Task ActualizarObjetivosTrimestrales_PilarInexistente_LanzaNotFound()
+    {
+        // Arrange
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var pilarId = Guid.NewGuid();
+        var request = CrearObjetivosTrimestralesRequest();
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+        _mockRepo
+            .Setup(r => r.ObtenerPilarAsync(tenantId, cicloId, pilarId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PilarEntity?)null);
+
+        // Act & Assert: 404 y DAL-P10 nunca se ejecuta
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ActualizarObjetivosTrimestralesAsync(cicloId, pilarId, request));
+
+        _mockRepo.Verify(
+            r => r.ActualizarObjetivosTrimestralesAsync(It.IsAny<PilarObjetivosTrimestralesUpdateDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 6 ─ ObjetivoQ1 de 2001 chars → 422 (D-C: máx 2000 por trimestre)
+    [Fact]
+    public async Task ActualizarObjetivosTrimestrales_ObjetivoExcede2000_LanzaValidacion()
+    {
+        // Arrange: D-C — máx 2000 chars por trimestre (TEXT sin límite en DDL L183-186)
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var pilarId = Guid.NewGuid();
+        var request = CrearObjetivosTrimestralesRequest(objetivoQ1: new string('a', 2001));
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+        _mockRepo
+            .Setup(r => r.ObtenerPilarAsync(tenantId, cicloId, pilarId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearPilarEntity(pilarId, tenantId, cicloId));
+
+        // Act & Assert: 422 y ni transacción ni UPDATE
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() => _service.ActualizarObjetivosTrimestralesAsync(cicloId, pilarId, request));
+
+        Assert.Contains("2000", ex.Message, StringComparison.OrdinalIgnoreCase);
+        _mockRepo.Verify(
+            r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+        _mockRepo.Verify(
+            r => r.ActualizarObjetivosTrimestralesAsync(It.IsAny<PilarObjetivosTrimestralesUpdateDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // Caso 7 ─ request con los 4 campos null → se persiste null en los 4 (CA #2: trimestres opcionales)
+    [Fact]
+    public async Task ActualizarObjetivosTrimestrales_TrimestresOpcionales_TodosNullSePersisteNull()
+    {
+        // Arrange: CA #2 (D-H) — trimestre sin contenido → null (el GET devuelve null, no "")
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var pilarId = Guid.NewGuid();
+        var request = CrearObjetivosTrimestralesRequest(); // los 4 campos null
+        var original = CrearPilarEntity(pilarId, tenantId, cicloId, codigo: "PEC-1", nombre: "Crecimiento",
+            objetivoQ1: "Objetivo Q1 anterior", objetivoQ2: "Objetivo Q2 anterior",
+            objetivoQ3: "Objetivo Q3 anterior", objetivoQ4: "Objetivo Q4 anterior");
+        var postCommit = CrearPilarConteos(pilarId, cicloId, codigo: "PEC-1", nombre: "Crecimiento");
+        var mockTx = new Mock<IDbTransaction>();
+
+        ConfigurarFlujoFelizActualizarObjetivosTrimestrales(cicloId, tenantId, pilarId, original, postCommit, mockTx);
+
+        // Act
+        await _service.ActualizarObjetivosTrimestralesAsync(cicloId, pilarId, request);
+
+        // Assert: se persiste null en los 4 trimestres (CA #2, D-H)
+        _mockRepo.Verify(
+            r => r.ActualizarObjetivosTrimestralesAsync(
+                It.Is<PilarObjetivosTrimestralesUpdateDto>(d =>
+                    d.TenantId == tenantId &&
+                    d.CicloId == cicloId &&
+                    d.PilarId == pilarId &&
+                    d.ObjetivoQ1 == null &&
+                    d.ObjetivoQ2 == null &&
+                    d.ObjetivoQ3 == null &&
+                    d.ObjetivoQ4 == null),
+                mockTx.Object, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // Caso 8 ─ ObjetivoQ2="   " → se persiste null (D-H: string vacío tras trim = sin contenido)
+    [Fact]
+    public async Task ActualizarObjetivosTrimestrales_StringVacioTrasTrim_SePersisteNull()
+    {
+        // Arrange: D-H — "   " tras trim = vacío → null (trimestre opcional sin contenido)
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var pilarId = Guid.NewGuid();
+        var request = CrearObjetivosTrimestralesRequest(objetivoQ2: "   ");
+        var original = CrearPilarEntity(pilarId, tenantId, cicloId, codigo: "PEC-1", nombre: "Crecimiento");
+        var postCommit = CrearPilarConteos(pilarId, cicloId, codigo: "PEC-1", nombre: "Crecimiento");
+        var mockTx = new Mock<IDbTransaction>();
+
+        ConfigurarFlujoFelizActualizarObjetivosTrimestrales(cicloId, tenantId, pilarId, original, postCommit, mockTx);
+
+        // Act
+        await _service.ActualizarObjetivosTrimestralesAsync(cicloId, pilarId, request);
+
+        // Assert: ObjetivoQ2="   " → null tras trim; los demás null (D-H)
+        _mockRepo.Verify(
+            r => r.ActualizarObjetivosTrimestralesAsync(
+                It.Is<PilarObjetivosTrimestralesUpdateDto>(d =>
+                    d.ObjetivoQ1 == null &&
+                    d.ObjetivoQ2 == null &&
+                    d.ObjetivoQ3 == null &&
+                    d.ObjetivoQ4 == null),
+                mockTx.Object, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // Caso 9 ─ " Objetivo Q1 " → se persiste "Objetivo Q1" (paso 6: trim antes de persistir)
+    [Fact]
+    public async Task ActualizarObjetivosTrimestrales_ConEspacios_SeNormalizanConTrim()
+    {
+        // Arrange: paso 6 — normalización (trim) de cada trimestre antes de persistir
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var pilarId = Guid.NewGuid();
+        var request = CrearObjetivosTrimestralesRequest(objetivoQ1: " Objetivo Q1 ");
+        var original = CrearPilarEntity(pilarId, tenantId, cicloId, codigo: "PEC-1", nombre: "Crecimiento");
+        var postCommit = CrearPilarConteos(pilarId, cicloId, codigo: "PEC-1", nombre: "Crecimiento",
+            objetivoQ1: "Objetivo Q1");
+        var mockTx = new Mock<IDbTransaction>();
+
+        ConfigurarFlujoFelizActualizarObjetivosTrimestrales(cicloId, tenantId, pilarId, original, postCommit, mockTx);
+
+        // Act
+        await _service.ActualizarObjetivosTrimestralesAsync(cicloId, pilarId, request);
+
+        // Assert: " Objetivo Q1 " → "Objetivo Q1" (trim); los demás null
+        _mockRepo.Verify(
+            r => r.ActualizarObjetivosTrimestralesAsync(
+                It.Is<PilarObjetivosTrimestralesUpdateDto>(d =>
+                    d.ObjetivoQ1 == "Objetivo Q1" &&
+                    d.ObjetivoQ2 == null &&
+                    d.ObjetivoQ3 == null &&
+                    d.ObjetivoQ4 == null),
+                mockTx.Object, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // Caso 10 ★ ─ éxito: DAL-P10 solo toca objetivo_q1..q4 + updated_at; codigo/nombre/
+    // estrategia_victoria/orden intactos (D-A, contrato HU-013)
+    [Fact]
+    public async Task ActualizarObjetivosTrimestrales_Exito_ActualizaSoloLos4Campos()
+    {
+        // Arrange: D-A — el UPDATE de DAL-P10 NO toca codigo/nombre/estrategia_victoria/orden
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var pilarId = Guid.NewGuid();
+        var request = CrearObjetivosTrimestralesRequest(
+            objetivoQ1: "Objetivo Q1", objetivoQ2: "Objetivo Q2",
+            objetivoQ3: "Objetivo Q3", objetivoQ4: "Objetivo Q4");
+        var original = CrearPilarEntity(pilarId, tenantId, cicloId, codigo: "PEC-1", nombre: "Crecimiento",
+            estrategiaVictoria: "Expandir mercado", orden: 1);
+        var postCommit = CrearPilarConteos(pilarId, cicloId, codigo: "PEC-1", nombre: "Crecimiento",
+            estrategiaVictoria: "Expandir mercado", orden: 1,
+            objetivoQ1: "Objetivo Q1", objetivoQ2: "Objetivo Q2",
+            objetivoQ3: "Objetivo Q3", objetivoQ4: "Objetivo Q4");
+        var mockTx = new Mock<IDbTransaction>();
+
+        ConfigurarFlujoFelizActualizarObjetivosTrimestrales(cicloId, tenantId, pilarId, original, postCommit, mockTx);
+
+        // Act
+        var resultado = await _service.ActualizarObjetivosTrimestralesAsync(cicloId, pilarId, request);
+
+        // Assert: el DTO de DAL-P10 solo lleva ids + los 4 campos (sin codigo/nombre/estrategia/orden)
+        _mockRepo.Verify(
+            r => r.ActualizarObjetivosTrimestralesAsync(
+                It.Is<PilarObjetivosTrimestralesUpdateDto>(d =>
+                    d.TenantId == tenantId &&
+                    d.CicloId == cicloId &&
+                    d.PilarId == pilarId &&
+                    d.ObjetivoQ1 == "Objetivo Q1" &&
+                    d.ObjetivoQ2 == "Objetivo Q2" &&
+                    d.ObjetivoQ3 == "Objetivo Q3" &&
+                    d.ObjetivoQ4 == "Objetivo Q4"),
+                mockTx.Object, It.IsAny<CancellationToken>()),
+            Times.Once);
+        // Contrato HU-013 intacto: la re-lectura post-commit conserva codigo/nombre/estrategia/orden
+        Assert.Equal("PEC-1", resultado.Codigo);
+        Assert.Equal("Crecimiento", resultado.Nombre);
+        Assert.Equal("Expandir mercado", resultado.EstrategiaVictoria);
+        Assert.Equal(1, resultado.Orden);
+    }
+
+    // Caso 11 ★ ─ auditoría UPDATE con snapshot SOLO del alcance HU-014 {"objetivo_q1".."objetivo_q4"}
+    // (D-I, ADR-003 — JSON legible sin escapes Unicode)
+    [Fact]
+    public async Task ActualizarObjetivosTrimestrales_Exito_RegistraAuditoriaConSnapshot4Campos()
+    {
+        // Arrange: D-I/ADR-003 — se audita SOLO lo que gestiona HU-014 (los 4 trimestres);
+        // SnapshotPilar de HU-013 NO se modifica
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var pilarId = Guid.NewGuid();
+        var request = CrearObjetivosTrimestralesRequest(
+            objetivoQ1: "Objetivo Q1 Éxito", objetivoQ2: "Objetivo Q2",
+            objetivoQ3: "Objetivo Q3", objetivoQ4: "Objetivo Q4");
+        var original = CrearPilarEntity(pilarId, tenantId, cicloId, codigo: "PEC-1", nombre: "Crecimiento",
+            objetivoQ1: "Anterior Q1", objetivoQ2: "Anterior Q2",
+            objetivoQ3: "Anterior Q3", objetivoQ4: "Anterior Q4");
+        var postCommit = CrearPilarConteos(pilarId, cicloId, codigo: "PEC-1", nombre: "Crecimiento",
+            objetivoQ1: "Objetivo Q1 Éxito", objetivoQ2: "Objetivo Q2",
+            objetivoQ3: "Objetivo Q3", objetivoQ4: "Objetivo Q4");
+        var mockTx = new Mock<IDbTransaction>();
+
+        ConfigurarFlujoFelizActualizarObjetivosTrimestrales(cicloId, tenantId, pilarId, original, postCommit, mockTx);
+
+        // Act
+        await _service.ActualizarObjetivosTrimestralesAsync(cicloId, pilarId, request);
+
+        // Assert: auditoría UPDATE con snapshot SOLO de los 4 campos (D-I, ADR-003) y JSON legible
+        // sin escapes Unicode (UnsafeRelaxedJsonEscaping — "Éxito" no aparece como \u00C9)
+        _mockRepo.Verify(
+            r => r.InsertLogAsync(
+                It.Is<LogAuditoriaInsert>(l =>
+                    l.Accion == "UPDATE" &&
+                    l.Entidad == "Pilar" &&
+                    l.EntidadId == pilarId.ToString() &&
+                    l.TenantId == tenantId &&
+                    l.UsuarioId == _tenantContext.UserId &&
+                    l.ValorAnterior != null &&
+                    l.ValorAnterior.Contains("\"objetivo_q1\"") &&
+                    l.ValorAnterior.Contains("\"objetivo_q2\"") &&
+                    l.ValorAnterior.Contains("\"objetivo_q3\"") &&
+                    l.ValorAnterior.Contains("\"objetivo_q4\"") &&
+                    l.ValorAnterior.Contains("Anterior Q1") &&
+                    l.ValorNuevo != null &&
+                    l.ValorNuevo.Contains("\"objetivo_q1\"") &&
+                    l.ValorNuevo.Contains("\"objetivo_q2\"") &&
+                    l.ValorNuevo.Contains("\"objetivo_q3\"") &&
+                    l.ValorNuevo.Contains("\"objetivo_q4\"") &&
+                    l.ValorNuevo.Contains("Objetivo Q1 Éxito") &&
+                    !l.ValorNuevo.Contains("\\u00C9")),
+                mockTx.Object, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // Caso 12 ★ ─ éxito: commit + re-lectura post-commit (DAL-P2) → PilarResponse con ObjetivoQ1..Q4
+    [Fact]
+    public async Task ActualizarObjetivosTrimestrales_Exito_ReLecturaPostCommit_Retorna200()
+    {
+        // Arrange: paso 10 — re-lectura DAL-P2 post-commit → 200 con los 4 campos poblados (CA #1)
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var pilarId = Guid.NewGuid();
+        var request = CrearObjetivosTrimestralesRequest(
+            objetivoQ1: "Objetivo Q1", objetivoQ2: "Objetivo Q2",
+            objetivoQ3: "Objetivo Q3", objetivoQ4: "Objetivo Q4");
+        var original = CrearPilarEntity(pilarId, tenantId, cicloId, codigo: "PEC-1", nombre: "Crecimiento");
+        var postCommit = CrearPilarConteos(pilarId, cicloId, codigo: "PEC-1", nombre: "Crecimiento",
+            objetivoQ1: "Objetivo Q1", objetivoQ2: "Objetivo Q2",
+            objetivoQ3: "Objetivo Q3", objetivoQ4: "Objetivo Q4");
+        var mockTx = new Mock<IDbTransaction>();
+
+        ConfigurarFlujoFelizActualizarObjetivosTrimestrales(cicloId, tenantId, pilarId, original, postCommit, mockTx);
+
+        // Act
+        var resultado = await _service.ActualizarObjetivosTrimestralesAsync(cicloId, pilarId, request);
+
+        // Assert: commit + re-lectura → 200 con los 4 campos poblados (CA #1)
+        mockTx.Verify(t => t.Commit(), Times.Once);
+        Assert.Equal("Objetivo Q1", resultado.ObjetivoQ1);
+        Assert.Equal("Objetivo Q2", resultado.ObjetivoQ2);
+        Assert.Equal("Objetivo Q3", resultado.ObjetivoQ3);
+        Assert.Equal("Objetivo Q4", resultado.ObjetivoQ4);
+    }
+
+    // Caso 13 ─ PostgresException 23505 → rollback + 422 (residual defensivo: DAL-P10 no toca
+    // codigo → el UNIQUE (ciclo_id, codigo) no puede violarse; patrón conservado por consistencia)
+    [Fact]
+    public async Task ActualizarObjetivosTrimestrales_23505_LanzaValidacion()
+    {
+        // Arrange: el UPDATE lanza PostgresException 23505 (capa 2 residual — mismo criterio que
+        // el PUT de HU-013 L241)
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var pilarId = Guid.NewGuid();
+        var request = CrearObjetivosTrimestralesRequest(objetivoQ1: "Objetivo Q1");
+        var mockTx = new Mock<IDbTransaction>();
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+        _mockRepo
+            .Setup(r => r.ObtenerPilarAsync(tenantId, cicloId, pilarId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearPilarEntity(pilarId, tenantId, cicloId));
+        _mockRepo
+            .Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockTx.Object);
+        _mockRepo
+            .Setup(r => r.ActualizarObjetivosTrimestralesAsync(It.IsAny<PilarObjetivosTrimestralesUpdateDto>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new PostgresException(
+                "duplicate key value violates unique constraint",
+                "ERROR",
+                "ERROR",   // invariantSeverity (puede repetir "ERROR")
+                "23505")); // sqlState ← código 23505 (UNIQUE (ciclo_id, codigo), DDL L190)
+
+        // Act & Assert: 422 con mensaje amigable y rollback explícito (ADR-007)
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() => _service.ActualizarObjetivosTrimestralesAsync(cicloId, pilarId, request));
+
+        Assert.Contains("PEC", ex.Message, StringComparison.OrdinalIgnoreCase);
+        mockTx.Verify(t => t.Rollback(), Times.Once);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Listar / Obtener (extensión del mapeo ObjetivoQ1..Q4) — Spec HU-014
+    // § "Tests requeridos" casos 14-16
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Caso 14 ★ ─ éxito: DAL-P1 con Q1-Q4 poblados → cada PilarResponse con ObjetivoQ1..Q4 (CA #1)
+    [Fact]
+    public async Task Listar_Exito_RetornaObjetivosTrimestrales()
+    {
+        // Arrange: CA #1 — DAL-P1 extendida devuelve objetivo_q1..q4 → mapeados al response
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var pilar1 = CrearPilarConteos(cicloId: cicloId, codigo: "PEC-1", nombre: "Crecimiento", orden: 1,
+            objetivoQ1: "Objetivo Q1", objetivoQ2: "Objetivo Q2",
+            objetivoQ3: "Objetivo Q3", objetivoQ4: "Objetivo Q4");
+        var pilar2 = CrearPilarConteos(cicloId: cicloId, codigo: "PEC-2", nombre: "Rentabilidad", orden: 2,
+            objetivoQ1: "Q1 Rentabilidad");
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+        _mockRepo
+            .Setup(r => r.ListarPilaresConConteosAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { pilar1, pilar2 });
+
+        // Act
+        var resultado = await _service.ListarAsync(cicloId);
+
+        // Assert: cada PilarResponse con ObjetivoQ1..Q4 mapeados (CA #1); null si la columna es null (D-H)
+        Assert.Equal(2, resultado.Count);
+        Assert.Equal("Objetivo Q1", resultado[0].ObjetivoQ1);
+        Assert.Equal("Objetivo Q2", resultado[0].ObjetivoQ2);
+        Assert.Equal("Objetivo Q3", resultado[0].ObjetivoQ3);
+        Assert.Equal("Objetivo Q4", resultado[0].ObjetivoQ4);
+        Assert.Equal("Q1 Rentabilidad", resultado[1].ObjetivoQ1);
+        Assert.Null(resultado[1].ObjetivoQ2);
+        Assert.Null(resultado[1].ObjetivoQ3);
+        Assert.Null(resultado[1].ObjetivoQ4);
+    }
+
+    // Caso 15 ★ ─ éxito: DAL-P2 → detalle con los 4 campos poblados (CA #1)
+    [Fact]
+    public async Task Obtener_Exito_RetornaObjetivosTrimestrales()
+    {
+        // Arrange: CA #1 — DAL-P2 extendida devuelve objetivo_q1..q4 → detalle con los 4 campos
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var pilarId = Guid.NewGuid();
+        var detalle = CrearPilarConteos(pilarId, cicloId, codigo: "PEC-1", nombre: "Crecimiento",
+            estrategiaVictoria: "Expandir mercado", orden: 1,
+            objetivoQ1: "Objetivo Q1", objetivoQ2: "Objetivo Q2",
+            objetivoQ3: "Objetivo Q3", objetivoQ4: "Objetivo Q4");
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
+        _mockRepo
+            .Setup(r => r.ObtenerPilarConConteosAsync(tenantId, cicloId, pilarId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(detalle);
+
+        // Act
+        var resultado = await _service.ObtenerAsync(cicloId, pilarId);
+
+        // Assert: detalle con los 4 campos poblados (CA #1)
+        Assert.Equal("Objetivo Q1", resultado.ObjetivoQ1);
+        Assert.Equal("Objetivo Q2", resultado.ObjetivoQ2);
+        Assert.Equal("Objetivo Q3", resultado.ObjetivoQ3);
+        Assert.Equal("Objetivo Q4", resultado.ObjetivoQ4);
+    }
+
+    // Caso 16 ─ rol JefeArea → ve TODOS los pilares con sus objetivos trimestrales (SEC-07 NO
+    // APLICA, D-E; CA #3: guía para sus CGs, sin AND area_id)
+    [Fact]
+    public async Task Listar_RolJefeArea_RetornaObjetivosTrimestrales()
+    {
+        // Arrange: D-E — SEC-07 NO aplica a pilar (sin area_id); el JEF lee TODOS los pilares con
+        // sus objetivos trimestrales (RN-007: solo lectura — CA #3)
+        _tenantContext.Rol = "JefeArea";
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var pilar1 = CrearPilarConteos(cicloId: cicloId, codigo: "PEC-1", nombre: "Crecimiento", orden: 1,
+            objetivoQ1: "Objetivo Q1", objetivoQ2: "Objetivo Q2",
+            objetivoQ3: "Objetivo Q3", objetivoQ4: "Objetivo Q4");
+        var pilar2 = CrearPilarConteos(cicloId: cicloId, codigo: "PEC-2", nombre: "Rentabilidad", orden: 2,
+            objetivoQ1: "Q1 Rentabilidad");
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Activo"));
+        _mockRepo
+            .Setup(r => r.ListarPilaresConConteosAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { pilar1, pilar2 });
+
+        // Act
+        var resultado = await _service.ListarAsync(cicloId);
+
+        // Assert: el JEF ve los 2 pilares con sus objetivos trimestrales (sin AND area_id — D-E)
+        Assert.Equal(2, resultado.Count);
+        Assert.Equal("Objetivo Q1", resultado[0].ObjetivoQ1);
+        Assert.Equal("Objetivo Q4", resultado[0].ObjetivoQ4);
+        Assert.Equal("Q1 Rentabilidad", resultado[1].ObjetivoQ1);
     }
 }

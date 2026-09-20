@@ -5,7 +5,7 @@ namespace PE_GOL.DTO.Responses;
 /// tenantId proviene del TenantContext (SEC-06), nunca del body.
 /// Codigo: "PEC-N" auto-generado por la BLL (CA #1, D-B) — no editable.
 /// TotalObjetivosCg/TotalOkrs: conteos del listado/detalle (CA #5, D-D — LEFT JOIN + COUNT DISTINCT).
-/// NO incluye objetivo_q1..q4 (HU-014, FUERA DE ALCANCE — se añadirán aditivamente en esa HU).
+/// ObjetivoQ1..Q4 (HU-014, aditivo): objetivos de área por trimestre (string? — null si sin contenido, D-H).
 /// </summary>
 public class PilarResponse
 {
@@ -20,6 +20,19 @@ public class PilarResponse
 
     public string Nombre { get; set; } = string.Empty;
     public string? EstrategiaVictoria { get; set; }
+
+    /// <summary>HU-014 — objetivo del trimestre Q1 (null si sin contenido — D-H).</summary>
+    public string? ObjetivoQ1 { get; set; }
+
+    /// <summary>HU-014 — objetivo del trimestre Q2 (null si sin contenido — D-H).</summary>
+    public string? ObjetivoQ2 { get; set; }
+
+    /// <summary>HU-014 — objetivo del trimestre Q3 (null si sin contenido — D-H).</summary>
+    public string? ObjetivoQ3 { get; set; }
+
+    /// <summary>HU-014 — objetivo del trimestre Q4 (null si sin contenido — D-H).</summary>
+    public string? ObjetivoQ4 { get; set; }
+
     public int Orden { get; set; }
 
     /// <summary>CA #5 — conteo de objetivo_cg asociados (D-D).</summary>

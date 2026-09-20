@@ -547,4 +547,26 @@ public class CicloController : ControllerBase
         var data = await _pilarService.EliminarAsync(cicloId, pilarId, ct);
         return Ok(new ApiResponse<PilarResponse> { Success = true, Message = "Pilar eliminado", Data = data });
     }
+
+    /// <summary>PUT /api/v1/ciclos/{cicloId}/pilares/{pilarId}/objetivos-trimestrales — Registra/
+    /// edita los Objetivos de Área por Trimestre del pilar (HU-014, RF-016, RN-006; solo Gerente).
+    /// Body: ObjetivosTrimestralesUpdateRequest (4 campos opcionales, CA #2). El UPDATE solo toca
+    /// objetivo_q1..q4 + updated_at (D-A — contrato HU-013 intacto). 200 con el pilar completo
+    /// (ObjetivoQ1..Q4 poblados). 403 rol ≠ GER (D12) · 404 ciclo/pilar inexistente o de otro
+    /// tenant/sin tenant · 422: ciclo Cerrado (RC-12) o algún objetivo &gt;2000 chars (D-C).
+    /// Auditoría ADR-003 con snapshot SOLO del alcance HU-014 (D-I).</summary>
+    [HttpPut("{cicloId:guid}/pilares/{pilarId:guid}/objetivos-trimestrales")]
+    [Authorize(Roles = "Gerente")]
+    [ProducesResponseType(typeof(ApiResponse<PilarResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ActualizarObjetivosTrimestrales(Guid cicloId, Guid pilarId, [FromBody] ObjetivosTrimestralesUpdateRequest request, CancellationToken ct = default)
+    {
+        var data = await _pilarService.ActualizarObjetivosTrimestralesAsync(cicloId, pilarId, request, ct);
+        return Ok(new ApiResponse<PilarResponse> { Success = true, Message = "Objetivos trimestrales actualizados", Data = data });
+    }
 }

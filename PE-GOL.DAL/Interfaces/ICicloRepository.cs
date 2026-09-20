@@ -200,6 +200,12 @@ public interface ICicloRepository
     /// <summary>DAL-P9 · COUNT dependencias del pilar: objetivo_cg y okr por pilar_id (CA #3).</summary>
     Task<PilarDependenciasDto> ContarDependenciasPilarAsync(Guid tenantId, Guid pilarId, CancellationToken ct = default);
 
+    /// <summary>DAL-P10 (HU-014) · UPDATE pilar SET objetivo_q1..q4 + updated_at = NOW().
+    /// NO toca codigo/nombre/estrategia_victoria/orden (D-A — contrato HU-013 intacto).
+    /// SEC-06: tenant_id solo del TenantContext. SEC-07 NO APLICA (D-E): pilar es corporativa
+    /// (sin area_id) → sin AND area_id. Retorna filas afectadas.</summary>
+    Task<int> ActualizarObjetivosTrimestralesAsync(PilarObjetivosTrimestralesUpdateDto dto, IDbTransaction? tx = null, CancellationToken ct = default);
+
     /// <summary>Abre una conexión gestionada por el repositorio e inicia una transacción IDbTransaction (mismo patrón que ITenantRepository).</summary>
     Task<IDbTransaction> BeginTransactionAsync(CancellationToken ct = default);
 }

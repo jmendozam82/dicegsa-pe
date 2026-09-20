@@ -53,6 +53,10 @@ public class PilarService : IPilarService
     /// <summary>D-C: límite razonable para estrategia_victoria (TEXT sin límite en DDL).</summary>
     private const int MaxLongitudEstrategia = 2000;
 
+    /// <summary>D-C (HU-014): límite de 2000 chars por objetivo trimestral (TEXT sin límite en DDL
+    /// L183-186 — consistente con estrategia_victoria de HU-013).</summary>
+    private const int MaxLongitudObjetivoTrimestral = 2000;
+
     /// <summary>
     /// Opciones de serialización para la auditoría (log_auditoria.valor_anterior/valor_nuevo).
     /// UnsafeRelaxedJsonEscaping: NO escapa caracteres no-ASCII → el JSON del log es legible
@@ -403,6 +407,112 @@ public class PilarService : IPilarService
         }
     }
 
+    /// <summary>Spec HU-014 §3 · ActualizarObjetivosTrimestralesAsync: rol GER (403, D12) →
+    /// tenantId (404) → ciclo (404) → RC-12 Cerrado (422) → pilar (404, DAL-P3) → normalizar
+    /// trim + null (CA #2, D-H) → re-validación BLL ≤ 2000 chars (D-C) → snapshot previo del
+    /// alcance HU-014 (ADR-003, D-I) → tx: UPDATE objetivo_q1..q4 (DAL-P10, NO toca codigo/
+    /// nombre/estrategia/orden — D-A) + auditoría UPDATE → commit → re-lectura (DAL-P2) → 200.
+    /// Captura 23505 → 422 (residual defensivo, ADR-007).</summary>
+    public async Task<PilarResponse> ActualizarObjetivosTrimestralesAsync(Guid cicloId, Guid pilarId, ObjetivosTrimestralesUpdateRequest request, CancellationToken ct = default)
+    {
+        // D12: re-validación defensiva de rol (D-G/RN-006 — el GER es el único con escritura del
+        // contenido estratégico; mismo criterio D-A de HU-011..HU-013).
+        if (!string.Equals(_tenantContext.Rol, RolGerente, StringComparison.Ordinal))
+            throw new AccesoDenegadoException("Solo el Gerente puede editar los objetivos trimestrales del pilar");
+
+        var tenantId = ObtenerTenantIdOThrow();
+
+        var ciclo = await _repository.ObtenerPorIdAsync(tenantId, cicloId, ct)
+            ?? throw new NotFoundException($"El ciclo '{cicloId}' no existe");
+
+        // RC-12/RN-004: un ciclo Cerrado es de solo lectura (congela los objetivos trimestrales).
+        if (string.Equals(ciclo.Estado, "Cerrado", StringComparison.Ordinal))
+            throw new ValidacionException("Un ciclo Cerrado es de solo lectura");
+
+        var original = await _repository.ObtenerPilarAsync(tenantId, cicloId, pilarId, ct)
+            ?? throw new NotFoundException($"El pilar '{pilarId}' no existe");
+
+        // Paso 6: normalizar (trim + null, CA #2, D-H) — trimestre sin contenido → null.
+        var q1 = NormalizarObjetivoTrimestral(request.ObjetivoQ1);
+        var q2 = NormalizarObjetivoTrimestral(request.ObjetivoQ2);
+        var q3 = NormalizarObjetivoTrimestral(request.ObjetivoQ3);
+        var q4 = NormalizarObjetivoTrimestral(request.ObjetivoQ4);
+
+        // Paso 7: re-validación BLL (fuente de verdad, UX-04) — máx 2000 chars por trimestre (D-C).
+        if (q1?.Length > MaxLongitudObjetivoTrimestral)
+            throw new ValidacionException($"El objetivo del trimestre Q1 no puede exceder {MaxLongitudObjetivoTrimestral} caracteres");
+        if (q2?.Length > MaxLongitudObjetivoTrimestral)
+            throw new ValidacionException($"El objetivo del trimestre Q2 no puede exceder {MaxLongitudObjetivoTrimestral} caracteres");
+        if (q3?.Length > MaxLongitudObjetivoTrimestral)
+            throw new ValidacionException($"El objetivo del trimestre Q3 no puede exceder {MaxLongitudObjetivoTrimestral} caracteres");
+        if (q4?.Length > MaxLongitudObjetivoTrimestral)
+            throw new ValidacionException($"El objetivo del trimestre Q4 no puede exceder {MaxLongitudObjetivoTrimestral} caracteres");
+
+        // Paso 8: snapshot de auditoría (ADR-003, D-I) — SOLO el alcance HU-014 (los 4 trimestres).
+        var valorAnterior = SnapshotObjetivosTrimestrales(original);
+
+        var dto = new PilarObjetivosTrimestralesUpdateDto
+        {
+            TenantId = tenantId,
+            CicloId = cicloId,
+            PilarId = pilarId,
+            ObjetivoQ1 = q1,
+            ObjetivoQ2 = q2,
+            ObjetivoQ3 = q3,
+            ObjetivoQ4 = q4
+        };
+
+        // Paso 9: UPDATE (DAL-P10) + auditoría UPDATE en UNA sola transacción.
+        using var tx = await _repository.BeginTransactionAsync(ct);
+        try
+        {
+            var filas = await _repository.ActualizarObjetivosTrimestralesAsync(dto, tx, ct);
+            if (filas == 0)
+                throw new InvalidOperationException("No se pudieron actualizar los objetivos trimestrales del pilar");
+
+            _logger?.LogInformation(
+                "Objetivos trimestrales del pilar {PilarId} actualizados. Modulo=Ciclo, Accion=UPDATE, Entidad={Entidad}",
+                pilarId, EntidadAuditoria);
+
+            // Auditoría (DAL-C11 reutilizada): accion=UPDATE, snapshot anterior/nuevo del alcance
+            // HU-014 (D-I, ADR-003 — JSON legible con UnsafeRelaxedJsonEscaping).
+            await _repository.InsertLogAsync(new LogAuditoriaInsert
+            {
+                TenantId = tenantId,
+                UsuarioId = _tenantContext.UserId,
+                Accion = "UPDATE",
+                Entidad = EntidadAuditoria,
+                EntidadId = pilarId.ToString(),
+                ValorAnterior = valorAnterior,
+                ValorNuevo = SnapshotObjetivosTrimestrales(q1, q2, q3, q4)
+            }, tx, ct);
+
+            tx.Commit();
+
+            // Paso 10: re-lectura post-commit (DAL-P2) → 200 con ObjetivoQ1..Q4 poblados (CA #1).
+            var actualizado = await _repository.ObtenerPilarConConteosAsync(tenantId, cicloId, pilarId, ct)
+                ?? throw new NotFoundException($"El pilar '{pilarId}' no existe");
+            return MapToResponse(actualizado, tenantId);
+        }
+        catch (PostgresException ex) when (ex.SqlState == "23505")
+        {
+            // ADR-007 · Capa 2 (residual defensivo): el UPDATE de DAL-P10 no toca codigo → el
+            // UNIQUE (ciclo_id, codigo) no puede violarse; se conserva el patrón por consistencia
+            // con el PUT de HU-013. Rollback explícito antes de propagar (422).
+            _logger?.LogWarning(ex, "Violación de unicidad 23505 al actualizar objetivos trimestrales del pilar {PilarId}. Modulo=Ciclo", pilarId);
+            try { tx.Rollback(); }
+            catch (Exception rollbackEx) { _logger?.LogWarning(rollbackEx, "Rollback fallido tras 23505. Modulo=Ciclo"); }
+            throw new ValidacionException("Ya existe un pilar con el código PEC-N en este ciclo; reintente");
+        }
+        catch
+        {
+            // Rollback para garantizar atomicidad (UPDATE + auditoría).
+            try { tx.Rollback(); }
+            catch (Exception rollbackEx) { _logger?.LogWarning(rollbackEx, "Rollback fallido tras error en ActualizarObjetivosTrimestralesAsync. Modulo=Ciclo"); }
+            throw;
+        }
+    }
+
     // ─── Helpers ────────────────────────────────────────────────────────────
 
     /// <summary>D17: TenantId null (SuperAdmin sin tenant) → 404 defensivo (los roles autorizados
@@ -430,8 +540,34 @@ public class PilarService : IPilarService
     private static string SnapshotPilar(PilarEntity e)
         => SnapshotPilar(e.Codigo, e.Nombre, e.EstrategiaVictoria, e.Orden);
 
+    /// <summary>HU-014 (D-H): normaliza un objetivo trimestral — trim + null si queda vacío
+    /// (CA #2: trimestre sin contenido → null; el GET devuelve null, no string vacío).</summary>
+    private static string? NormalizarObjetivoTrimestral(string? valor)
+    {
+        var normalizado = valor?.Trim();
+        return string.IsNullOrWhiteSpace(normalizado) ? null : normalizado;
+    }
+
+    /// <summary>Snapshot de auditoría del alcance HU-014 (D-I, ADR-003): JSON con
+    /// UnsafeRelaxedJsonEscaping (legible sin escapes Unicode). SOLO los 4 campos que gestiona
+    /// esta HU — {"objetivo_q1","objetivo_q2","objetivo_q3","objetivo_q4"}. SnapshotPilar de
+    /// HU-013 NO se modifica (los CREATE/UPDATE/DELETE de HU-013 siguen auditando su alcance).</summary>
+    private static string SnapshotObjetivosTrimestrales(string? objetivoQ1, string? objetivoQ2, string? objetivoQ3, string? objetivoQ4)
+        => JsonSerializer.Serialize(new
+        {
+            objetivo_q1 = objetivoQ1,
+            objetivo_q2 = objetivoQ2,
+            objetivo_q3 = objetivoQ3,
+            objetivo_q4 = objetivoQ4
+        }, JsonOpcionesAuditoria);
+
+    /// <summary>Snapshot del estado previo para valor_anterior en UPDATE (ADR-003, D-I).</summary>
+    private static string SnapshotObjetivosTrimestrales(PilarEntity e)
+        => SnapshotObjetivosTrimestrales(e.ObjetivoQ1, e.ObjetivoQ2, e.ObjetivoQ3, e.ObjetivoQ4);
+
     /// <summary>Mapeo DAL → response (listado/detalle con conteos, CA #5). TenantId del
-    /// TenantContext (SEC-06), nunca del DTO.</summary>
+    /// TenantContext (SEC-06), nunca del DTO. HU-014 (aditivo): mapea ObjetivoQ1..Q4
+    /// (null si la columna es null — D-H).</summary>
     private static PilarResponse MapToResponse(PilarConteosDto e, Guid tenantId) => new()
     {
         Id = e.Id,
@@ -440,6 +576,10 @@ public class PilarService : IPilarService
         Codigo = e.Codigo,
         Nombre = e.Nombre,
         EstrategiaVictoria = e.EstrategiaVictoria,
+        ObjetivoQ1 = e.ObjetivoQ1,
+        ObjetivoQ2 = e.ObjetivoQ2,
+        ObjetivoQ3 = e.ObjetivoQ3,
+        ObjetivoQ4 = e.ObjetivoQ4,
         Orden = e.Orden,
         TotalObjetivosCg = e.TotalObjetivosCg,
         TotalOkrs = e.TotalOkrs,

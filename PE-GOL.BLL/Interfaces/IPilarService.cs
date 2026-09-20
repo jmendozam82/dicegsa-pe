@@ -39,4 +39,11 @@ public interface IPilarService
     /// del pilar eliminado, conteos 0) · 403 · 404 · 422 (ciclo Cerrado RC-12, tiene CGs/OKRs CA #3,
     /// FK 23503 capa 2). DELETE físico (D-A).</summary>
     Task<PilarResponse> EliminarAsync(Guid cicloId, Guid pilarId, CancellationToken ct = default);
+
+    /// <summary>PUT /api/v1/ciclos/{cicloId}/pilares/{pilarId}/objetivos-trimestrales (HU-014) —
+    /// 200 con PilarResponse (ObjetivoQ1..Q4 poblados) · 403 rol ≠ GER (D12) · 404 · 422 (ciclo
+    /// Cerrado RC-12, algún objetivo &gt;2000 chars D-C). El UPDATE solo toca objetivo_q1..q4 +
+    /// updated_at (D-A — contrato HU-013 intacto). Auditoría ADR-003 con snapshot SOLO del alcance
+    /// HU-014 {"objetivo_q1".."objetivo_q4"} (D-I).</summary>
+    Task<PilarResponse> ActualizarObjetivosTrimestralesAsync(Guid cicloId, Guid pilarId, ObjetivosTrimestralesUpdateRequest request, CancellationToken ct = default);
 }

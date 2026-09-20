@@ -788,12 +788,13 @@ public sealed class CicloRepository : ICicloRepository, IDisposable
 
     /// <summary>DAL-P1 · SELECT pilares del ciclo con conteos de CG y OKRs (CA #5, D-D — LEFT JOIN
     /// + COUNT(DISTINCT) evita duplicar filas cuando un pilar tiene CGs y OKRs simultáneamente),
-    /// ORDER BY orden ASC, codigo ASC.</summary>
+    /// ORDER BY orden ASC, codigo ASC. HU-014 (aditivo): el SELECT incluye objetivo_q1..q4.</summary>
     public async Task<IEnumerable<PilarConteosDto>> ListarPilaresConConteosAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default)
     {
         const string sql = @"
-            SELECT p.id, p.ciclo_id, p.codigo, p.nombre, p.estrategia_victoria, p.orden,
-                   p.created_at, p.updated_at,
+            SELECT p.id, p.ciclo_id, p.codigo, p.nombre, p.estrategia_victoria,
+                   p.objetivo_q1, p.objetivo_q2, p.objetivo_q3, p.objetivo_q4,
+                   p.orden, p.created_at, p.updated_at,
                    COUNT(DISTINCT oc.id) AS total_objetivos_cg,
                    COUNT(DISTINCT ok.id) AS total_okrs
             FROM pilar p
@@ -811,12 +812,13 @@ public sealed class CicloRepository : ICicloRepository, IDisposable
     }
 
     /// <summary>DAL-P2 · SELECT pilar por id con conteos (misma query que DAL-P1 + AND p.id = @PilarId).
-    /// Retorna null si no existe o es de otro tenant (sin fuga).</summary>
+    /// Retorna null si no existe o es de otro tenant (sin fuga). HU-014 (aditivo): incluye objetivo_q1..q4.</summary>
     public async Task<PilarConteosDto?> ObtenerPilarConConteosAsync(Guid tenantId, Guid cicloId, Guid pilarId, CancellationToken ct = default)
     {
         const string sql = @"
-            SELECT p.id, p.ciclo_id, p.codigo, p.nombre, p.estrategia_victoria, p.orden,
-                   p.created_at, p.updated_at,
+            SELECT p.id, p.ciclo_id, p.codigo, p.nombre, p.estrategia_victoria,
+                   p.objetivo_q1, p.objetivo_q2, p.objetivo_q3, p.objetivo_q4,
+                   p.orden, p.created_at, p.updated_at,
                    COUNT(DISTINCT oc.id) AS total_objetivos_cg,
                    COUNT(DISTINCT ok.id) AS total_okrs
             FROM pilar p
@@ -837,12 +839,13 @@ public sealed class CicloRepository : ICicloRepository, IDisposable
     }
 
     /// <summary>DAL-P3 · SELECT pilar por id SIN conteos (para validaciones/update/delete).
-    /// Retorna null si no existe o es de otro tenant (sin fuga).</summary>
+    /// Retorna null si no existe o es de otro tenant (sin fuga). HU-014 (aditivo): incluye objetivo_q1..q4.</summary>
     public async Task<PilarEntity?> ObtenerPilarAsync(Guid tenantId, Guid cicloId, Guid pilarId, CancellationToken ct = default)
     {
         const string sql = @"
-            SELECT id, tenant_id, ciclo_id, codigo, nombre, estrategia_victoria, orden,
-                   created_at, updated_at
+            SELECT id, tenant_id, ciclo_id, codigo, nombre, estrategia_victoria,
+                   objetivo_q1, objetivo_q2, objetivo_q3, objetivo_q4,
+                   orden, created_at, updated_at
             FROM pilar
             WHERE tenant_id = @TenantId
               AND ciclo_id = @CicloId
@@ -970,5 +973,36 @@ public sealed class CicloRepository : ICicloRepository, IDisposable
         conn.Open();
         var cmd = new CommandDefinition(sql, new { TenantId = tenantId, PilarId = pilarId }, cancellationToken: ct);
         return await conn.QuerySingleAsync<PilarDependenciasDto>(cmd);
+    }
+
+    /// <summary>DAL-P10 (HU-014) · UPDATE pilar SET objetivo_q1..q4 + updated_at = NOW().
+    /// NO toca codigo/nombre/estrategia_victoria/orden (D-A — contrato HU-013 intacto).
+    /// SEC-06: tenant_id solo del TenantContext (JWT). SEC-07 NO APLICA (D-E): pilar es
+    /// corporativa (sin area_id; RLS pilar_policy solo por tenant) → sin AND area_id.
+    /// Retorna filas afectadas.</summary>
+    public async Task<int> ActualizarObjetivosTrimestralesAsync(PilarObjetivosTrimestralesUpdateDto dto, IDbTransaction? tx = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE pilar
+            SET objetivo_q1 = @ObjetivoQ1,
+                objetivo_q2 = @ObjetivoQ2,
+                objetivo_q3 = @ObjetivoQ3,
+                objetivo_q4 = @ObjetivoQ4,
+                updated_at  = NOW()
+            WHERE tenant_id = @TenantId
+              AND ciclo_id = @CicloId
+              AND id = @PilarId
+            RETURNING updated_at;";
+
+        if (tx is not null)
+        {
+            var cmdTx = new CommandDefinition(sql, dto, tx, cancellationToken: ct);
+            return await tx.Connection!.ExecuteAsync(cmdTx);
+        }
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, dto, cancellationToken: ct);
+        return await conn.ExecuteAsync(cmd);
     }
 }
