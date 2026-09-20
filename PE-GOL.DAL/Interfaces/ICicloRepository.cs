@@ -233,4 +233,17 @@ public interface ICicloRepository
     /// fecha_vencimiento — WHERE tenant_id/ciclo_id/area_id (SEC-07). SIN status persistido
     /// (el tablero recalcula atrasadas en BLL con RN-017 regla 4 y fecha actual).</summary>
     Task<IEnumerable<AccionTableroDto>> ListarAccionesAreaAsync(Guid tenantId, Guid cicloId, Guid areaId, CancellationToken ct = default);
+
+    // ─── HU-016 · Tablero del Gerente (Spec HU-016 § Queries DAL: DAL-D6/D7/D8) ───
+    // SEC-07 NO APLICA: el GER ve todas las áreas activas (D-Q). Las firmas NO tienen areaId.
+    
+    /// <summary>DAL-D6 · SELECT áreas ACTIVAS del ciclo con PromedioPuntuacionOkrs y AvancePlanAccion,
+    /// ORDER BY a.orden ASC, a.codigo ASC. Sin AND area_id (SEC-07 NO APLICA).</summary>
+    Task<IEnumerable<ResumenAreaTableroDto>> ListarAreasConResumenAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default);
+
+    /// <summary>DAL-D7 · SELECT total acciones del ciclo y promedio global de OKRs. Sin AND area_id.</summary>
+    Task<TotalesConsolidadosDalDto> ObtenerTotalesConsolidadosAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default);
+
+    /// <summary>DAL-D8 · SELECT id, area_id, progreso, fecha_vencimiento de TODAS las acciones del ciclo. Sin AND area_id.</summary>
+    Task<IEnumerable<AccionCicloTableroDto>> ListarAccionesDelCicloAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default);
 }

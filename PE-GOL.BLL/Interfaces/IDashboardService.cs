@@ -19,4 +19,9 @@ public interface IDashboardService
     /// · 403 rol ≠ JefeArea (D12/D-F) · 404 (sin tenant / sin ciclo activo CA #4 / JEF sin área /
     /// área inexistente). SEC-07: DAL-D3/D4/D5 filtran por TenantContext.AreaId.</summary>
     Task<ApiResponse<TableroJefeAreaResponse>> ObtenerTableroJefeAreaAsync(CancellationToken ct = default);
+
+    /// <summary>GET /api/v1/dashboard/gerente — 200 con ApiResponse<TableroGerenteResponse>
+    /// · 403 rol ≠ Gerente · 404 (sin tenant / sin ciclo activo). SEC-07 NO APLICA (D-Q).
+    /// El GER ve todas las áreas activas. DAL-D6/D7/D8 sin parámetro areaId.</summary>
+    Task<ApiResponse<TableroGerenteResponse>> ObtenerTableroGerenteAsync(CancellationToken ct = default);
 }

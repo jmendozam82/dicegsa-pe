@@ -1096,4 +1096,64 @@ public sealed class CicloRepository : ICicloRepository, IDisposable
             cancellationToken: ct);
         return await conn.QueryAsync<AccionTableroDto>(cmd);
     }
+
+    public async Task<IEnumerable<ResumenAreaTableroDto>> ListarAreasConResumenAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT a.id AS area_id,
+                   a.codigo AS area_codigo,
+                   a.nombre AS area_nombre,
+                   COALESCE((SELECT AVG(o.puntuacion_final)
+                             FROM okr o
+                             WHERE o.tenant_id = @TenantId AND o.ciclo_id = @CicloId AND o.area_id = a.id), 0) AS promedio_puntuacion_okrs,
+                   COALESCE((SELECT AVG(ocg.progreso)
+                             FROM objetivo_cg ocg
+                             WHERE ocg.tenant_id = @TenantId AND ocg.ciclo_id = @CicloId AND ocg.area_id = a.id), 0) AS avance_plan_accion
+            FROM area a
+            WHERE a.tenant_id = @TenantId
+              AND a.ciclo_id = @CicloId
+              AND a.activa = TRUE
+            ORDER BY a.orden ASC, a.codigo ASC;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql,
+            new { TenantId = tenantId, CicloId = cicloId },
+            cancellationToken: ct);
+        return await conn.QueryAsync<ResumenAreaTableroDto>(cmd);
+    }
+
+    public async Task<TotalesConsolidadosDalDto> ObtenerTotalesConsolidadosAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT (SELECT COUNT(ap.id)
+                    FROM accion_plan ap
+                    WHERE ap.tenant_id = @TenantId AND ap.ciclo_id = @CicloId) AS total_acciones,
+                   (SELECT COALESCE(AVG(o.puntuacion_final), 0)
+                    FROM okr o
+                    WHERE o.tenant_id = @TenantId AND o.ciclo_id = @CicloId) AS promedio_okrs;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql,
+            new { TenantId = tenantId, CicloId = cicloId },
+            cancellationToken: ct);
+        return await conn.QuerySingleAsync<TotalesConsolidadosDalDto>(cmd);
+    }
+
+    public async Task<IEnumerable<AccionCicloTableroDto>> ListarAccionesDelCicloAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, area_id, progreso, fecha_vencimiento
+            FROM accion_plan
+            WHERE tenant_id = @TenantId
+              AND ciclo_id = @CicloId;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql,
+            new { TenantId = tenantId, CicloId = cicloId },
+            cancellationToken: ct);
+        return await conn.QueryAsync<AccionCicloTableroDto>(cmd);
+    }
 }

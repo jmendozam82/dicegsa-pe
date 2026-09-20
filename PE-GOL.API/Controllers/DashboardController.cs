@@ -19,7 +19,6 @@ namespace PE_GOL.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/dashboard")]
-[Authorize(Roles = "JefeArea")]
 public class DashboardController : ControllerBase
 {
     private readonly IDashboardService _service;
@@ -35,6 +34,7 @@ public class DashboardController : ControllerBase
     /// 403 rol ≠ JefeArea (D12/D-F) · 404 sin tenant / sin ciclo activo / JEF sin área / área
     /// inexistente. Sin auditoría (D-H: solo lectura).</summary>
     [HttpGet("jefe-area")]
+    [Authorize(Roles = "JefeArea")]
     [ProducesResponseType(typeof(ApiResponse<TableroJefeAreaResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -43,6 +43,22 @@ public class DashboardController : ControllerBase
     public async Task<IActionResult> ObtenerTableroJefeArea(CancellationToken ct = default)
     {
         var data = await _service.ObtenerTableroJefeAreaAsync(ct);
+        return Ok(data);
+    }
+
+    /// <summary>GET /api/v1/dashboard/gerente — Tablero consolidado del Gerente para el ciclo
+    /// activo del tenant (CA #1/#2/#4): paneles por área, totales consolidados y alertas.
+    /// 403 rol ≠ Gerente · 404 sin tenant / sin ciclo activo. SEC-07 NO APLICA.</summary>
+    [HttpGet("gerente")]
+    [Authorize(Roles = "Gerente")]
+    [ProducesResponseType(typeof(ApiResponse<TableroGerenteResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ObtenerTableroGerente(CancellationToken ct = default)
+    {
+        var data = await _service.ObtenerTableroGerenteAsync(ct);
         return Ok(data);
     }
 }

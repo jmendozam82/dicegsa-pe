@@ -418,5 +418,13 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-20 (cierre HU-015 — Sprint 2 completado, 8/8 HU) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Sprint 3 — Inicio del Loop con HU-016 (Tablero de Inicio Gerente · @Orquestador)*
+## Decisiones de Jorge — 2026-09-20 (Sprint 3)
+
+**Contexto:** Al iniciar la fase de diseño para `objetivo_cg` (HU-017), se evaluó si este debía ser manejado mediante el `CicloRepository` (como las demás entidades del ciclo del Sprint 1 y 2). 
+
+1. **Punto de Inflexión Arquitectónica (Repositorios para Entidades Estratégicas):** Se decide no extender `CicloRepository` para evitar que se convierta en un *God Object*. A partir de la Épica EP-06 (Objetivos CG, OKRs, Acciones, Presupuestos), cada entidad de negocio con un CRUD completo independiente tendrá su propio repositorio dedicado (`IObjetivoCgRepository`, `IOkrRepository`, etc.). Esta decisión establece el nuevo patrón de acceso a datos para las capas estratégicas y operativas del sistema.
+
+---
+
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-20 (Sprint 3 en curso) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Continuar con el Loop de HU-017 (@QA, TDD)*

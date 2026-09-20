@@ -151,12 +151,95 @@ public class DashboardService : IDashboardService
         return new ApiResponse<TableroJefeAreaResponse> { Success = true, Data = tablero };
     }
 
-    /// <summary>D17: TenantId null (SuperAdmin sin tenant) → 404 defensivo (el SuperAdmin queda
-    /// fuera por [Authorize(Roles = "JefeArea")]; los roles autorizados siempre tienen tenant_id).</summary>
     private Guid ObtenerTenantIdOThrow()
     {
         if (_tenantContext.TenantId is null)
             throw new NotFoundException("No se pudo determinar el tenant del usuario autenticado");
         return _tenantContext.TenantId.Value;
+    }
+
+    /// <summary>Spec HU-016 Lógica BLL (pasos 1-11) · ObtenerTableroGerenteAsync: 200 con el tablero
+    /// consolidado del GER para el ciclo activo del tenant. 403 rol ≠ Gerente · 404 (sin tenant /
+    /// sin ciclo activo). SEC-07 NO APLICA (GER ve todas las áreas). Sin auditoría y sin tx.</summary>
+    public async Task<ApiResponse<TableroGerenteResponse>> ObtenerTableroGerenteAsync(CancellationToken ct = default)
+    {
+        // Paso 1 · D12: re-validación de rol
+        if (!string.Equals(_tenantContext.Rol, "Gerente", StringComparison.Ordinal))
+            throw new AccesoDenegadoException("Solo el Gerente tiene este tablero de inicio");
+
+        // Paso 2 · Tenant
+        var tenantId = ObtenerTenantIdOThrow();
+
+        // Paso 3 · Ciclo activo (CA #4)
+        var ciclo = await _repository.ObtenerCicloActivoAsync(tenantId, ct)
+            ?? throw new NotFoundException("No hay un ciclo activo para el tenant");
+
+        // Paso 4 · SEC-07 NO APLICA (D-Q). El GER ve todas las áreas. No se lee _tenantContext.AreaId.
+
+        // Paso 5 · Umbrales
+        var umbrales = (await _repository.ObtenerUmbralesAsync(tenantId, ciclo.Id, ct)).ToList();
+        var umbralKpi = umbrales.FirstOrDefault(u => u.Tipo == "KPI");
+        var umbralKpiVerde = umbralKpi?.UmbralVerde ?? UmbralVerdeDefault;
+        var umbralKpiAmarillo = umbralKpi?.UmbralAmarillo ?? UmbralAmarilloDefault;
+
+        // Paso 6 · Paneles por área (DAL-D6)
+        var resumenes = await _repository.ListarAreasConResumenAsync(tenantId, ciclo.Id, ct);
+
+        // Paso 7 · Acciones del ciclo (DAL-D8) y recálculo de atrasadas en BLL (D-D)
+        var acciones = (await _repository.ListarAccionesDelCicloAsync(tenantId, ciclo.Id, ct)).ToList();
+        bool EsAccionAtrasada(AccionCicloTableroDto a) =>
+            DateTime.Today > a.FechaVencimiento.Date && a.Progreso < 100;
+
+        // Paso 8 · Totales consolidados (DAL-D7)
+        var totales = await _repository.ObtenerTotalesConsolidadosAsync(tenantId, ciclo.Id, ct);
+        int totalAtrasadasCiclo = acciones.Count(EsAccionAtrasada);
+
+        // Pasos 9 y 10 · Semáforos por área y Alerta activa
+        var paneles = new List<PanelAreaResponse>();
+        int areasConAlertaActiva = 0;
+
+        foreach (var resumen in resumenes)
+        {
+            var promedioGlobal = (resumen.PromedioPuntuacionOkrs + resumen.AvancePlanAccion) / 2;
+            var semaforoGlobal = SemaforoHelper.Evaluar(promedioGlobal, umbralKpiVerde, umbralKpiAmarillo);
+
+            bool alertaActiva = semaforoGlobal == "Rojo";
+            if (alertaActiva)
+                areasConAlertaActiva++;
+
+            paneles.Add(new PanelAreaResponse
+            {
+                AreaId = resumen.AreaId,
+                AreaCodigo = resumen.AreaCodigo,
+                AreaNombre = resumen.AreaNombre,
+                SemaforoGlobal = semaforoGlobal,
+                AvanceOkrs = resumen.PromedioPuntuacionOkrs,
+                AvancePlanAccion = resumen.AvancePlanAccion,
+                AccionesAtrasadas = acciones.Count(a => a.AreaId == resumen.AreaId && EsAccionAtrasada(a)),
+                AlertaActiva = alertaActiva
+            });
+        }
+
+        // Paso 11 · Mapear y responder
+        var tablero = new TableroGerenteResponse
+        {
+            CicloId = ciclo.Id,
+            CicloNombre = ciclo.Nombre,
+            AñoFiscal = ciclo.AñoFiscal,
+            Paneles = paneles,
+            Totales = new TotalesConsolidadosResponse
+            {
+                TotalAcciones = totales.TotalAcciones,
+                AccionesAtrasadas = totalAtrasadasCiclo,
+                PromedioOkrs = totales.PromedioOkrs
+            },
+            AreasConAlertaActiva = areasConAlertaActiva
+        };
+
+        _logger?.LogInformation(
+            "Tablero consolidado del Gerente consultado (ciclo {CicloId}). Modulo=Dashboard, Accion=READ",
+            ciclo.Id);
+
+        return new ApiResponse<TableroGerenteResponse> { Success = true, Data = tablero };
     }
 }
