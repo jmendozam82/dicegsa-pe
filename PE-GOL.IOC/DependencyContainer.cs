@@ -7,6 +7,7 @@ using PE_GOL.DAL.Infrastructure;
 using PE_GOL.DAL.Interfaces;
 using PE_GOL.DAL.Repositories.Ciclo;
 using PE_GOL.DAL.Repositories.Objetivos;
+using PE_GOL.DAL.Repositories.PlanOperativo;
 using PE_GOL.DAL.Repositories.Saas;
 using PE_GOL.Utility.Security;
 using PE_GOL.Utility.Storage;
@@ -40,6 +41,8 @@ public static class DependencyContainer
         services.AddScoped<IAuthRepository, AuthRepository>();
         services.AddScoped<ICicloRepository, CicloRepository>(); // HU-007: dominio Ciclo (D2)
         services.AddScoped<IObjetivoCgRepository, ObjetivoCgRepository>(); // HU-017: objetivos corporativos
+        services.AddScoped<IAccionPlanRepository, AccionPlanRepository>(); // HU-019: acciones de plan
+        services.AddScoped<IHistorialProgresoRepository, HistorialProgresoRepository>(); // HU-020: historial de progreso
         services.AddScoped<ILogAuditoriaRepository, LogAuditoriaRepository>(); // HU-005: log de auditoría (D4, tabla global fuera de RLS)
 
         // Servicios de negocio (Scoped: estado por request).
@@ -54,6 +57,7 @@ public static class DependencyContainer
         services.AddScoped<IFilosofiaService, FilosofiaService>(); // HU-011: visión y misión (hija del agregado Ciclo, D-I/D2)
         services.AddScoped<IPilarService, PilarService>(); // HU-013: pilares estratégicos (hijos del agregado Ciclo, D-I/D2)
         services.AddScoped<IObjetivoCgService, ObjetivoCgService>(); // HU-017: objetivos corporativos
+        services.AddScoped<IAccionPlanService, AccionPlanService>(); // HU-019: acciones de plan
         services.AddScoped<IDashboardService, DashboardService>(); // HU-015: tablero de inicio del Jefe de Área (D-J)
         services.AddScoped<IEmailService, EmailService>(); // HU-010: correo de activación (STACK-10, D-C)
         services.AddScoped<ILogAuditoriaService, LogAuditoriaService>(); // HU-005: consulta del log de auditoría (solo lectura, CA #3)

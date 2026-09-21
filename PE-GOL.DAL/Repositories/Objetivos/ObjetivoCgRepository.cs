@@ -44,6 +44,7 @@ public sealed class ObjetivoCgRepository : IObjetivoCgRepository, IDisposable
     {
         var sql = @"
             SELECT o.id AS Id, 
+                   o.ciclo_id AS CicloId,
                    o.pilar_id AS PilarId, 
                    p.nombre AS PilarNombre, 
                    o.codigo AS Codigo, 
@@ -67,6 +68,7 @@ public sealed class ObjetivoCgRepository : IObjetivoCgRepository, IDisposable
     {
         var sql = @"
             SELECT o.id AS Id, 
+                   o.ciclo_id AS CicloId,
                    o.pilar_id AS PilarId, 
                    p.nombre AS PilarNombre, 
                    o.codigo AS Codigo, 
@@ -83,6 +85,29 @@ public sealed class ObjetivoCgRepository : IObjetivoCgRepository, IDisposable
               AND o.area_id = @AreaId;";
 
         return await GetConnection().QuerySingleOrDefaultAsync<ObjetivoCgResponse>(sql, new { Id = id, TenantId = tenantId, AreaId = areaId });
+    }
+
+    public async Task<ObjetivoCgResponse?> ObtenerPorIdSinAreaAsync(Guid tenantId, Guid id)
+    {
+        var sql = @"
+            SELECT o.id AS Id, 
+                   o.ciclo_id AS CicloId,
+                   o.pilar_id AS PilarId, 
+                   p.nombre AS PilarNombre, 
+                   o.codigo AS Codigo, 
+                   o.descripcion AS Descripcion, 
+                   o.trimestre_objetivo::text AS TrimestreObjetivo, 
+                   o.progreso AS Progreso, 
+                   o.semaforo::text AS Semaforo, 
+                   o.created_at AS CreatedAt, 
+                   o.updated_at AS UpdatedAt,
+                   o.area_id AS AreaId
+            FROM objetivo_cg o
+            INNER JOIN pilar p ON o.pilar_id = p.id
+            WHERE o.id = @Id
+              AND o.tenant_id = @TenantId;";
+
+        return await GetConnection().QuerySingleOrDefaultAsync<ObjetivoCgResponse>(sql, new { Id = id, TenantId = tenantId });
     }
 
     public async Task<Guid> CrearAsync(Guid tenantId, Guid cicloId, Guid areaId, string codigo, ObjetivoCgCreateRequest request, IDbTransaction? tx = null)
@@ -196,4 +221,26 @@ public sealed class ObjetivoCgRepository : IObjetivoCgRepository, IDisposable
     {
         _connectionActiva?.Dispose();
     }
+
+    /// <summary>Actualiza el campo progreso y semaforo del objetivo_cg (RN-018, HU-020).
+    /// El valor nuevoPorcentaje ya viene calculado por la BLL (SUM ponderado).</summary>
+    public async Task RecalcularProgresoAsync(Guid objetivoCgId, decimal nuevoPorcentaje, string nuevoSemaforo, Guid tenantId, CancellationToken ct = default)
+    {
+        var sql = @"
+            UPDATE objetivo_cg
+            SET progreso   = @Progreso,
+                semaforo   = @Semaforo::semaforo_color,
+                updated_at = NOW()
+            WHERE id        = @ObjetivoCgId
+              AND tenant_id = @TenantId;";
+
+        await GetConnection().ExecuteAsync(sql, new
+        {
+            Progreso     = nuevoPorcentaje,
+            Semaforo     = nuevoSemaforo,
+            ObjetivoCgId = objetivoCgId,
+            TenantId     = tenantId
+        });
+    }
 }
+
