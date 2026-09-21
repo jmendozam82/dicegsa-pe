@@ -1,0 +1,76 @@
+# CI — PE-GOL SaaS
+# Pipeline de integración continua: build (0 errores / 0 warnings) + tests xUnit
+# + verificación de cobertura BLL >= 70% (AGENTS.md TEST-02).
+#
+# Stack: .NET 8 · 9 proyectos N-Tier (ARCH-01) · Tests con Moq (sin BD real).
+# Los tests son unitarios (Moq) → no requieren Supabase ni credenciales.
+# appsettings.Supabase.json está gitignored y NO se necesita en CI.
+
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    name: Build y Tests (.NET 8)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore PE-GOL.sln
+
+      # LOOP-03/LOOP-04: el build debe quedar en 0 errores y 0 warnings.
+      # -warnaserror convierte cualquier warning CS####/MSBuild en error.
+      - name: Build (0 errores / 0 warnings)
+        run: dotnet build PE-GOL.sln --no-restore -warnaserror
+
+      # TEST-01/TEST-03: xUnit + Moq. coverlet.collector ya está en PE-GOL.Tests.csproj.
+      # Genera coverage.cobertura.xml por proyecto de tests.
+      - name: Test con cobertura
+        run: dotnet test PE-GOL.sln --no-build --collect:"XPlat Code Coverage" --results-directory coverage
+
+      # TEST-02: cobertura de la capa BLL >= 70%. Suma líneas cubiertas/total de las
+      # clases del namespace PE_GOL.BLL.* en los reportes cobertura.xml y falla si < 70%.
+      - name: Verificar cobertura BLL >= 70% (TEST-02)
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Path coverage -Recurse -Filter "coverage.cobertura.xml"
+          if (-not $files) { Write-Error "No se generaron reportes de cobertura"; exit 1 }
+          $total = 0; $covered = 0
+          foreach ($f in $files) {
+            [xml]$xml = Get-Content $f.FullName
+            foreach ($cls in $xml.coverage.packages.package.classes.class) {
+              if ($cls.name -like "PE_GOL.BLL.*") {
+                foreach ($line in $cls.lines.line) {
+                  $total++
+                  if ([int]$line.hits -gt 0) { $covered++ }
+                }
+              }
+            }
+          }
+          if ($total -eq 0) { Write-Error "No se encontraron clases PE_GOL.BLL en la cobertura"; exit 1 }
+          $pct = [math]::Round(100 * $covered / $total, 2)
+          Write-Host "Cobertura BLL: $pct% ($covered/$total lineas)"
+          if ($pct -lt 70) { Write-Error "Cobertura BLL $pct% < 70% (TEST-02)"; exit 1 }
