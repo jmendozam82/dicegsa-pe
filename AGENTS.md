@@ -1,6 +1,7 @@
 # AGENTS.md — Constitución del Proyecto PE-GOL SaaS
 > Este archivo es la fuente de verdad del proyecto. Todo agente, spec, ADR y plan debe leerlo antes de actuar.
-> Versión: 1.20 · Fecha: 2026-09-20 · Autor: Jorge (Dicegsa)
+> Versión: 1.21 · Fecha: 2026-09-20 · Autor: Jorge (Dicegsa)
+> v1.21 (2026-09-20): tabla de estado actualizada tras implementar HU-045 (UI de Gestión de Tenants — alcance ampliado) — Sprint 3 completado (6/6 HU).
 > v1.20 (2026-09-20): tabla de estado actualizada tras implementar HU-020 (Actualización de Progreso de Acciones) — Sprint 3 en curso.
 > v1.19 (2026-09-20): tabla de estado actualizada tras implementar HU-019 (CRUD Acciones del Plan) — Sprint 3 en curso.
 > v1.18 (2026-09-20): tabla de estado actualizada tras implementar HU-018 (Vista Consolidada CGs) — Sprint 3 en curso.
@@ -219,7 +220,7 @@ dicegsa-pe/
 | Agentes | `agents/*.md` | ✅ Completo |
 | Specs Sprint 1 | `specs/sprint-01/*.spec.md` | ✅ Completo — HU-001, HU-002, HU-003, HU-004, HU-006, HU-007 y HU-008 Implementadas (Sprint 1 sin pendientes) |
 | Specs Sprint 2 | `specs/sprint-02/*.spec.md` | ✅ Completo — HU-005, HU-009..HU-015 Implementadas (Sprint 2: 8/8 HU — Sprint 2 sin pendientes) |
-| Specs Sprint 3 | `specs/sprint-03/*.spec.md` | ⏳ En curso — HU-016..HU-020 Implementadas. |
+| Specs Sprint 3 | `specs/sprint-03/*.spec.md` | ✅ Completo — HU-016..HU-020 y HU-045 Implementadas (Sprint 3: 6/6 HU — Sprint 3 sin pendientes) |
 | Implementación | Código fuente | ⏳ Pendiente |
 
 ---
@@ -237,7 +238,8 @@ dicegsa-pe/
 
 ---
 
-*AGENTS.md — Constitución PE-GOL SaaS · Versión 1.20 · 2026-09-20*
+*AGENTS.md — Constitución PE-GOL SaaS · Versión 1.21 · 2026-09-20*
+*v1.21 (2026-09-20): tabla de estado actualizada tras implementar HU-045 (UI de Gestión de Tenants — alcance ampliado) — Sprint 3 completado (6/6 HU).*
 *v1.20 (2026-09-20): tabla de estado actualizada tras implementar HU-020 (Actualización de Progreso de Acciones) — Sprint 3 en curso.*
 *v1.19 (2026-09-20): tabla de estado actualizada tras implementar HU-019 (CRUD Acciones del Plan) — Sprint 3 en curso.*
 *v1.18 (2026-09-20): tabla de estado actualizada tras implementar HU-018 (Vista Consolidada CGs) — Sprint 3 en curso.*

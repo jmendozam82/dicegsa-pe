@@ -119,7 +119,8 @@
 - [ ] Validación client-side con jQuery Validate + mensajes de error del servidor visibles
 
 **Origen:** gap detectado en spec HU-001 (CA #1 "Formulario") — el alcance de HU-001 es backend-only. Creada por decisión de Jorge (2026-09-13).
-**Pts:** 3 · **Prioridad:** Media · **Sprint:** 3 (movida de Sprint 2 a Sprint 3 el 2026-09-13 por decisión de Jorge — no asumir sobrecapacidad; Sprint 2 queda en 29 pts, ver nota de planificación)
+**Pts:** 3 · **Prioridad:** Media · **Sprint:** 3 (movida de Sprint 2 a Sprint 3 el 2026-09-13 por decisión de Jorge — no asumir sobrecapacidad; Sprint 2 queda en 29 pts, ver nota de planificación) · **Estado:** ✅ Implementada (2026-09-20)
+**Nota de desviación de puntos (2026-09-20):** 3 pts nominales · ~30 pts efectivos (absorbe cimiento de frontend + 15 vistas diferidas de HU-006..HU-020 + migraciones V000–V004 — decisión Jorge 2026-09-20, ver ADR-009). No se creó HU-046.
 
 ---
 
@@ -902,7 +903,7 @@
 
 ---
 
-### 🟢 Sprint 3 — Objetivos Estratégicos y Tableros
+### ✅ Sprint 3 — Objetivos Estratégicos y Tableros (COMPLETADO — 6/6 HU)
 **Objetivo:** Jefe puede definir sus Objetivos CG y el Gerente tiene su vista consolidada.
 
 | HU | Descripción | Pts |
@@ -912,8 +913,10 @@
 | HU-018 | Vista Consolidada CGs (Gerente) | 3 |
 | HU-019 | CRUD Acciones del Plan | 8 |
 | HU-020 | Actualización de Progreso | 5 |
-| HU-045 | UI de Gestión de Tenants (EP-01) | 3 |
+| HU-045 | UI de Gestión de Tenants (EP-01) — ✅ Implementada (2026-09-20) | 3 |
 | **Total** | | **29 pts** |
+
+> **Sprint 3 completado el 2026-09-20 (6/6 HU).** HU-045 cerró con alcance ampliado (cimiento de frontend + 15 vistas diferidas + migraciones V000–V004 — ver ADR-009).
 
 ---
 

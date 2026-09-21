@@ -426,5 +426,15 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-20 (Sprint 3 en curso) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Continuar con el Loop de HU-017 (@QA, TDD)*
+## Cierre HU-045 y Sprint 3 — 2026-09-20
+
+**Contexto:** HU-045 (UI de Gestión de Tenants — alcance ampliado) se cerró el 2026-09-20 con todos los criterios de Done cumplidos. Con este cierre, el **Sprint 3 queda completado (6/6 HU)**.
+
+1. **HU-045 Implementada (spec → `Implementado`):** cimiento de frontend (ApiClient con JWT + refresh 401 + desenvolvimiento `ApiResponse<T>` · SesionService · AuthController MVC · Layout DS) + **15 vistas diferidas** de HU-006..HU-020 + migraciones V000–V004 ejecutadas y verificadas en **Supabase Cloud (PostgreSQL 17.6)**. Tests: **553/553 en verde** (27 TDD + 22 humo + regresión HU-001..HU-020). Cobertura BLL sin cambios (88.9%).
+2. **ADR-009 creado** (dos decisiones): (1) cimiento de frontend dentro de HU-045 — aprobada por Jorge 2026-09-20, no se crea HU-046, desviación ~30 pts efectivos en ticket de 3 (nota en backlog); (2) funciones auxiliares de RLS en schema `public` en lugar de `auth.*` — aceptada por @Orquestador (Supabase restringe CREATE en `auth`, 42501 permission denied; comportamiento idéntico, leen `request.jwt.claims`). Desviación documentada en el header de `V000__schema_base.sql`.
+3. **Sprint 3 completado (6/6 HU):** HU-016..HU-020 y HU-045 Implementadas. Sprint 4 (Plan de Acción Completo — HU-021..HU-025) queda como siguiente sprint, con el cimiento de frontend como activo reutilizable para todas las UI futuras.
+
+---
+
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-20 (Sprint 3 completado — 6/6 HU) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Continuar con el Loop de HU-021 (@QA, TDD) — Sprint 4*
