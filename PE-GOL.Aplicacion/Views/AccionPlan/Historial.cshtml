@@ -1,0 +1,103 @@
+@model AccionPlanHistorialViewModel
+@{
+    ViewData["Title"] = "Historial de Progreso";
+}
+
+@functions {
+    string ClaseStatus(string? status) => status switch
+    {
+        "Terminado" => "semaforo--verde",
+        "EnProgreso" => "semaforo--amarillo",
+        "Atrasado" => "semaforo--rojo",
+        _ => "semaforo--amarillo"
+    };
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Mi Área</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>Plan de Acción</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Historial de Progreso</span>
+    </div>
+    <h1 class="page-header__title">Historial de Progreso</h1>
+    <p class="page-header__subtitle">Registro de cambios de % de progreso de la acción, con status anterior y nuevo.</p>
+</div>
+
+<div class="card-pe mb-4">
+    @* ── Contexto de la acción ── *@
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="cell-codigo">@Model.Codigo</span>
+        <span class="fw-semibold">@Model.Descripcion</span>
+        @if (!string.IsNullOrWhiteSpace(Model.ObjetivoCgCodigo))
+        {
+            <span class="badge text-bg-secondary">@Model.ObjetivoCgCodigo</span>
+        }
+        <a class="btn-pe btn-pe--secondary btn-pe--sm ms-auto" asp-action="Index" asp-route-objetivoCgId="@Model.ObjetivoCgId">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al plan
+        </a>
+    </div>
+</div>
+
+@if (Model.Items.Count == 0)
+{
+    @* ── Estado vacío: sin historial (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-clock-history empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">Sin cambios de progreso</h3>
+            <p class="empty-state__message">Aún no se ha registrado ningún cambio de progreso para esta acción. Actualice el % de progreso para comenzar el historial.</p>
+        </div>
+    </div>
+}
+else
+{
+    @* ── Tabla de historial (UX-03) ── *@
+    <div class="card-pe p-0">
+        <div class="table-responsive">
+            <table class="tabla-pe mb-0">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th class="text-center">Progreso anterior</th>
+                        <th class="text-center">Progreso nuevo</th>
+                        <th>Status anterior</th>
+                        <th>Status nuevo</th>
+                        <th>Registrado por</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td class="text-center">@item.ProgresoAnterior.ToString("0.##")%</td>
+                            <td class="text-center">@item.ProgresoNuevo.ToString("0.##")%</td>
+                            <td>
+                                <span class="semaforo @ClaseStatus(item.StatusAnterior)">
+                                    <i class="bi bi-circle-fill" aria-hidden="true"></i> @item.StatusAnterior
+                                </span>
+                            </td>
+                            <td>
+                                <span class="semaforo @ClaseStatus(item.StatusNuevo)">
+                                    <i class="bi bi-circle-fill" aria-hidden="true"></i> @item.StatusNuevo
+                                </span>
+                            </td>
+                            <td>
+                                @if (string.IsNullOrWhiteSpace(item.RegistradoPorNombre))
+                                {
+                                    <span class="text-secondary">—</span>
+                                }
+                                else
+                                {
+                                    <span>@item.RegistradoPorNombre</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

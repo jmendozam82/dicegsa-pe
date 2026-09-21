@@ -1,0 +1,81 @@
+@{
+    var controllerActual = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+
+    string ClaseActiva(string controller) =>
+        string.Equals(controllerActual, controller, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+}
+<aside class="sidebar" id="sidebar">
+    <nav class="sidebar-nav" aria-label="Navegación principal">
+        @if (User.IsInRole("SuperAdmin"))
+        {
+            <div class="sidebar-section-label">Admin SaaS</div>
+            <a class="sidebar-nav-item @ClaseActiva("Tenants")" asp-controller="Tenants" asp-action="Index">
+                <i class="bi bi-building" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Tenants</span>
+            </a>
+            <span class="sidebar-nav-item" aria-disabled="true" title="Disponible en tandas B/C/D de HU-045">
+                <i class="bi bi-card-list" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Planes</span>
+            </span>
+        }
+
+        @if (User.IsInRole("AdminTenant"))
+        {
+            <div class="sidebar-section-label">Configuración</div>
+            <a class="sidebar-nav-item @ClaseActiva("Empresa")" asp-controller="Empresa" asp-action="Index">
+                <i class="bi bi-building" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Empresa</span>
+            </a>
+            <a class="sidebar-nav-item @ClaseActiva("Ciclo")" asp-controller="Ciclo" asp-action="Index">
+                <i class="bi bi-calendar-range" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Ciclos</span>
+            </a>
+            <a class="sidebar-nav-item @ClaseActiva("Area")" asp-controller="Area" asp-action="Index">
+                <i class="bi bi-diagram-3" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Áreas</span>
+            </a>
+            <a class="sidebar-nav-item @ClaseActiva("Responsable")" asp-controller="Responsable" asp-action="Index">
+                <i class="bi bi-people" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Responsables</span>
+            </a>
+        }
+
+        @if (User.IsInRole("Gerente"))
+        {
+            <div class="sidebar-section-label">Contenido</div>
+            <a class="sidebar-nav-item @ClaseActiva("Filosofia")" asp-controller="Filosofia" asp-action="Index">
+                <i class="bi bi-lightbulb" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Filosofía</span>
+            </a>
+            <a class="sidebar-nav-item @ClaseActiva("Pilar")" asp-controller="Pilar" asp-action="Index">
+                <i class="bi bi-columns-gap" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Pilares</span>
+            </a>
+            <a class="sidebar-nav-item @ClaseActiva("Dashboard")" asp-controller="Dashboard" asp-action="Gerente">
+                <i class="bi bi-speedometer2" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Dashboard</span>
+            </a>
+            <a class="sidebar-nav-item @ClaseActiva("ObjetivoCg")" asp-controller="ObjetivoCg" asp-action="Consolidado">
+                <i class="bi bi-bullseye" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Objetivos CG</span>
+            </a>
+        }
+
+        @if (User.IsInRole("JefeArea"))
+        {
+            <div class="sidebar-section-label">Mi Área</div>
+            <a class="sidebar-nav-item @ClaseActiva("ObjetivoCg")" asp-controller="ObjetivoCg" asp-action="Index">
+                <i class="bi bi-bullseye" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Objetivos CG</span>
+            </a>
+            <a class="sidebar-nav-item @ClaseActiva("AccionPlan")" asp-controller="AccionPlan" asp-action="Index">
+                <i class="bi bi-list-check" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Plan de Acción</span>
+            </a>
+            <a class="sidebar-nav-item @ClaseActiva("Dashboard")" asp-controller="Dashboard" asp-action="JefeArea">
+                <i class="bi bi-speedometer2" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Dashboard</span>
+            </a>
+        }
+    </nav>
+</aside>

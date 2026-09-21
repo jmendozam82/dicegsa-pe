@@ -1,0 +1,216 @@
+@model EmpresaViewModel
+@{
+    ViewData["Title"] = "Configuración de la Empresa";
+    var soloLectura = !Model.EsAdmin;
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Configuración</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Empresa</span>
+    </div>
+    <h1 class="page-header__title">Configuración de la Empresa</h1>
+    <p class="page-header__subtitle">Identidad corporativa y zona horaria del tenant.</p>
+</div>
+
+@if (TempData["Success"] is string mensajeExito)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle" aria-hidden="true"></i> @mensajeExito
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+@if (TempData["Error"] is string mensajeError)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @mensajeError
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <strong>No se pudo guardar la configuración:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+@if (soloLectura)
+{
+    <div class="alert alert-info" role="alert">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        Solo el Administrador del Tenant puede modificar estos datos (RN-007).
+    </div>
+}
+
+<div class="row g-4">
+    @* ── Card de identidad (DS § 5.6) ── *@
+    <div class="col-lg-7">
+        <div class="card-pe">
+            <h2 class="h-section mb-3">Datos de la empresa</h2>
+            <form asp-action="Guardar" method="post" id="formEmpresa" novalidate>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-pe-label" for="nombre">Nombre *</label>
+                        <input class="form-pe-input" type="text" id="nombre" name="nombre" value="@Model.Nombre"
+                               maxlength="150" placeholder="Ej: Grupo Empresarial XYZ"
+                               @(soloLectura ? "disabled" : "") />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-pe-label" for="eslogan">Eslogan</label>
+                        <input class="form-pe-input" type="text" id="eslogan" name="eslogan" value="@Model.Eslogan"
+                               maxlength="200" placeholder="Eslogan corporativo"
+                               @(soloLectura ? "disabled" : "") />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-pe-label" for="zonaHoraria">Zona horaria *</label>
+                        <select class="form-pe-select" id="zonaHoraria" name="zonaHoraria" @(soloLectura ? "disabled" : "")>
+                            @{
+                                var zonasAmerica = Model.Zonas.Where(z => z.StartsWith("America/", StringComparison.Ordinal)).ToList();
+                                var zonasOtras = Model.Zonas.Where(z => !z.StartsWith("America/", StringComparison.Ordinal)).ToList();
+                            }
+                            <optgroup label="América">
+                                @foreach (var zona in zonasAmerica)
+                                {
+                                    <option value="@zona" selected="@(Model.ZonaHoraria == zona)">@zona</option>
+                                }
+                            </optgroup>
+                            <optgroup label="Otras regiones">
+                                @foreach (var zona in zonasOtras)
+                                {
+                                    <option value="@zona" selected="@(Model.ZonaHoraria == zona)">@zona</option>
+                                }
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <span class="form-pe-label d-block">Última actualización</span>
+                        <span class="body-sm">@Model.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+                </div>
+
+                @if (!soloLectura)
+                {
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn-pe btn-pe--primary">
+                            <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+                        </button>
+                    </div>
+                }
+            </form>
+        </div>
+    </div>
+
+    @* ── Card de logo (CA #2) ── *@
+    <div class="col-lg-5">
+        <div class="card-pe">
+            <h2 class="h-section mb-3">Logo</h2>
+
+            @if (string.IsNullOrWhiteSpace(Model.LogoUrl))
+            {
+                <div class="empty-state">
+                    <i class="bi bi-image empty-state__icon" aria-hidden="true"></i>
+                    <h3 class="empty-state__title">Sin logo</h3>
+                    <p class="empty-state__message">Suba una imagen PNG/JPG de hasta 2 MB.</p>
+                </div>
+            }
+            else
+            {
+                <div class="text-center mb-3">
+                    <img src="@Model.LogoUrl" alt="Logo de @Model.Nombre"
+                         class="img-fluid border rounded p-2" />
+                </div>
+            }
+
+            @if (!soloLectura)
+            {
+                <form asp-action="Logo" method="post" enctype="multipart/form-data" id="formLogo" novalidate>
+                    <div class="mb-3">
+                        <label class="form-pe-label" for="archivo">Imagen (PNG/JPG, máx 2 MB)</label>
+                        <input class="form-pe-input" type="file" id="archivo" name="archivo"
+                               accept=".png,.jpg,.jpeg" />
+                    </div>
+                    <button type="submit" class="btn-pe btn-pe--primary">
+                        <i class="bi bi-upload" aria-hidden="true"></i> Subir logo
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+            'use strict';
+
+            // Reglas custom (espejo FluentValidation HU-006): formato PNG/JPG y ≤ 2 MB.
+            $.validator.addMethod('accept', function (value, element) {
+                if (!value) {
+                    return true;
+                }
+                var ext = value.split('.').pop().toLowerCase();
+                return $.inArray(ext, ['png', 'jpg', 'jpeg']) !== -1;
+            }, 'Solo se permiten imágenes PNG o JPG.');
+
+            $.validator.addMethod('maxbytes', function (value, element, param) {
+                if (!element.files || !element.files.length) {
+                    return true;
+                }
+                return element.files[0].size <= param;
+            }, 'La imagen no puede superar 2 MB.');
+
+            $('#formEmpresa').validate({
+                rules: {
+                    nombre: { required: true, maxlength: 150 },
+                    eslogan: { maxlength: 200 },
+                    zonaHoraria: { required: true, maxlength: 50 }
+                },
+                messages: {
+                    nombre: {
+                        required: 'El nombre es obligatorio.',
+                        maxlength: 'El nombre no puede superar 150 caracteres.'
+                    },
+                    eslogan: {
+                        maxlength: 'El eslogan no puede superar 200 caracteres.'
+                    },
+                    zonaHoraria: {
+                        required: 'Seleccione una zona horaria.',
+                        maxlength: 'La zona horaria no puede superar 50 caracteres.'
+                    }
+                },
+                errorElement: 'span',
+                errorClass: 'form-pe-error',
+                errorPlacement: function (error, element) {
+                    error.insertAfter(element);
+                }
+            });
+
+            $('#formLogo').validate({
+                rules: {
+                    archivo: { required: true, accept: true, maxbytes: 2 * 1024 * 1024 }
+                },
+                messages: {
+                    archivo: {
+                        required: 'Seleccione una imagen.',
+                        accept: 'Solo se permiten imágenes PNG o JPG.',
+                        maxbytes: 'La imagen no puede superar 2 MB.'
+                    }
+                },
+                errorElement: 'span',
+                errorClass: 'form-pe-error',
+                errorPlacement: function (error, element) {
+                    error.insertAfter(element);
+                }
+            });
+        });
+    </script>
+}

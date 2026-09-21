@@ -1,0 +1,96 @@
+@model AreaFormViewModel
+@{
+    ViewData["Title"] = "Nueva Área";
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Configuración</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>Áreas</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Nueva Área</span>
+    </div>
+    <h1 class="page-header__title">Nueva Área</h1>
+    <p class="page-header__subtitle">El código GOL se genera automáticamente (GOL1, GOL2, ...).</p>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <strong>No se pudo guardar el área:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="card-pe">
+    <form asp-action="Crear" asp-route-cicloId="@Model.CicloId" method="post" id="formArea" novalidate>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-pe-label" for="nombre">Nombre *</label>
+                <input class="form-pe-input" type="text" id="nombre" name="nombre" value="@Model.Nombre"
+                       maxlength="150" placeholder="Ej: Gerencia de Operaciones" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="responsableId">Responsable *</label>
+                <select class="form-pe-select" id="responsableId" name="responsableId">
+                    <option value="">Seleccione un responsable</option>
+                    @foreach (var candidato in Model.Candidatos)
+                    {
+                        <option value="@candidato.Id" selected="@(Model.ResponsableId == candidato.Id)">
+                            @candidato.Nombre (@candidato.Correo)@(candidato.YaAsignado ? " — ya asignado" : "")
+                        </option>
+                    }
+                </select>
+                @if (Model.Candidatos.Count == 0)
+                {
+                    <span class="form-pe-error">No hay candidatos disponibles: registre responsables JefeArea activos primero.</span>
+                }
+            </div>
+            <div class="col-12">
+                <label class="form-pe-label" for="comentarios">Comentarios</label>
+                <textarea class="form-pe-input" id="comentarios" name="comentarios" rows="3"
+                          placeholder="Comentarios sobre el área">@Model.Comentarios</textarea>
+            </div>
+        </div>
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+            </button>
+            <a class="btn-pe btn-pe--secondary" asp-action="Index" asp-route-cicloId="@Model.CicloId">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+            $('#formArea').validate({
+                rules: {
+                    nombre: { required: true, maxlength: 150 },
+                    responsableId: { required: true }
+                },
+                messages: {
+                    nombre: {
+                        required: 'El nombre es obligatorio.',
+                        maxlength: 'El nombre no puede superar 150 caracteres.'
+                    },
+                    responsableId: {
+                        required: 'Seleccione un responsable (RN-011).'
+                    }
+                },
+                errorElement: 'span',
+                errorClass: 'form-pe-error',
+                errorPlacement: function (error, element) {
+                    error.insertAfter(element);
+                }
+            });
+        });
+    </script>
+}

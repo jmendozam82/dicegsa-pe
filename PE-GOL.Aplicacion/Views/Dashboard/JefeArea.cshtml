@@ -1,0 +1,167 @@
+@model DashboardJefeAreaViewModel
+@{
+    ViewData["Title"] = "Tablero del Jefe de Área";
+}
+
+@functions {
+    string ClaseSemaforo(string? semaforo) => semaforo switch
+    {
+        "Verde" => "semaforo--verde",
+        "Amarillo" => "semaforo--amarillo",
+        "Rojo" => "semaforo--rojo",
+        _ => "semaforo--amarillo"
+    };
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Mi Área</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Dashboard</span>
+    </div>
+    <h1 class="page-header__title">Tablero del Jefe de Área</h1>
+    <p class="page-header__subtitle">
+        @if (Model.Tablero is not null)
+        {
+            <text>Resumen del área <strong>@Model.Tablero.AreaCodigo — @Model.Tablero.AreaNombre</strong> en el ciclo <strong>@Model.Tablero.CicloNombre</strong> (@Model.Tablero.AñoFiscal).</text>
+        }
+        else
+        {
+            <text>Resumen del área del Jefe en el ciclo activo.</text>
+        }
+    </p>
+</div>
+
+@if (TempData["Error"] is string mensajeError)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @mensajeError
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@if (Model.Tablero is null)
+{
+    @* ── Estado vacío: sin ciclo activo (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-speedometer2 empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">No hay un ciclo activo</h3>
+            <p class="empty-state__message">El tablero se construye sobre el ciclo activo del tenant. Activa un ciclo desde Configuración → Ciclos.</p>
+        </div>
+    </div>
+}
+else
+{
+    var tablero = Model.Tablero;
+
+    @* ── KPIs del área (DS § 5.1 — CA #1) ── *@
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-xl-3">
+            <div class="kpi-card kpi-card--verde">
+                <div class="kpi-card__icon"><i class="bi bi-bullseye" aria-hidden="true"></i></div>
+                <div>
+                    <span class="kpi-card__label">Total OKRs del área</span>
+                    <span class="kpi-card__value">@tablero.Tarjetas.TotalOkrs</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="kpi-card kpi-card--verde">
+                <div class="kpi-card__icon"><i class="bi bi-check-circle" aria-hidden="true"></i></div>
+                <div>
+                    <span class="kpi-card__label">OKRs alcanzados</span>
+                    <span class="kpi-card__value">@tablero.Tarjetas.OkrsAlcanzados</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="kpi-card kpi-card--amarillo">
+                <div class="kpi-card__icon"><i class="bi bi-list-check" aria-hidden="true"></i></div>
+                <div>
+                    <span class="kpi-card__label">Avance Plan de Acción</span>
+                    <span class="kpi-card__value">@((tablero.Tarjetas.AvancePlanAccion * 100).ToString("0"))%</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="kpi-card kpi-card--rojo">
+                <div class="kpi-card__icon"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></div>
+                <div>
+                    <span class="kpi-card__label">Acciones atrasadas</span>
+                    <span class="kpi-card__value">@tablero.Tarjetas.AccionesAtrasadas</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Días al vencimiento más cercano (CA #1 — null si no hay pendientes) ── *@
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-xl-3">
+            <div class="kpi-card kpi-card--amarillo">
+                <div class="kpi-card__icon"><i class="bi bi-calendar-event" aria-hidden="true"></i></div>
+                <div>
+                    <span class="kpi-card__label">Días al vencimiento más cercano</span>
+                    <span class="kpi-card__value">
+                        @if (tablero.Tarjetas.DiasAlVencimientoMasCercano is int dias)
+                        {
+                            <text>@dias</text>
+                        }
+                        else
+                        {
+                            <text>—</text>
+                        }
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Semáforos del área (CA #2 — D-E: promedio OKRs + plan de acción) ── *@
+    <div class="card-pe mb-4">
+        <h3 class="body-md fw-semibold mb-3">Semáforos del área</h3>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <span class="body-sm d-block mb-1">OKRs</span>
+                <span class="semaforo @ClaseSemaforo(tablero.Semaforo.Okrs)">
+                    <i class="bi bi-circle-fill" aria-hidden="true"></i> @tablero.Semaforo.Okrs
+                </span>
+                <span class="body-sm d-block mt-1">Promedio: @((tablero.Semaforo.PromedioPuntuacionOkrs * 100).ToString("0"))%</span>
+            </div>
+            <div class="col-md-4">
+                <span class="body-sm d-block mb-1">Plan de Acción</span>
+                <span class="semaforo @ClaseSemaforo(tablero.Semaforo.PlanAccion)">
+                    <i class="bi bi-circle-fill" aria-hidden="true"></i> @tablero.Semaforo.PlanAccion
+                </span>
+            </div>
+            <div class="col-md-4">
+                <span class="body-sm d-block mb-1">Global</span>
+                <span class="semaforo @ClaseSemaforo(tablero.Semaforo.Global)">
+                    <i class="bi bi-circle-fill" aria-hidden="true"></i> @tablero.Semaforo.Global
+                </span>
+            </div>
+        </div>
+    </div>
+
+    @* ── Accesos directos (CA #3 — OKRs/CAPEX/OPEX en sprints futuros) ── *@
+    <div class="card-pe">
+        <h3 class="body-md fw-semibold mb-3">Accesos directos</h3>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn-pe btn-pe--primary" asp-controller="ObjetivoCg" asp-action="Index">
+                <i class="bi bi-bullseye" aria-hidden="true"></i> Mis Objetivos CG
+            </a>
+            <a class="btn-pe btn-pe--primary" asp-controller="AccionPlan" asp-action="Index">
+                <i class="bi bi-list-check" aria-hidden="true"></i> Plan de Acción
+            </a>
+            <span class="btn-pe btn-pe--secondary" aria-disabled="true" title="Disponible en sprints futuros">
+                <i class="bi bi-flag" aria-hidden="true"></i> OKRs
+            </span>
+            <span class="btn-pe btn-pe--secondary" aria-disabled="true" title="Disponible en sprints futuros">
+                <i class="bi bi-cash-coin" aria-hidden="true"></i> CAPEX
+            </span>
+            <span class="btn-pe btn-pe--secondary" aria-disabled="true" title="Disponible en sprints futuros">
+                <i class="bi bi-wallet2" aria-hidden="true"></i> OPEX
+            </span>
+        </div>
+    </div>
+}

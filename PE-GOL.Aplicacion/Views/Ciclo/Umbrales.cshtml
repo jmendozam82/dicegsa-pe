@@ -1,0 +1,224 @@
+@model UmbralesViewModel
+@{
+    ViewData["Title"] = "Umbrales de Semáforo";
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Configuración</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>Ciclos</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Umbrales</span>
+    </div>
+    <h1 class="page-header__title">Umbrales de Semáforo</h1>
+    <p class="page-header__subtitle">Ciclo <strong>@Model.CicloNombre</strong> · configuración de cortes Verde/Amarillo/Rojo.</p>
+</div>
+
+@if (TempData["Success"] is string mensajeExito)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle" aria-hidden="true"></i> @mensajeExito
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <strong>No se pudieron guardar los umbrales:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+@if (!Model.EsEditable)
+{
+    <div class="alert alert-info" role="alert">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        Los umbrales solo se pueden modificar en un ciclo en estado Borrador (RN-039/RC-12). El ciclo actual está
+        <strong>@Model.CicloEstado</strong> — vista de solo lectura.
+    </div>
+}
+
+<div class="card-pe mb-4">
+    <div class="row g-3 align-items-center">
+        <div class="col-md-4">
+            <span class="form-pe-label d-block">Estado del ciclo</span>
+            @if (Model.CicloEstado == "Activo")
+            {
+                <span class="semaforo semaforo--verde">
+                    <i class="bi bi-circle-fill" aria-hidden="true"></i> Activo
+                </span>
+            }
+            else if (Model.CicloEstado == "Borrador")
+            {
+                <span class="semaforo semaforo--amarillo">
+                    <i class="bi bi-circle-fill" aria-hidden="true"></i> Borrador
+                </span>
+            }
+            else
+            {
+                <span class="badge border text-secondary">Cerrado</span>
+            }
+        </div>
+        <div class="col-md-8">
+            <p class="body-sm mb-0">
+                <i class="bi bi-info-circle" aria-hidden="true"></i>
+                Regla de semáforo: <span class="semaforo semaforo--verde">Verde ≥ umbral verde</span>
+                <span class="semaforo semaforo--amarillo">Amarillo ≥ umbral amarillo</span>
+                <span class="semaforo semaforo--rojo">Rojo &lt; umbral amarillo</span>
+            </p>
+        </div>
+    </div>
+</div>
+
+@if (Model.EsEditable)
+{
+    <form asp-action="Umbrales" asp-route-id="@Model.CicloId" method="post" id="formUmbrales" novalidate>
+        <div class="row g-4">
+            @* ── Categoría KPI ── *@
+            <div class="col-lg-6">
+                <div class="card-pe">
+                    <h2 class="h-section mb-1">KPIs</h2>
+                    <p class="body-sm mb-3">Umbrales para los indicadores clave del ciclo.</p>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-pe-label" for="kpiVerde">Umbral verde *</label>
+                            <input class="form-pe-input" type="number" step="0.01" min="0" max="1"
+                                   id="kpiVerde" name="Kpi.UmbralVerde" value="@Model.KpiVerde.ToString("0.00", inv)" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-pe-label" for="kpiAmarillo">Umbral amarillo *</label>
+                            <input class="form-pe-input" type="number" step="0.01" min="0" max="1"
+                                   id="kpiAmarillo" name="Kpi.UmbralAmarillo" value="@Model.KpiAmarillo.ToString("0.00", inv)" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* ── Categoría Plan de Acción ── *@
+            <div class="col-lg-6">
+                <div class="card-pe">
+                    <h2 class="h-section mb-1">Plan de Acción</h2>
+                    <p class="body-sm mb-3">Umbrales para el avance de las acciones del plan.</p>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-pe-label" for="planVerde">Umbral verde *</label>
+                            <input class="form-pe-input" type="number" step="0.01" min="0" max="1"
+                                   id="planVerde" name="PlanAccion.UmbralVerde" value="@Model.PlanVerde.ToString("0.00", inv)" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-pe-label" for="planAmarillo">Umbral amarillo *</label>
+                            <input class="form-pe-input" type="number" step="0.01" min="0" max="1"
+                                   id="planAmarillo" name="PlanAccion.UmbralAmarillo" value="@Model.PlanAmarillo.ToString("0.00", inv)" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar umbrales
+            </button>
+            <a class="btn-pe btn-pe--secondary" asp-controller="Ciclo" asp-action="Index">Cancelar</a>
+        </div>
+    </form>
+}
+else
+{
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card-pe">
+                <h2 class="h-section mb-3">KPIs</h2>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <span class="form-pe-label d-block">Umbral verde</span>
+                        <span class="semaforo semaforo--verde">@Model.KpiVerde.ToString("0.00", inv)</span>
+                    </div>
+                    <div class="col-md-6">
+                        <span class="form-pe-label d-block">Umbral amarillo</span>
+                        <span class="semaforo semaforo--amarillo">@Model.KpiAmarillo.ToString("0.00", inv)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card-pe">
+                <h2 class="h-section mb-3">Plan de Acción</h2>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <span class="form-pe-label d-block">Umbral verde</span>
+                        <span class="semaforo semaforo--verde">@Model.PlanVerde.ToString("0.00", inv)</span>
+                    </div>
+                    <div class="col-md-6">
+                        <span class="form-pe-label d-block">Umbral amarillo</span>
+                        <span class="semaforo semaforo--amarillo">@Model.PlanAmarillo.ToString("0.00", inv)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        $(function () {
+            'use strict';
+
+            // Regla custom (espejo FluentValidation HU-008): verde > amarillo ESTRICTO.
+            $.validator.addMethod('mayorQue', function (value, element, param) {
+                var amarillo = parseFloat($(param).val());
+                var verde = parseFloat(value);
+                return !isNaN(amarillo) && !isNaN(verde) && verde > amarillo;
+            }, 'El umbral verde debe ser estrictamente mayor que el amarillo.');
+
+            $('#formUmbrales').validate({
+                rules: {
+                    'Kpi.UmbralVerde': { required: true, number: true, min: 0, max: 1, mayorQue: '#kpiAmarillo' },
+                    'Kpi.UmbralAmarillo': { required: true, number: true, min: 0, max: 1 },
+                    'PlanAccion.UmbralVerde': { required: true, number: true, min: 0, max: 1, mayorQue: '#planAmarillo' },
+                    'PlanAccion.UmbralAmarillo': { required: true, number: true, min: 0, max: 1 }
+                },
+                messages: {
+                    'Kpi.UmbralVerde': {
+                        required: 'El umbral verde es obligatorio.',
+                        number: 'Ingrese un valor numérico.',
+                        min: 'El valor debe estar entre 0.00 y 1.00.',
+                        max: 'El valor debe estar entre 0.00 y 1.00.'
+                    },
+                    'Kpi.UmbralAmarillo': {
+                        required: 'El umbral amarillo es obligatorio.',
+                        number: 'Ingrese un valor numérico.',
+                        min: 'El valor debe estar entre 0.00 y 1.00.',
+                        max: 'El valor debe estar entre 0.00 y 1.00.'
+                    },
+                    'PlanAccion.UmbralVerde': {
+                        required: 'El umbral verde es obligatorio.',
+                        number: 'Ingrese un valor numérico.',
+                        min: 'El valor debe estar entre 0.00 y 1.00.',
+                        max: 'El valor debe estar entre 0.00 y 1.00.'
+                    },
+                    'PlanAccion.UmbralAmarillo': {
+                        required: 'El umbral amarillo es obligatorio.',
+                        number: 'Ingrese un valor numérico.',
+                        min: 'El valor debe estar entre 0.00 y 1.00.',
+                        max: 'El valor debe estar entre 0.00 y 1.00.'
+                    }
+                },
+                errorElement: 'span',
+                errorClass: 'form-pe-error',
+                errorPlacement: function (error, element) {
+                    error.insertAfter(element);
+                }
+            });
+        });
+    </script>
+}

@@ -1,0 +1,111 @@
+@model ResponsableFormViewModel
+@{
+    ViewData["Title"] = "Editar Responsable";
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Configuración</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>Responsables</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">@Model.Nombre</span>
+    </div>
+    <h1 class="page-header__title">Editar Responsable</h1>
+    <p class="page-header__subtitle">Nombre y correo son inmutables (RN-010); solo se puede reasignar el área.</p>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <strong>No se pudo guardar el responsable:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+@if (Model.Estado != "Activo")
+{
+    <div class="alert alert-info" role="alert">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        El responsable está <strong>@Model.Estado</strong>: los datos permanecen en solo lectura.
+    </div>
+}
+
+<div class="card-pe">
+    <form asp-action="Editar" asp-route-cicloId="@Model.CicloId" asp-route-id="@Model.ResponsableId" method="post" id="formResponsable" novalidate>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-pe-label" for="nombre">Nombre</label>
+                <input class="form-pe-input" type="text" id="nombre" name="nombre" value="@Model.Nombre" disabled />
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="correo">Correo</label>
+                <input class="form-pe-input" type="email" id="correo" name="correo" value="@Model.Correo" disabled />
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="areaId">Área *</label>
+                <select class="form-pe-select" id="areaId" name="areaId" @(Model.Estado == "Activo" ? "" : "disabled")>
+                    <option value="">Sin área</option>
+                    @foreach (var area in Model.Areas)
+                    {
+                        <option value="@area.Id" selected="@(Model.AreaId == area.Id)">
+                            @area.Codigo — @area.Nombre
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <span class="form-pe-label d-block">Estado</span>
+                @if (Model.Estado == "Activo")
+                {
+                    <span class="semaforo semaforo--verde">
+                        <i class="bi bi-circle-fill" aria-hidden="true"></i> Activo
+                    </span>
+                }
+                else
+                {
+                    <span class="semaforo semaforo--rojo">
+                        <i class="bi bi-circle-fill" aria-hidden="true"></i> Inactivo
+                    </span>
+                }
+            </div>
+        </div>
+        <div class="d-flex gap-2 mt-4">
+            @if (Model.Estado == "Activo")
+            {
+                <button type="submit" class="btn-pe btn-pe--primary">
+                    <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+                </button>
+            }
+            <a class="btn-pe btn-pe--secondary" asp-action="Index" asp-route-cicloId="@Model.CicloId">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+            $('#formResponsable').validate({
+                rules: {
+                    areaId: { required: true }
+                },
+                messages: {
+                    areaId: {
+                        required: 'Seleccione un área.'
+                    }
+                },
+                errorElement: 'span',
+                errorClass: 'form-pe-error',
+                errorPlacement: function (error, element) {
+                    error.insertAfter(element);
+                }
+            });
+        });
+    </script>
+}

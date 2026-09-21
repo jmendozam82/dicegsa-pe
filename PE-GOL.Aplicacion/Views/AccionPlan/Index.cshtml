@@ -1,0 +1,241 @@
+@model AccionPlanIndexViewModel
+@{
+    ViewData["Title"] = "Plan de Acción";
+}
+
+@functions {
+    string ClaseSemaforo(string? semaforo) => semaforo switch
+    {
+        "Verde" => "semaforo--verde",
+        "Amarillo" => "semaforo--amarillo",
+        "Rojo" => "semaforo--rojo",
+        _ => "semaforo--amarillo"
+    };
+
+    string ClaseStatus(string? status) => status switch
+    {
+        "Terminado" => "semaforo--verde",
+        "EnProgreso" => "semaforo--amarillo",
+        "Atrasado" => "semaforo--rojo",
+        _ => "semaforo--amarillo"
+    };
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Mi Área</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Plan de Acción</span>
+    </div>
+    <h1 class="page-header__title">Plan de Acción</h1>
+    <p class="page-header__subtitle">
+        @if (Model.HayCicloActivo)
+        {
+            <text>Acciones del plan de su área en el ciclo <strong>@Model.CicloNombre</strong>.</text>
+        }
+        else
+        {
+            <text>Acciones del plan de su área en el ciclo activo.</text>
+        }
+    </p>
+</div>
+
+@if (TempData["Success"] is string mensajeExito)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle" aria-hidden="true"></i> @mensajeExito
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+@if (TempData["Error"] is string mensajeError)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @mensajeError
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@* ── Selector de Objetivo CG (form GET a Index) ── *@
+<div class="card-pe mb-4">
+    <form method="get" asp-action="Index" class="row g-3 align-items-end">
+        <div class="col-md-6">
+            <label class="form-pe-label" for="objetivoCgId">Objetivo CG</label>
+            <select class="form-pe-select" id="objetivoCgId" name="objetivoCgId" onchange="this.form.submit()">
+                <option value="">Seleccione un objetivo CG</option>
+                @foreach (var cg in Model.ObjetivosCg)
+                {
+                    <option value="@cg.Id" selected="@(Model.ObjetivoCgId == cg.Id)">
+                        @cg.Codigo — @cg.Descripcion
+                    </option>
+                }
+            </select>
+        </div>
+        <div class="col-md-6 d-flex gap-2">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-funnel" aria-hidden="true"></i> Ver acciones
+            </button>
+            @if (Model.ObjetivoCgId.HasValue)
+            {
+                <a class="btn-pe btn-pe--primary ms-auto" asp-action="Crear" asp-route-objetivoCgId="@Model.ObjetivoCgId">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i> Nueva Acción
+                </a>
+            }
+        </div>
+    </form>
+</div>
+
+@if (!Model.HayCicloActivo)
+{
+    @* ── Estado vacío: sin ciclo activo (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-list-check empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">No hay un ciclo activo</h3>
+            <p class="empty-state__message">El plan de acción se construye sobre el ciclo activo del tenant. Activa un ciclo desde Configuración → Ciclos.</p>
+        </div>
+    </div>
+}
+else if (!Model.ObjetivoCgId.HasValue)
+{
+    @* ── Estado vacío: sin CG seleccionado (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-list-check empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">Seleccione un objetivo CG</h3>
+            <p class="empty-state__message">Elija un objetivo CG del selector para ver sus acciones del plan.</p>
+        </div>
+    </div>
+}
+else if (Model.Items.Count == 0)
+{
+    @* ── Estado vacío: CG sin acciones (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-list-check empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">No hay acciones en este objetivo</h3>
+            <p class="empty-state__message">Desglose el objetivo <strong>@Model.ObjetivoCgCodigo</strong> en acciones concretas con fechas y responsables.</p>
+            <a class="btn-pe btn-pe--primary" asp-action="Crear" asp-route-objetivoCgId="@Model.ObjetivoCgId">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i> Nueva Acción
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    @* ── Contexto del CG seleccionado ── *@
+    <div class="card-pe mb-4">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="cell-codigo">@Model.ObjetivoCgCodigo</span>
+            <span class="fw-semibold">@Model.ObjetivoCgDescripcion</span>
+            <span class="ms-auto body-sm">Progreso: @((Model.ObjetivoCgProgreso * 100).ToString("0"))%</span>
+            <span class="semaforo @ClaseSemaforo(Model.ObjetivoCgSemaforo)">
+                <i class="bi bi-circle-fill" aria-hidden="true"></i> @Model.ObjetivoCgSemaforo
+            </span>
+        </div>
+    </div>
+
+    @* ── Tabla de acciones (UX-03) ── *@
+    <div class="card-pe p-0">
+        <div class="table-responsive">
+            <table class="tabla-pe mb-0">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Descripción</th>
+                        <th>Responsable</th>
+                        <th>Fechas</th>
+                        <th>Clasificación</th>
+                        <th class="text-center">Peso</th>
+                        <th class="text-center">Progreso</th>
+                        <th>Status</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var accion in Model.Items)
+                    {
+                        <tr>
+                            <td><span class="cell-codigo">@accion.Codigo</span></td>
+                            <td>
+                                <span class="cell-truncate d-inline-block" title="@accion.Descripcion">@accion.Descripcion</span>
+                            </td>
+                            <td>
+                                @if (string.IsNullOrWhiteSpace(accion.ResponsableNombre))
+                                {
+                                    <span class="text-secondary">—</span>
+                                }
+                                else
+                                {
+                                    <span>@accion.ResponsableNombre</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="body-sm d-block">@accion.FechaInicio.ToString("dd/MM/yyyy")</span>
+                                <span class="body-sm d-block">→ @accion.FechaVencimiento.ToString("dd/MM/yyyy")</span>
+                            </td>
+                            <td>
+                                <span class="body-sm d-block">@accion.Clasificacion</span>
+                                <span class="body-sm d-block">@accion.TipoPresupuesto</span>
+                            </td>
+                            <td class="text-center">@accion.Peso.ToString("0.##")</td>
+                            <td class="text-center">@accion.Progreso.ToString("0.##")%</td>
+                            <td>
+                                <span class="semaforo @ClaseStatus(accion.Status)">
+                                    <i class="bi bi-circle-fill" aria-hidden="true"></i> @accion.Status
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <div class="d-inline-flex gap-1">
+                                    <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Progreso"
+                                       asp-route-id="@accion.Id" title="Actualizar progreso">
+                                        <i class="bi bi-percent" aria-hidden="true"></i>
+                                    </a>
+                                    <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Historial"
+                                       asp-route-id="@accion.Id" title="Historial de progreso">
+                                        <i class="bi bi-clock-history" aria-hidden="true"></i>
+                                    </a>
+                                    <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Editar"
+                                       asp-route-id="@accion.Id" title="Editar">
+                                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                                    </a>
+                                    <button type="button" class="btn-pe btn-pe--danger btn-pe--sm"
+                                            data-bs-toggle="modal" data-bs-target="#modalEliminarAccion"
+                                            data-accion-id="@accion.Id" data-accion-codigo="@accion.Codigo"
+                                            data-objetivo-cg-id="@Model.ObjetivoCgId"
+                                            title="Eliminar">
+                                        <i class="bi bi-trash" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@* ── Modal de confirmación eliminar (DS § 5.7) ── *@
+<div class="modal fade modal-pe" id="modalEliminarAccion" tabindex="-1" aria-labelledby="modalEliminarAccionTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEliminarAccionTitulo">Eliminar acción</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="body-md mb-0" id="modalEliminarAccionTexto"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-pe btn-pe--secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formEliminarAccion" method="post" action="">
+                    <button type="submit" class="btn-pe btn-pe--danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/acciones.js" asp-append-version="true"></script>
+}

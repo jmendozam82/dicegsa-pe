@@ -1,0 +1,126 @@
+@model ObjetivoCgFormViewModel
+@{
+    ViewData["Title"] = "Nuevo Objetivo CG";
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Mi Área</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>Objetivos CG</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Nuevo Objetivo CG</span>
+    </div>
+    <h1 class="page-header__title">Nuevo Objetivo CG</h1>
+    <p class="page-header__subtitle">El código GOLn.CGm se genera automáticamente. El objetivo queda vinculado a su área (SEC-07).</p>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <strong>No se pudo crear el objetivo CG:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="card-pe">
+    <form asp-action="Crear" method="post" id="formObjetivoCg" novalidate>
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-pe-label" for="descripcion">Descripción *</label>
+                <textarea class="form-pe-input" id="descripcion" name="descripcion" rows="4"
+                          maxlength="500" placeholder="Describa el compromiso estratégico del área">@Model.Descripcion</textarea>
+                <span class="body-sm">Máx 500 caracteres.</span>
+            </div>
+            <div class="col-md-7">
+                <label class="form-pe-label" for="pilarId">Pilar estratégico *</label>
+                <select class="form-pe-select" id="pilarId" name="pilarId">
+                    <option value="">Seleccione un pilar</option>
+                    @foreach (var pilar in Model.Pilares)
+                    {
+                        <option value="@pilar.Id"
+                                data-q1="@pilar.ObjetivoQ1" data-q2="@pilar.ObjetivoQ2"
+                                data-q3="@pilar.ObjetivoQ3" data-q4="@pilar.ObjetivoQ4"
+                                selected="@(Model.PilarId == pilar.Id)">
+                            @pilar.Codigo — @pilar.Nombre
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-pe-label" for="trimestreObjetivo">Trimestre objetivo *</label>
+                <select class="form-pe-select" id="trimestreObjetivo" name="trimestreObjetivo">
+                    <option value="">Seleccione un trimestre</option>
+                    <option value="Q1" selected="@(Model.TrimestreObjetivo == "Q1")">Trimestre 1</option>
+                    <option value="Q2" selected="@(Model.TrimestreObjetivo == "Q2")">Trimestre 2</option>
+                    <option value="Q3" selected="@(Model.TrimestreObjetivo == "Q3")">Trimestre 3</option>
+                    <option value="Q4" selected="@(Model.TrimestreObjetivo == "Q4")">Trimestre 4</option>
+                </select>
+            </div>
+        </div>
+
+        @* ── Referencia contextual (CA #3 HU-017 — ObjetivoQ1..Q4 del pilar, HU-014) ── *@
+        <div class="card-pe mt-3 d-none" id="referenciaPilar">
+            <h3 class="body-md fw-semibold mb-2">Objetivos de área por trimestre (referencia)</h3>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <span class="body-sm fw-semibold">Q1:</span>
+                    <span class="body-sm" id="refQ1">—</span>
+                </div>
+                <div class="col-md-6">
+                    <span class="body-sm fw-semibold">Q2:</span>
+                    <span class="body-sm" id="refQ2">—</span>
+                </div>
+                <div class="col-md-6">
+                    <span class="body-sm fw-semibold">Q3:</span>
+                    <span class="body-sm" id="refQ3">—</span>
+                </div>
+                <div class="col-md-6">
+                    <span class="body-sm fw-semibold">Q4:</span>
+                    <span class="body-sm" id="refQ4">—</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+            </button>
+            <a class="btn-pe btn-pe--secondary" asp-action="Index">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="~/js/objetivoscg.js" asp-append-version="true"></script>
+    <script>
+        $(function () {
+            $('#formObjetivoCg').validate({
+                rules: {
+                    descripcion: { required: true, maxlength: 500 },
+                    pilarId: { required: true },
+                    trimestreObjetivo: { required: true }
+                },
+                messages: {
+                    descripcion: {
+                        required: 'La descripción del objetivo es requerida.',
+                        maxlength: 'La descripción no puede exceder 500 caracteres.'
+                    },
+                    pilarId: { required: 'Seleccione un pilar estratégico.' },
+                    trimestreObjetivo: { required: 'Seleccione el trimestre objetivo.' }
+                },
+                errorElement: 'span',
+                errorClass: 'form-pe-error',
+                errorPlacement: function (error, element) {
+                    error.insertAfter(element);
+                }
+            });
+        });
+    </script>
+}

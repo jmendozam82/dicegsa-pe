@@ -1,0 +1,167 @@
+@model AccionPlanFormViewModel
+@{
+    ViewData["Title"] = "Nueva Acción";
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Mi Área</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>Plan de Acción</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Nueva Acción</span>
+    </div>
+    <h1 class="page-header__title">Nueva Acción</h1>
+    <p class="page-header__subtitle">El código se genera automáticamente a partir del objetivo CG. La suma de pesos del objetivo no puede exceder 1.0 (RN-016).</p>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <strong>No se pudo crear la acción:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="card-pe">
+    <form asp-action="Crear" asp-route-objetivoCgId="@Model.ObjetivoCgId" method="post" id="formAccion" novalidate>
+        <input type="hidden" name="objetivoCgId" value="@Model.ObjetivoCgId" />
+
+        @* ── Contexto del CG (solo lectura) ── *@
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
+            <span class="cell-codigo">@Model.ObjetivoCgCodigo</span>
+            <span class="fw-semibold">@Model.ObjetivoCgDescripcion</span>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-pe-label" for="descripcion">Descripción *</label>
+                <textarea class="form-pe-input" id="descripcion" name="descripcion" rows="3"
+                          maxlength="1000" placeholder="Describa la acción concreta del plan">@Model.Descripcion</textarea>
+                <span class="body-sm">Máx 1000 caracteres.</span>
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="descripcionEntregable">Descripción del entregable</label>
+                <textarea class="form-pe-input" id="descripcionEntregable" name="descripcionEntregable" rows="3"
+                          maxlength="1000" placeholder="Entregable esperado de la acción">@Model.DescripcionEntregable</textarea>
+                <span class="body-sm">Máx 1000 caracteres.</span>
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="responsableId">Responsable</label>
+                <select class="form-pe-select" id="responsableId" name="responsableId">
+                    <option value="">Sin asignar</option>
+                    @foreach (var responsable in Model.Responsables)
+                    {
+                        <option value="@responsable.Id" selected="@(Model.ResponsableId == responsable.Id)">
+                            @responsable.Nombre
+                        </option>
+                    }
+                </select>
+                <span class="body-sm">Solo se listan los responsables de su área (SEC-07).</span>
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="fechaInicio">Fecha de inicio *</label>
+                <input class="form-pe-input" type="date" id="fechaInicio" name="fechaInicio"
+                       value="@(Model.FechaInicio?.ToString("yyyy-MM-dd"))" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="fechaVencimiento">Fecha de vencimiento *</label>
+                <input class="form-pe-input" type="date" id="fechaVencimiento" name="fechaVencimiento"
+                       value="@(Model.FechaVencimiento?.ToString("yyyy-MM-dd"))" />
+                <span class="body-sm">Debe ser mayor o igual a la fecha de inicio (RN-019).</span>
+            </div>
+            <div class="col-md-4">
+                <label class="form-pe-label" for="clasificacion">Clasificación *</label>
+                <select class="form-pe-select" id="clasificacion" name="clasificacion">
+                    <option value="">Seleccione</option>
+                    <option value="Proyecto" selected="@(Model.Clasificacion == "Proyecto")">Proyecto</option>
+                    <option value="Iniciativa" selected="@(Model.Clasificacion == "Iniciativa")">Iniciativa</option>
+                    <option value="Operativa" selected="@(Model.Clasificacion == "Operativa")">Operativa</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-pe-label" for="tipoPresupuesto">Tipo de presupuesto *</label>
+                <select class="form-pe-select" id="tipoPresupuesto" name="tipoPresupuesto">
+                    <option value="">Seleccione</option>
+                    <option value="OPEX" selected="@(Model.TipoPresupuesto == "OPEX")">OPEX</option>
+                    <option value="CAPEX" selected="@(Model.TipoPresupuesto == "CAPEX")">CAPEX</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-pe-label" for="peso">Peso (0 – 1) *</label>
+                <input class="form-pe-input" type="number" id="peso" name="peso" step="0.01" min="0.01" max="1"
+                       value="@(Model.Peso?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))"
+                       placeholder="Ej: 0.25" />
+                <span class="body-sm">La suma de pesos del objetivo no puede exceder 1.0 (RN-016).</span>
+            </div>
+            <div class="col-12">
+                <label class="form-pe-label" for="aclaraciones">Aclaraciones</label>
+                <textarea class="form-pe-input" id="aclaraciones" name="aclaraciones" rows="2"
+                          maxlength="1000" placeholder="Notas o aclaraciones de la acción">@Model.Aclaraciones</textarea>
+                <span class="body-sm">Máx 1000 caracteres.</span>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+            </button>
+            <a class="btn-pe btn-pe--secondary" asp-action="Index" asp-route-objetivoCgId="@Model.ObjetivoCgId">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+            $.validator.addMethod('mayorQue', function (valor, elemento, parametro) {
+                var inicio = $(parametro).val();
+                if (!valor || !inicio) {
+                    return true; // required se encarga de los vacíos.
+                }
+                return new Date(valor) >= new Date(inicio);
+            }, 'La fecha de vencimiento debe ser mayor o igual a la fecha de inicio.');
+
+            $('#formAccion').validate({
+                rules: {
+                    descripcion: { required: true, maxlength: 1000 },
+                    descripcionEntregable: { maxlength: 1000 },
+                    fechaInicio: { required: true },
+                    fechaVencimiento: { required: true, mayorQue: '#fechaInicio' },
+                    clasificacion: { required: true },
+                    tipoPresupuesto: { required: true },
+                    peso: { required: true, min: 0.01, max: 1 },
+                    aclaraciones: { maxlength: 1000 }
+                },
+                messages: {
+                    descripcion: {
+                        required: 'La descripción de la acción es requerida.',
+                        maxlength: 'La descripción no puede exceder 1000 caracteres.'
+                    },
+                    descripcionEntregable: { maxlength: 'El entregable no puede exceder 1000 caracteres.' },
+                    fechaInicio: { required: 'La fecha de inicio es requerida.' },
+                    fechaVencimiento: { required: 'La fecha de vencimiento es requerida.' },
+                    clasificacion: { required: 'Seleccione la clasificación de la acción.' },
+                    tipoPresupuesto: { required: 'Seleccione el tipo de presupuesto.' },
+                    peso: {
+                        required: 'El peso es requerido.',
+                        min: 'El peso debe ser mayor a 0.',
+                        max: 'El peso no puede exceder 1.'
+                    },
+                    aclaraciones: { maxlength: 'Las aclaraciones no pueden exceder 1000 caracteres.' }
+                },
+                errorElement: 'span',
+                errorClass: 'form-pe-error',
+                errorPlacement: function (error, element) {
+                    error.insertAfter(element);
+                }
+            });
+        });
+    </script>
+}

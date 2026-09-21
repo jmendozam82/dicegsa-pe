@@ -1,0 +1,85 @@
+@model CambiarContrasenaRequest
+@{
+    ViewData["Title"] = "Cambiar contraseña";
+}
+<div class="card-pe auth-pe__card">
+    <div class="auth-pe__brand">
+        <span class="auth-pe__logo">PE-GOL</span>
+        <p class="auth-pe__title">Primer inicio de sesión · Cambia tu contraseña</p>
+    </div>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            <ul class="mb-0">
+                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <form asp-action="CambiarContrasena" method="post" id="formCambiarContrasena" novalidate>
+        <div class="mb-3">
+            <label class="form-pe-label" for="contrasenaActual">Contraseña actual</label>
+            <input class="form-pe-input" type="password" id="contrasenaActual" name="contrasenaActual"
+                   autocomplete="current-password" />
+        </div>
+        <div class="mb-3">
+            <label class="form-pe-label" for="nuevaContrasena">Nueva contraseña</label>
+            <input class="form-pe-input" type="password" id="nuevaContrasena" name="nuevaContrasena"
+                   autocomplete="new-password" />
+            <small class="body-sm">Mínimo 8 caracteres, con al menos 1 mayúscula, 1 minúscula y 1 dígito.</small>
+        </div>
+        <div class="mb-4">
+            <label class="form-pe-label" for="confirmarNuevaContrasena">Confirmar nueva contraseña</label>
+            <input class="form-pe-input" type="password" id="confirmarNuevaContrasena" name="confirmarNuevaContrasena"
+                   autocomplete="new-password" />
+        </div>
+        <button type="submit" class="btn-pe btn-pe--primary btn-pe--lg w-100">
+            <i class="bi bi-check-lg" aria-hidden="true"></i> Cambiar contraseña
+        </button>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+            $('#formCambiarContrasena').validate({
+                rules: {
+                    contrasenaActual: { required: true },
+                    nuevaContrasena: {
+                        required: true,
+                        minlength: 8,
+                        pattern: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).+$/
+                    },
+                    confirmarNuevaContrasena: {
+                        required: true,
+                        equalTo: '#nuevaContrasena'
+                    }
+                },
+                messages: {
+                    contrasenaActual: {
+                        required: 'La contraseña actual es obligatoria.'
+                    },
+                    nuevaContrasena: {
+                        required: 'La nueva contraseña es obligatoria.',
+                        minlength: 'La contraseña debe tener al menos 8 caracteres.',
+                        pattern: 'Debe incluir al menos 1 mayúscula, 1 minúscula y 1 dígito.'
+                    },
+                    confirmarNuevaContrasena: {
+                        required: 'Confirme la nueva contraseña.',
+                        equalTo: 'Las contraseñas no coinciden.'
+                    }
+                },
+                errorElement: 'span',
+                errorClass: 'form-pe-error',
+                errorPlacement: function (error, element) {
+                    error.insertAfter(element);
+                }
+            });
+        });
+    </script>
+}

@@ -1,0 +1,67 @@
+@model LoginRequest
+@{
+    ViewData["Title"] = "Iniciar sesión";
+}
+<div class="card-pe auth-pe__card">
+    <div class="auth-pe__brand">
+        <span class="auth-pe__logo">PE-GOL</span>
+        <p class="auth-pe__title">Planificación Estratégica · Gestión por Objetivos y Resultados</p>
+    </div>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            <ul class="mb-0">
+                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <form asp-action="Login" method="post" id="formLogin" novalidate>
+        <input type="hidden" name="returnUrl" value="@Context.Request.Query["returnUrl"]" />
+        <div class="mb-3">
+            <label class="form-pe-label" for="correo">Correo electrónico</label>
+            <input class="form-pe-input" type="email" id="correo" name="correo" value="@Model?.Correo"
+                   placeholder="usuario@empresa.com" autocomplete="username" />
+        </div>
+        <div class="mb-4">
+            <label class="form-pe-label" for="password">Contraseña</label>
+            <input class="form-pe-input" type="password" id="password" name="password"
+                   placeholder="••••••••" autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn-pe btn-pe--primary btn-pe--lg w-100">
+            <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Ingresar
+        </button>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+            $('#formLogin').validate({
+                rules: {
+                    correo: { required: true, email: true },
+                    password: { required: true }
+                },
+                messages: {
+                    correo: {
+                        required: 'El correo electrónico es obligatorio.',
+                        email: 'Ingrese un correo electrónico válido.'
+                    },
+                    password: {
+                        required: 'La contraseña es obligatoria.'
+                    }
+                },
+                errorElement: 'span',
+                errorClass: 'form-pe-error',
+                errorPlacement: function (error, element) {
+                    error.insertAfter(element);
+                }
+            });
+        });
+    </script>
+}

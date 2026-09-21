@@ -31,6 +31,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- HU-045 (D-6): referencia a la capa Aplicacion para testear el cimiento de frontend
+         (ApiClient, SesionService, TenantController MVC, AuthController MVC). Referenciar un
+         proyecto Web SDK desde tests es soportado en .NET 8. No crea proyecto nuevo (ARCH-01). -->
+    <ProjectReference Include="..\PE-GOL.Aplicacion\PE-GOL.Aplicacion.csproj" />
     <ProjectReference Include="..\PE-GOL.BLL\PE-GOL.BLL.csproj" />
     <ProjectReference Include="..\PE-GOL.DAL\PE-GOL.DAL.csproj" />
     <ProjectReference Include="..\PE-GOL.DTO\PE-GOL.DTO.csproj" />

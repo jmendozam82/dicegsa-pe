@@ -1,0 +1,182 @@
+@model FilosofiaViewModel
+@{
+    ViewData["Title"] = "Valores Corporativos";
+    var soloLectura = !Model.EsGerente;
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Contenido</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Filosofía</span>
+    </div>
+    <h1 class="page-header__title">Valores Corporativos</h1>
+    <p class="page-header__subtitle">Los principios que guían la actuación de todas las áreas del ciclo.</p>
+</div>
+
+@if (TempData["Success"] is string mensajeExito)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle" aria-hidden="true"></i> @mensajeExito
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+@if (TempData["Error"] is string mensajeError)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @mensajeError
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@* ── Sub-navegación del módulo Filosofía (HU-011 + HU-012) ── *@
+<div class="d-flex gap-2 mb-3">
+    <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Index" asp-route-cicloId="@Model.CicloId">
+        <i class="bi bi-eye" aria-hidden="true"></i> Visión y Misión
+    </a>
+    <a class="btn-pe btn-pe--primary btn-pe--sm" asp-action="Valores" asp-route-cicloId="@Model.CicloId">
+        <i class="bi bi-list-stars" aria-hidden="true"></i> Valores Corporativos
+    </a>
+</div>
+
+@* ── Selector de ciclo (form GET a Valores) ── *@
+<div class="card-pe mb-4">
+    <form method="get" asp-action="Valores" class="row g-3 align-items-end">
+        <div class="col-md-5">
+            <label class="form-pe-label" for="cicloId">Ciclo</label>
+            <select class="form-pe-select" id="cicloId" name="cicloId" onchange="this.form.submit()">
+                <option value="">Seleccione un ciclo</option>
+                @foreach (var ciclo in Model.Ciclos)
+                {
+                    <option value="@ciclo.Id" selected="@(Model.CicloId == ciclo.Id)">
+                        @ciclo.Nombre (@ciclo.AñoFiscal) — @ciclo.Estado
+                    </option>
+                }
+            </select>
+        </div>
+        <div class="col-md-7">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-funnel" aria-hidden="true"></i> Ver valores
+            </button>
+        </div>
+    </form>
+</div>
+
+@if (!Model.CicloId.HasValue)
+{
+    @* ── Estado vacío: sin ciclo seleccionado (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-list-stars empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">Seleccione un ciclo</h3>
+            <p class="empty-state__message">Elija un ciclo del selector para ver o gestionar sus Valores Corporativos.</p>
+        </div>
+    </div>
+}
+else
+{
+    @if (soloLectura)
+    {
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle" aria-hidden="true"></i>
+            Solo el Gerente puede gestionar los Valores Corporativos (RN-006). Usted tiene acceso de solo lectura (RN-007).
+        </div>
+    }
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            <strong>No se pudieron guardar los valores:</strong>
+            <ul class="mb-0 mt-1">
+                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="card-pe">
+        @if (soloLectura)
+        {
+            @* ── Modo lectura (ADM/JEF — RN-007) ── *@
+            @if (Model.Valores.Count == 0)
+            {
+                <div class="empty-state">
+                    <i class="bi bi-list-stars empty-state__icon" aria-hidden="true"></i>
+                    <h3 class="empty-state__title">Sin valores registrados</h3>
+                    <p class="empty-state__message">El Gerente aún no ha registrado los Valores Corporativos de este ciclo.</p>
+                </div>
+            }
+            else
+            {
+                <ol class="mb-0">
+                    @foreach (var valor in Model.Valores)
+                    {
+                        <li class="body-md py-1">@valor</li>
+                    }
+                </ol>
+            }
+        }
+        else
+        {
+            @* ── Modo edición (GER — RN-006): lista con agregar/eliminar/reordenar ── *@
+            <form asp-action="GuardarValores" asp-route-cicloId="@Model.CicloId" method="post" id="formValores" novalidate>
+                <div id="listaValores">
+                    @for (var i = 0; i < Model.Valores.Count; i++)
+                    {
+                        <div class="row g-2 mb-2 align-items-center fila-valor">
+                            <div class="col-auto">
+                                <span class="badge text-bg-secondary">@(i + 1)</span>
+                            </div>
+                            <div class="col">
+                                <input class="form-pe-input input-valor" type="text" name="Valores[@i]"
+                                       value="@Model.Valores[i]" maxlength="100" placeholder="Ej: Liderazgo" />
+                            </div>
+                            <div class="col-auto d-flex gap-1">
+                                <button type="button" class="btn-pe btn-pe--secondary btn-pe--sm btn-subir" title="Subir">
+                                    <i class="bi bi-arrow-up" aria-hidden="true"></i>
+                                </button>
+                                <button type="button" class="btn-pe btn-pe--secondary btn-pe--sm btn-bajar" title="Bajar">
+                                    <i class="bi bi-arrow-down" aria-hidden="true"></i>
+                                </button>
+                                <button type="button" class="btn-pe btn-pe--danger btn-pe--sm btn-quitar" title="Eliminar">
+                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @if (Model.Valores.Count == 0)
+                {
+                    <div class="empty-state py-4" id="estadoVacioValores">
+                        <i class="bi bi-list-stars empty-state__icon" aria-hidden="true"></i>
+                        <h3 class="empty-state__title">Sin valores registrados</h3>
+                        <p class="empty-state__message">Agregue el primer valor corporativo del ciclo (mínimo 1, máximo 15).</p>
+                    </div>
+                }
+
+                <div class="d-flex gap-2 mt-3">
+                    <button type="button" class="btn-pe btn-pe--secondary" id="btnAgregarValor">
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i> Agregar valor
+                    </button>
+                    <button type="submit" class="btn-pe btn-pe--primary">
+                        <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+                    </button>
+                </div>
+                <p class="body-sm mt-3 mb-0">
+                    Mínimo 1 valor, máximo 15; cada valor hasta 100 caracteres, sin duplicados. Use las flechas para ordenar (el orden se conserva).
+                </p>
+            </form>
+        }
+    </div>
+}
+
+@section Scripts {
+    @if (Model.EsGerente && Model.CicloId.HasValue)
+    {
+        <script src="~/js/filosofia.js" asp-append-version="true"></script>
+    }
+}

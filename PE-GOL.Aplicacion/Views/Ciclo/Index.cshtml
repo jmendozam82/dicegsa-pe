@@ -1,0 +1,165 @@
+@model CiclosIndexViewModel
+@{
+    ViewData["Title"] = "Gestión de Ciclos";
+    var meses = new[] { "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre" };
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Configuración</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Ciclos</span>
+    </div>
+    <h1 class="page-header__title">Gestión de Ciclos</h1>
+    <p class="page-header__subtitle">@Model.Items.Count ciclo(s) del tenant · ordenados por año fiscal descendente.</p>
+</div>
+
+@if (TempData["Success"] is string mensajeExito)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle" aria-hidden="true"></i> @mensajeExito
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+@if (TempData["Error"] is string mensajeError)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @mensajeError
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@if (Model.EsAdmin)
+{
+    <div class="d-flex justify-content-end mb-3">
+        <a class="btn-pe btn-pe--primary" asp-action="Crear">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo Ciclo
+        </a>
+    </div>
+}
+
+@if (Model.Items.Count == 0)
+{
+    @* ── Estado vacío (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-calendar-range empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">No hay ciclos registrados</h3>
+            <p class="empty-state__message">Crea el primer ciclo anual para comenzar la planificación estratégica del tenant.</p>
+            @if (Model.EsAdmin)
+            {
+                <a class="btn-pe btn-pe--primary" asp-action="Crear">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo Ciclo
+                </a>
+            }
+        </div>
+    </div>
+}
+else
+{
+    @* ── Tabla (UX-03) ── *@
+    <div class="card-pe p-0">
+        <div class="table-responsive">
+            <table class="tabla-pe mb-0">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Año fiscal</th>
+                        <th>Mes de inicio</th>
+                        <th>Estado</th>
+                        <th>Creado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var ciclo in Model.Items)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@ciclo.Nombre</td>
+                            <td>@ciclo.AñoFiscal</td>
+                            <td>@meses[ciclo.MesInicio]</td>
+                            <td>
+                                @if (ciclo.Estado == "Activo")
+                                {
+                                    <span class="semaforo semaforo--verde">
+                                        <i class="bi bi-circle-fill" aria-hidden="true"></i> Activo
+                                    </span>
+                                }
+                                else if (ciclo.Estado == "Borrador")
+                                {
+                                    <span class="semaforo semaforo--amarillo">
+                                        <i class="bi bi-circle-fill" aria-hidden="true"></i> Borrador
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge border text-secondary">Cerrado</span>
+                                }
+                            </td>
+                            <td>@ciclo.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                            <td class="text-end">
+                                <div class="d-inline-flex gap-1">
+                                    <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Umbrales" asp-route-id="@ciclo.Id" title="Umbrales de semáforo">
+                                        <i class="bi bi-sliders" aria-hidden="true"></i>
+                                    </a>
+                                    @if (Model.EsAdmin)
+                                    {
+                                        @if (ciclo.Estado == "Borrador")
+                                        {
+                                            <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Editar" asp-route-id="@ciclo.Id" title="Editar">
+                                                <i class="bi bi-pencil" aria-hidden="true"></i>
+                                            </a>
+                                            <button type="button" class="btn-pe btn-pe--secondary btn-pe--sm"
+                                                    data-bs-toggle="modal" data-bs-target="#modalConfirmarAccion"
+                                                    data-ciclo-id="@ciclo.Id" data-ciclo-nombre="@ciclo.Nombre" data-accion="activar"
+                                                    title="Activar">
+                                                <i class="bi bi-play-circle" aria-hidden="true"></i>
+                                            </button>
+                                        }
+                                        <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Clonar" asp-route-id="@ciclo.Id" title="Clonar">
+                                            <i class="bi bi-copy" aria-hidden="true"></i>
+                                        </a>
+                                    }
+                                    @if (Model.EsGerente && ciclo.Estado == "Activo")
+                                    {
+                                        <button type="button" class="btn-pe btn-pe--secondary btn-pe--sm"
+                                                data-bs-toggle="modal" data-bs-target="#modalConfirmarAccion"
+                                                data-ciclo-id="@ciclo.Id" data-ciclo-nombre="@ciclo.Nombre" data-accion="cerrar"
+                                                title="Cerrar ciclo">
+                                            <i class="bi bi-stop-circle" aria-hidden="true"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@* ── Modal de confirmación activar/cerrar (DS § 5.7) ── *@
+<div class="modal fade modal-pe" id="modalConfirmarAccion" tabindex="-1" aria-labelledby="modalConfirmarTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalConfirmarTitulo">Confirmar acción</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="body-md mb-0" id="modalConfirmarTexto"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-pe btn-pe--secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formConfirmarAccion" method="post" action="">
+                    <button type="submit" id="modalConfirmarBoton" class="btn-pe btn-pe--danger">Confirmar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/ciclos.js" asp-append-version="true"></script>
+}

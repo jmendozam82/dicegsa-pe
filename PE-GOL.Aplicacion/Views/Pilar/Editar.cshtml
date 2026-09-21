@@ -1,0 +1,96 @@
+@model PilarFormViewModel
+@{
+    ViewData["Title"] = "Editar Pilar";
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Contenido</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>Pilares</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Editar Pilar</span>
+    </div>
+    <h1 class="page-header__title">Editar Pilar</h1>
+    <p class="page-header__subtitle">El código PEC-N es auto-generado y no es editable.</p>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <strong>No se pudo actualizar el pilar:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="card-pe">
+    <form asp-action="Editar" asp-route-cicloId="@Model.CicloId" asp-route-id="@Model.PilarId" method="post" id="formPilar" novalidate>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-pe-label" for="codigo">Código</label>
+                <div><span class="cell-codigo">@Model.Codigo</span></div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="nombre">Nombre *</label>
+                <input class="form-pe-input" type="text" id="nombre" name="nombre" value="@Model.Nombre"
+                       maxlength="150" placeholder="Ej: Excelencia Operacional" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-pe-label" for="orden">Orden</label>
+                <input class="form-pe-input" type="number" id="orden" name="orden" value="@Model.Orden"
+                       min="0" placeholder="Conservar" />
+                <span class="body-sm">Vacío = conserva el orden actual.</span>
+            </div>
+            <div class="col-12">
+                <label class="form-pe-label" for="estrategiaVictoria">Estrategia de victoria</label>
+                <textarea class="form-pe-input" id="estrategiaVictoria" name="estrategiaVictoria" rows="4"
+                          maxlength="2000" placeholder="Describa la estrategia de victoria del pilar">@Model.EstrategiaVictoria</textarea>
+                <span class="body-sm">Máx 2000 caracteres.</span>
+            </div>
+        </div>
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+            </button>
+            <a class="btn-pe btn-pe--secondary" asp-action="Index" asp-route-cicloId="@Model.CicloId">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+            $('#formPilar').validate({
+                rules: {
+                    nombre: { required: true, maxlength: 150 },
+                    estrategiaVictoria: { maxlength: 2000 },
+                    orden: { min: 0, digits: true }
+                },
+                messages: {
+                    nombre: {
+                        required: 'El nombre del pilar es requerido.',
+                        maxlength: 'El nombre no puede exceder 150 caracteres.'
+                    },
+                    estrategiaVictoria: {
+                        maxlength: 'La estrategia de victoria no puede exceder 2000 caracteres.'
+                    },
+                    orden: {
+                        min: 'El orden no puede ser negativo.',
+                        digits: 'El orden debe ser un número entero.'
+                    }
+                },
+                errorElement: 'span',
+                errorClass: 'form-pe-error',
+                errorPlacement: function (error, element) {
+                    error.insertAfter(element);
+                }
+            });
+        });
+    </script>
+}

@@ -1,0 +1,188 @@
+@model AreasIndexViewModel
+@{
+    ViewData["Title"] = "Gestión de Áreas";
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Configuración</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Áreas</span>
+    </div>
+    <h1 class="page-header__title">Gestión de Áreas Estratégicas</h1>
+    <p class="page-header__subtitle">Estructura las unidades operativas del ciclo que participan en el plan.</p>
+</div>
+
+@if (TempData["Success"] is string mensajeExito)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle" aria-hidden="true"></i> @mensajeExito
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+@if (TempData["Error"] is string mensajeError)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @mensajeError
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@* ── Selector de ciclo (form GET a Index) ── *@
+<div class="card-pe mb-4">
+    <form method="get" asp-action="Index" class="row g-3 align-items-end">
+        <div class="col-md-5">
+            <label class="form-pe-label" for="cicloId">Ciclo</label>
+            <select class="form-pe-select" id="cicloId" name="cicloId" onchange="this.form.submit()">
+                <option value="">Seleccione un ciclo</option>
+                @foreach (var ciclo in Model.Ciclos)
+                {
+                    <option value="@ciclo.Id" selected="@(Model.CicloId == ciclo.Id)">
+                        @ciclo.Nombre (@ciclo.AñoFiscal) — @ciclo.Estado
+                    </option>
+                }
+            </select>
+        </div>
+        <div class="col-md-7 d-flex gap-2">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-funnel" aria-hidden="true"></i> Ver áreas
+            </button>
+            @if (Model.EsAdmin && Model.CicloId.HasValue)
+            {
+                <a class="btn-pe btn-pe--primary ms-auto" asp-action="Crear" asp-route-cicloId="@Model.CicloId">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i> Nueva Área
+                </a>
+            }
+        </div>
+    </form>
+</div>
+
+@if (!Model.CicloId.HasValue)
+{
+    @* ── Estado vacío: sin ciclo seleccionado (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-diagram-3 empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">Seleccione un ciclo</h3>
+            <p class="empty-state__message">Elija un ciclo del selector para ver sus áreas estratégicas.</p>
+        </div>
+    </div>
+}
+else if (Model.Items.Count == 0)
+{
+    @* ── Estado vacío: ciclo sin áreas (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-diagram-3 empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">No hay áreas en este ciclo</h3>
+            <p class="empty-state__message">Agrega la primera área estratégica del ciclo @Model.CicloNombre.</p>
+            @if (Model.EsAdmin)
+            {
+                <a class="btn-pe btn-pe--primary" asp-action="Crear" asp-route-cicloId="@Model.CicloId">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i> Nueva Área
+                </a>
+            }
+        </div>
+    </div>
+}
+else
+{
+    @* ── Tabla (UX-03) ── *@
+    <div class="card-pe p-0">
+        <div class="table-responsive">
+            <table class="tabla-pe mb-0">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Responsable</th>
+                        <th>Orden</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var area in Model.Items)
+                    {
+                        <tr>
+                            <td><span class="cell-codigo">@area.Codigo</span></td>
+                            <td class="fw-semibold">@area.Nombre</td>
+                            <td>
+                                @if (string.IsNullOrWhiteSpace(area.ResponsableNombre))
+                                {
+                                    <span class="text-secondary">—</span>
+                                }
+                                else
+                                {
+                                    <span>@area.ResponsableNombre</span>
+                                    <span class="body-sm d-block">@area.ResponsableCorreo</span>
+                                }
+                            </td>
+                            <td>@area.Orden</td>
+                            <td>
+                                @if (area.Activa)
+                                {
+                                    <span class="semaforo semaforo--verde">
+                                        <i class="bi bi-circle-fill" aria-hidden="true"></i> Activa
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="semaforo semaforo--rojo">
+                                        <i class="bi bi-circle-fill" aria-hidden="true"></i> Inactiva
+                                    </span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (Model.EsAdmin)
+                                {
+                                    <div class="d-inline-flex gap-1">
+                                        <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Editar"
+                                           asp-route-cicloId="@Model.CicloId" asp-route-id="@area.Id" title="Editar">
+                                            <i class="bi bi-pencil" aria-hidden="true"></i>
+                                        </a>
+                                        @if (area.Activa)
+                                        {
+                                            <button type="button" class="btn-pe btn-pe--secondary btn-pe--sm"
+                                                    data-bs-toggle="modal" data-bs-target="#modalConfirmarAccion"
+                                                    data-area-id="@area.Id" data-area-nombre="@area.Nombre" data-area-codigo="@area.Codigo"
+                                                    data-ciclo-id="@Model.CicloId" data-accion="desactivar"
+                                                    title="Desactivar">
+                                                <i class="bi bi-stop-circle" aria-hidden="true"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@* ── Modal de confirmación desactivar (DS § 5.7) ── *@
+<div class="modal fade modal-pe" id="modalConfirmarAccion" tabindex="-1" aria-labelledby="modalConfirmarTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalConfirmarTitulo">Confirmar acción</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="body-md mb-0" id="modalConfirmarTexto"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-pe btn-pe--secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formConfirmarAccion" method="post" action="">
+                    <button type="submit" id="modalConfirmarBoton" class="btn-pe btn-pe--danger">Confirmar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/areas.js" asp-append-version="true"></script>
+}

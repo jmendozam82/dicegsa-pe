@@ -1,0 +1,125 @@
+@model ObjetivosTrimestralesViewModel
+@{
+    ViewData["Title"] = "Objetivos Trimestrales";
+    var soloLectura = !Model.EsGerente;
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Contenido</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>Pilares</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Objetivos Trimestrales</span>
+    </div>
+    <h1 class="page-header__title">Objetivos Trimestrales</h1>
+    <p class="page-header__subtitle">Pilar <span class="cell-codigo">@Model.PilarCodigo</span> — @Model.PilarNombre</p>
+</div>
+
+@if (TempData["Success"] is string mensajeExito)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle" aria-hidden="true"></i> @mensajeExito
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@if (soloLectura)
+{
+    <div class="alert alert-info" role="alert">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        Solo el Gerente puede editar los objetivos trimestrales (RN-006). Usted tiene acceso de solo lectura (RN-007).
+    </div>
+}
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <strong>No se pudieron guardar los objetivos:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="card-pe">
+    <form asp-action="ObjetivosTrimestrales" asp-route-cicloId="@Model.CicloId" asp-route-id="@Model.PilarId"
+          method="post" id="formObjetivos" novalidate>
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <label class="form-pe-label" for="objetivoQ1">Trimestre 1 (Q1)</label>
+                <textarea class="form-pe-input" id="objetivoQ1" name="objetivoQ1" rows="4"
+                          maxlength="2000" placeholder="Objetivo del pilar para el Q1 (opcional)"
+                          @(soloLectura ? "disabled" : "")>@Model.ObjetivoQ1</textarea>
+            </div>
+            <div class="col-lg-6">
+                <label class="form-pe-label" for="objetivoQ2">Trimestre 2 (Q2)</label>
+                <textarea class="form-pe-input" id="objetivoQ2" name="objetivoQ2" rows="4"
+                          maxlength="2000" placeholder="Objetivo del pilar para el Q2 (opcional)"
+                          @(soloLectura ? "disabled" : "")>@Model.ObjetivoQ2</textarea>
+            </div>
+            <div class="col-lg-6">
+                <label class="form-pe-label" for="objetivoQ3">Trimestre 3 (Q3)</label>
+                <textarea class="form-pe-input" id="objetivoQ3" name="objetivoQ3" rows="4"
+                          maxlength="2000" placeholder="Objetivo del pilar para el Q3 (opcional)"
+                          @(soloLectura ? "disabled" : "")>@Model.ObjetivoQ3</textarea>
+            </div>
+            <div class="col-lg-6">
+                <label class="form-pe-label" for="objetivoQ4">Trimestre 4 (Q4)</label>
+                <textarea class="form-pe-input" id="objetivoQ4" name="objetivoQ4" rows="4"
+                          maxlength="2000" placeholder="Objetivo del pilar para el Q4 (opcional)"
+                          @(soloLectura ? "disabled" : "")>@Model.ObjetivoQ4</textarea>
+            </div>
+        </div>
+        <p class="body-sm mt-3 mb-0">Los cuatro objetivos son opcionales; cada uno hasta 2000 caracteres. Dejar vacío conserva el valor actual.</p>
+
+        @if (!soloLectura)
+        {
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn-pe btn-pe--primary">
+                    <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+                </button>
+                <a class="btn-pe btn-pe--secondary" asp-action="Index" asp-route-cicloId="@Model.CicloId">Volver a Pilares</a>
+            </div>
+        }
+        else
+        {
+            <div class="mt-4">
+                <a class="btn-pe btn-pe--secondary" asp-action="Index" asp-route-cicloId="@Model.CicloId">Volver a Pilares</a>
+            </div>
+        }
+    </form>
+</div>
+
+@section Scripts {
+    @if (Model.EsGerente)
+    {
+        <script>
+            $(function () {
+                $('#formObjetivos').validate({
+                    rules: {
+                        objetivoQ1: { maxlength: 2000 },
+                        objetivoQ2: { maxlength: 2000 },
+                        objetivoQ3: { maxlength: 2000 },
+                        objetivoQ4: { maxlength: 2000 }
+                    },
+                    messages: {
+                        objetivoQ1: { maxlength: 'El objetivo Q1 no puede exceder 2000 caracteres.' },
+                        objetivoQ2: { maxlength: 'El objetivo Q2 no puede exceder 2000 caracteres.' },
+                        objetivoQ3: { maxlength: 'El objetivo Q3 no puede exceder 2000 caracteres.' },
+                        objetivoQ4: { maxlength: 'El objetivo Q4 no puede exceder 2000 caracteres.' }
+                    },
+                    errorElement: 'span',
+                    errorClass: 'form-pe-error',
+                    errorPlacement: function (error, element) {
+                        error.insertAfter(element);
+                    }
+                });
+            });
+        </script>
+    }
+}

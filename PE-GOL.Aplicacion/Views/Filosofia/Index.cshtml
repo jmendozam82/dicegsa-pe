@@ -1,0 +1,197 @@
+@model FilosofiaViewModel
+@{
+    ViewData["Title"] = "Visión y Misión";
+    var soloLectura = !Model.EsGerente;
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Contenido</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Filosofía</span>
+    </div>
+    <h1 class="page-header__title">Visión y Misión</h1>
+    <p class="page-header__subtitle">El norte estratégico que orienta todos los objetivos del ciclo.</p>
+</div>
+
+@if (TempData["Success"] is string mensajeExito)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle" aria-hidden="true"></i> @mensajeExito
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+@if (TempData["Error"] is string mensajeError)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @mensajeError
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@* ── Sub-navegación del módulo Filosofía (HU-011 + HU-012) ── *@
+<div class="d-flex gap-2 mb-3">
+    <a class="btn-pe btn-pe--primary btn-pe--sm" asp-action="Index" asp-route-cicloId="@Model.CicloId">
+        <i class="bi bi-eye" aria-hidden="true"></i> Visión y Misión
+    </a>
+    <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Valores" asp-route-cicloId="@Model.CicloId">
+        <i class="bi bi-list-stars" aria-hidden="true"></i> Valores Corporativos
+    </a>
+</div>
+
+@* ── Selector de ciclo (form GET a Index) ── *@
+<div class="card-pe mb-4">
+    <form method="get" asp-action="Index" class="row g-3 align-items-end">
+        <div class="col-md-5">
+            <label class="form-pe-label" for="cicloId">Ciclo</label>
+            <select class="form-pe-select" id="cicloId" name="cicloId" onchange="this.form.submit()">
+                <option value="">Seleccione un ciclo</option>
+                @foreach (var ciclo in Model.Ciclos)
+                {
+                    <option value="@ciclo.Id" selected="@(Model.CicloId == ciclo.Id)">
+                        @ciclo.Nombre (@ciclo.AñoFiscal) — @ciclo.Estado
+                    </option>
+                }
+            </select>
+        </div>
+        <div class="col-md-7">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-funnel" aria-hidden="true"></i> Ver filosofía
+            </button>
+        </div>
+    </form>
+</div>
+
+@if (!Model.CicloId.HasValue)
+{
+    @* ── Estado vacío: sin ciclo seleccionado (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-lightbulb empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">Seleccione un ciclo</h3>
+            <p class="empty-state__message">Elija un ciclo del selector para ver o redactar su Visión y Misión.</p>
+        </div>
+    </div>
+}
+else
+{
+    @if (soloLectura)
+    {
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle" aria-hidden="true"></i>
+            Solo el Gerente puede editar la Visión y Misión (RN-006). Usted tiene acceso de solo lectura (RN-007).
+        </div>
+    }
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            <strong>No se pudo guardar la filosofía:</strong>
+            <ul class="mb-0 mt-1">
+                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="card-pe">
+        <form asp-action="Guardar" asp-route-cicloId="@Model.CicloId" method="post" id="formFilosofia" novalidate>
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <label class="form-pe-label" for="vision">Visión *</label>
+                    <textarea class="form-pe-input" id="vision" name="vision" rows="8"
+                              placeholder="Redacte la visión del ciclo (formato básico: negrita, cursiva, listas)"
+                              maxlength="5000" @(soloLectura ? "disabled" : "")>@Model.Vision</textarea>
+                    <span class="body-sm">Formato básico permitido: p, br, b, strong, i, em, ul, ol, li. Máx 5000 caracteres.</span>
+                </div>
+                <div class="col-lg-6">
+                    <label class="form-pe-label" for="mision">Misión *</label>
+                    <textarea class="form-pe-input" id="mision" name="mision" rows="8"
+                              placeholder="Redacte la misión del ciclo (formato básico: negrita, cursiva, listas)"
+                              maxlength="5000" @(soloLectura ? "disabled" : "")>@Model.Mision</textarea>
+                    <span class="body-sm">Formato básico permitido: p, br, b, strong, i, em, ul, ol, li. Máx 5000 caracteres.</span>
+                </div>
+            </div>
+
+            @if (!soloLectura)
+            {
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn-pe btn-pe--primary">
+                        <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+                    </button>
+                </div>
+            }
+        </form>
+    </div>
+
+    @* ── Vista previa (render seguro: HTML sanitizado por la BLL — HU-011 D-C) ── *@
+    <div class="card-pe mt-4">
+        <h2 class="h-section mb-3">Vista previa</h2>
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <h3 class="h-subsection mb-2">Visión</h3>
+                @if (string.IsNullOrWhiteSpace(Model.Vision))
+                {
+                    <p class="body-sm text-secondary">Sin contenido registrado.</p>
+                }
+                else
+                {
+                    <div class="body-md">@Html.Raw(Model.Vision)</div>
+                }
+            </div>
+            <div class="col-lg-6">
+                <h3 class="h-subsection mb-2">Misión</h3>
+                @if (string.IsNullOrWhiteSpace(Model.Mision))
+                {
+                    <p class="body-sm text-secondary">Sin contenido registrado.</p>
+                }
+                else
+                {
+                    <div class="body-md">@Html.Raw(Model.Mision)</div>
+                }
+            </div>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.UpdatedByNombre))
+        {
+            <hr class="my-3" />
+            <p class="body-sm mb-0">
+                <i class="bi bi-clock-history" aria-hidden="true"></i>
+                Última actualización por <strong>@Model.UpdatedByNombre</strong> el @Model.UpdatedAt?.ToString("dd/MM/yyyy HH:mm").
+            </p>
+        }
+    </div>
+}
+
+@section Scripts {
+    @if (Model.EsGerente && Model.CicloId.HasValue)
+    {
+        <script>
+            $(function () {
+                $('#formFilosofia').validate({
+                    rules: {
+                        vision: { required: true, maxlength: 5000 },
+                        mision: { required: true, maxlength: 5000 }
+                    },
+                    messages: {
+                        vision: {
+                            required: 'La Visión es requerida.',
+                            maxlength: 'La Visión no puede exceder 5000 caracteres.'
+                        },
+                        mision: {
+                            required: 'La Misión es requerida.',
+                            maxlength: 'La Misión no puede exceder 5000 caracteres.'
+                        }
+                    },
+                    errorElement: 'span',
+                    errorClass: 'form-pe-error',
+                    errorPlacement: function (error, element) {
+                        error.insertAfter(element);
+                    }
+                });
+            });
+        </script>
+    }
+}

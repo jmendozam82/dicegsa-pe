@@ -1,0 +1,52 @@
+@inject PE_GOL.Aplicacion.Services.SesionService SesionService
+@{
+    var usuario = SesionService.ObtenerUsuario();
+    var nombreUsuario = usuario?.Nombre ?? User.Identity?.Name ?? string.Empty;
+    var rol = usuario?.Rol ?? string.Empty;
+}
+<header class="navbar-top">
+    <button class="navbar-top__toggle" id="sidebarToggle" type="button" aria-label="Alternar menú" aria-expanded="false">
+        <i class="bi bi-list"></i>
+    </button>
+
+    @if (User.IsInRole("SuperAdmin"))
+    {
+        <a class="navbar-top__brand" asp-controller="Tenants" asp-action="Index">
+            <span class="navbar-top__logo">PE-GOL</span>
+            <span class="navbar-top__slogan">Planificación Estratégica</span>
+        </a>
+    }
+    else
+    {
+        <span class="navbar-top__brand">
+            <span class="navbar-top__logo">PE-GOL</span>
+            <span class="navbar-top__slogan">Planificación Estratégica</span>
+        </span>
+    }
+
+    <div class="navbar-top__tenant">
+        <span class="navbar-tenant-info">
+            @if (User.IsInRole("SuperAdmin"))
+            {
+                <text>Administración SaaS</text>
+            }
+            else
+            {
+                @nombreUsuario
+            }
+        </span>
+    </div>
+
+    <div class="navbar-top__actions">
+        <div class="navbar-top__user">
+            <i class="bi bi-person-circle" aria-hidden="true"></i>
+            <span>@nombreUsuario</span>
+            <span class="navbar-ciclo-badge">@rol</span>
+        </div>
+        <form asp-controller="Auth" asp-action="Logout" method="post" class="d-inline">
+            <button type="submit" class="btn-pe btn-pe--secondary btn-pe--sm">
+                <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Salir
+            </button>
+        </form>
+    </div>
+</header>

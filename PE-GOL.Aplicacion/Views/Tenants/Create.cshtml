@@ -1,0 +1,122 @@
+@model TenantFormViewModel
+@{
+    ViewData["Title"] = "Nuevo Tenant";
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Administración SaaS</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>Tenants</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Nuevo Tenant</span>
+    </div>
+    <h1 class="page-header__title">Nuevo Tenant</h1>
+    <p class="page-header__subtitle">Registra una nueva gerencia en la plataforma.</p>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <strong>No se pudo guardar el tenant:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="card-pe">
+    <form asp-action="Create" method="post" id="formTenant" novalidate>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-pe-label" for="nombre">Nombre *</label>
+                <input class="form-pe-input" type="text" id="nombre" name="nombre" value="@Model.Nombre"
+                       maxlength="150" placeholder="Ej: Grupo Empresarial XYZ" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="planId">Plan *</label>
+                <select class="form-pe-select" id="planId" name="planId">
+                    <option value="">Seleccione un plan</option>
+                    @foreach (var plan in Model.Planes)
+                    {
+                        <option value="@plan.Id" selected="@(Model.PlanId == plan.Id)">@plan.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-pe-label" for="descripcion">Descripción</label>
+                <textarea class="form-pe-input" id="descripcion" name="descripcion" rows="3"
+                          maxlength="1000" placeholder="Descripción breve de la gerencia">@Model.Descripcion</textarea>
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="zonaHoraria">Zona horaria</label>
+                <input class="form-pe-input" type="text" id="zonaHoraria" name="zonaHoraria" value="@Model.ZonaHoraria"
+                       maxlength="50" placeholder="America/Managua" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="eslogan">Eslogan</label>
+                <input class="form-pe-input" type="text" id="eslogan" name="eslogan" value="@Model.Eslogan"
+                       maxlength="200" placeholder="Eslogan corporativo" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="logoUrl">URL del logo</label>
+                <input class="form-pe-input" type="url" id="logoUrl" name="logoUrl" value="@Model.LogoUrl"
+                       maxlength="500" placeholder="https://ejemplo.com/logo.png" />
+            </div>
+        </div>
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+            </button>
+            <a class="btn-pe btn-pe--secondary" asp-action="Index">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+            $('#formTenant').validate({
+                rules: {
+                    nombre: { required: true, maxlength: 150 },
+                    descripcion: { maxlength: 1000 },
+                    planId: { required: true },
+                    zonaHoraria: { maxlength: 50 },
+                    eslogan: { maxlength: 200 },
+                    logoUrl: { url: true, maxlength: 500 }
+                },
+                messages: {
+                    nombre: {
+                        required: 'El nombre es obligatorio.',
+                        maxlength: 'El nombre no puede superar 150 caracteres.'
+                    },
+                    descripcion: {
+                        maxlength: 'La descripción no puede superar 1000 caracteres.'
+                    },
+                    planId: {
+                        required: 'Seleccione un plan.'
+                    },
+                    zonaHoraria: {
+                        maxlength: 'La zona horaria no puede superar 50 caracteres.'
+                    },
+                    eslogan: {
+                        maxlength: 'El eslogan no puede superar 200 caracteres.'
+                    },
+                    logoUrl: {
+                        url: 'Ingrese una URL válida (http/https).',
+                        maxlength: 'La URL del logo no puede superar 500 caracteres.'
+                    }
+                },
+                errorElement: 'span',
+                errorClass: 'form-pe-error',
+                errorPlacement: function (error, element) {
+                    error.insertAfter(element);
+                }
+            });
+        });
+    </script>
+}

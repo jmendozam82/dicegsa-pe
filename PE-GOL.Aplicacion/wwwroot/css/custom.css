@@ -1,0 +1,670 @@
+/* ============================================================
+   PE-GOL SaaS — Design System (docs/07_DESIGN_SYSTEM.md)
+   custom.css · tokens DS § 10 + componentes (UX-01)
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&display=swap');
+
+:root {
+    /* Colores Primarios (DS § 2.1) */
+    --color-navy:           #0B2545;
+    --color-navy-light:     #1A3A5C;
+    --color-action:         #1A73E8;
+    --color-action-hover:   #1557B0;
+    --color-accent:         #00B4A6;
+    --color-accent-light:   #E0F7F5;
+
+    /* Semáforo (DS § 2.2) */
+    --color-verde:          #34A853;
+    --color-verde-bg:       #E6F4EA;
+    --color-amarillo:       #F9AB00;
+    --color-amarillo-bg:    #FEF7E0;
+    --color-rojo:           #EA4335;
+    --color-rojo-bg:        #FCE8E6;
+
+    /* Neutros (DS § 2.3) */
+    --color-bg-page:        #F0F4F8;
+    --color-bg-card:        #FFFFFF;
+    --color-border:         #E2E8F0;
+    --color-border-dark:    #CBD5E1;
+    --color-text-primary:   #1E293B;
+    --color-text-secondary: #64748B;
+    --color-text-disabled:  #94A3B8;
+
+    /* Tipografía (DS § 3) */
+    --font-heading:         'DM Sans', sans-serif;
+    --font-body:            'Inter', sans-serif;
+
+    /* Layout (DS § 10) */
+    --sidebar-width:        240px;
+    --navbar-height:        64px;
+    --border-radius-card:   10px;
+    --border-radius-btn:    7px;
+    --shadow-card:          0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-modal:         0 20px 60px rgba(0,0,0,0.15);
+
+    /* Transiciones */
+    --transition-fast:      0.15s ease;
+    --transition-normal:    0.25s ease;
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+body {
+    font-family: var(--font-body);
+    font-size: 14px;
+    background: var(--color-bg-page);
+    color: var(--color-text-primary);
+}
+
+/* ── Tipografía (DS § 3) ──────────────────────────────────── */
+.h-page        { font: 700 22px var(--font-heading); color: var(--color-text-primary); }
+.h-section     { font: 600 16px var(--font-heading); color: var(--color-text-primary); }
+.h-subsection  { font: 600 14px var(--font-body);    color: var(--color-text-primary); }
+.body-md       { font: 400 14px var(--font-body);    color: var(--color-text-primary); }
+.body-sm       { font: 400 13px var(--font-body);    color: var(--color-text-secondary); }
+.label         { font: 500 12px var(--font-body);    color: var(--color-text-secondary); }
+.metric-xl     { font: 700 32px var(--font-heading); color: var(--color-text-primary); }
+.metric-lg     { font: 700 24px var(--font-heading); color: var(--color-text-primary); }
+
+/* ── Layout (DS § 4) ──────────────────────────────────────── */
+
+/* Navbar superior 64px (DS § 4.3) */
+.navbar-top {
+    height: var(--navbar-height);
+    background: var(--color-navy);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 24px 0 16px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+}
+
+.navbar-top__brand {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.navbar-top__logo {
+    font: 700 18px var(--font-heading);
+    color: #FFFFFF;
+    letter-spacing: 0.02em;
+}
+
+.navbar-top__slogan {
+    font: 400 11px var(--font-body);
+    color: rgba(255,255,255,0.5);
+}
+
+.navbar-top__tenant {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.navbar-tenant-info {
+    font: 500 13px var(--font-body);
+    color: rgba(255,255,255,0.85);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.navbar-top__actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+}
+
+.navbar-top__user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font: 500 13px var(--font-body);
+    color: rgba(255,255,255,0.85);
+}
+
+.navbar-top__user i {
+    font-size: 22px;
+    color: rgba(255,255,255,0.7);
+}
+
+.navbar-ciclo-badge {
+    background: rgba(0,180,166,0.2);
+    color: var(--color-accent);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font: 600 11px var(--font-body);
+}
+
+.navbar-top__toggle {
+    display: none;
+    background: transparent;
+    border: none;
+    color: #FFFFFF;
+    font-size: 22px;
+    padding: 4px 8px;
+    line-height: 1;
+}
+
+/* Sidebar 240px (DS § 4.2) */
+.sidebar {
+    width: var(--sidebar-width);
+    background: var(--color-navy);
+    height: calc(100vh - var(--navbar-height));
+    position: fixed;
+    top: var(--navbar-height);
+    left: 0;
+    overflow-y: auto;
+    z-index: 99;
+    transition: transform var(--transition-normal), width var(--transition-normal);
+}
+
+.sidebar-section-label {
+    padding: 16px 16px 4px;
+    font: 600 10px var(--font-body);
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    color: rgba(255,255,255,0.75);
+    font: 500 13px var(--font-body);
+    border-radius: 6px;
+    margin: 2px 8px;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.sidebar-nav-item:hover,
+.sidebar-nav-item.active {
+    background: rgba(26,115,232,0.25);
+    color: #FFFFFF;
+}
+
+.sidebar-nav-item.active {
+    border-left: 3px solid var(--color-accent);
+}
+
+.sidebar-nav-item i {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* Placeholders de módulos en tandas B/C/D (semántico, sin clase custom) */
+.sidebar-nav-item[aria-disabled="true"] {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.sidebar-nav-item[aria-disabled="true"]:hover {
+    background: transparent;
+    color: rgba(255,255,255,0.75);
+}
+
+/* Contenedor principal */
+.layout-pe {
+    display: flex;
+    min-height: 100vh;
+    padding-top: var(--navbar-height);
+}
+
+.layout-pe__content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    padding: 24px;
+    min-width: 0;
+}
+
+/* Área de autenticación (login / cambio de contraseña) */
+.layout-pe__auth {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--color-bg-page);
+}
+
+.auth-pe__card {
+    width: 100%;
+    max-width: 420px;
+}
+
+.auth-pe__brand {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.auth-pe__logo {
+    font: 700 28px var(--font-heading);
+    color: var(--color-navy);
+    display: block;
+}
+
+.auth-pe__title {
+    font: 500 14px var(--font-body);
+    color: var(--color-text-secondary);
+    margin: 4px 0 0;
+}
+
+/* ── Card genérica (DS § 5.6 — contenedor de formularios) ── */
+.card-pe {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-card);
+    box-shadow: var(--shadow-card);
+    padding: 24px;
+}
+
+/* ── Page Header (DS § 5.8) ───────────────────────────────── */
+.page-header {
+    margin-bottom: 24px;
+}
+
+.page-header__breadcrumb {
+    font: 400 12px var(--font-body);
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.page-header__breadcrumb .active {
+    color: var(--color-text-primary);
+    font-weight: 500;
+}
+
+.page-header__title {
+    font: 700 22px var(--font-heading);
+    color: var(--color-text-primary);
+    margin: 0 0 4px;
+}
+
+.page-header__subtitle {
+    font: 400 13px var(--font-body);
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+/* ── Tabla de datos (DS § 5.4 — UX-03) ────────────────────── */
+.tabla-pe {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--color-bg-card);
+    border-radius: var(--border-radius-card);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+}
+
+.tabla-pe thead th {
+    background: #F8FAFC;
+    padding: 11px 14px;
+    font: 600 12px var(--font-body);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+}
+
+.tabla-pe tbody td {
+    padding: 12px 14px;
+    font: 400 13px var(--font-body);
+    color: var(--color-text-primary);
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+}
+
+.tabla-pe tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.tabla-pe tbody tr:hover {
+    background: #F8FAFC;
+}
+
+.tabla-pe .cell-codigo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--color-action);
+    background: #EEF4FF;
+    padding: 2px 7px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+/* Truncado de texto en celdas (descripciones largas) */
+.cell-truncate {
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
+/* ── Estado vacío (DS § 8 — UX-05) ────────────────────────── */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px;
+    text-align: center;
+}
+
+.empty-state__icon {
+    font-size: 48px;
+    color: var(--color-text-disabled);
+    margin-bottom: 16px;
+}
+
+.empty-state__title {
+    font: 600 16px var(--font-heading);
+    color: var(--color-text-primary);
+    margin-bottom: 8px;
+}
+
+.empty-state__message {
+    font: 400 13px var(--font-body);
+    color: var(--color-text-secondary);
+    max-width: 320px;
+    margin-bottom: 24px;
+}
+
+/* ── KPI Card (DS § 5.1) ──────────────────────────────────── */
+.kpi-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-card);
+    padding: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+}
+
+.kpi-card__icon {
+    width: 44px;
+    height: 44px;
+    background: var(--color-accent-light);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-accent);
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.kpi-card__label {
+    font: 500 12px var(--font-body);
+    color: var(--color-text-secondary);
+    display: block;
+}
+
+.kpi-card__value {
+    font: 700 32px var(--font-heading);
+    color: var(--color-text-primary);
+    display: block;
+    line-height: 1.1;
+}
+
+.kpi-card__total {
+    font: 400 12px var(--font-body);
+    color: var(--color-text-secondary);
+}
+
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    border-radius: var(--border-radius-card) 0 0 var(--border-radius-card);
+}
+
+.kpi-card--verde::before     { background: var(--color-verde); }
+.kpi-card--amarillo::before  { background: var(--color-amarillo); }
+.kpi-card--rojo::before      { background: var(--color-rojo); }
+
+/* ── Semáforo (DS § 5.2 — UX-02) ──────────────────────────── */
+.semaforo {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font: 600 11px var(--font-body);
+}
+
+.semaforo--verde    { background: var(--color-verde-bg);    color: #1E6B35; }
+.semaforo--amarillo { background: var(--color-amarillo-bg); color: #8A5E00; }
+.semaforo--rojo     { background: var(--color-rojo-bg);     color: #B71C1C; }
+
+/* ── Botones (DS § 5.5) ───────────────────────────────────── */
+.btn-pe {
+    padding: 8px 18px;
+    border-radius: var(--border-radius-btn);
+    font: 500 13px var(--font-body);
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+}
+
+.btn-pe--primary {
+    background: var(--color-action);
+    color: #FFFFFF;
+}
+
+.btn-pe--primary:hover {
+    background: var(--color-action-hover);
+    color: #FFFFFF;
+}
+
+.btn-pe--secondary {
+    background: transparent;
+    border: 1px solid var(--color-border-dark);
+    color: var(--color-text-primary);
+}
+
+.btn-pe--secondary:hover {
+    background: #F8FAFC;
+    color: var(--color-text-primary);
+}
+
+.btn-pe--danger {
+    background: var(--color-rojo);
+    color: #FFFFFF;
+}
+
+.btn-pe--danger:hover {
+    background: #C62828;
+    color: #FFFFFF;
+}
+
+.btn-pe--sm { padding: 5px 12px; font-size: 12px; border-radius: 5px; }
+.btn-pe--lg { padding: 11px 24px; font-size: 14px; }
+
+/* ── Formularios (DS § 5.6) ───────────────────────────────── */
+.form-pe-label {
+    font: 500 12px var(--font-body);
+    color: var(--color-text-secondary);
+    margin-bottom: 5px;
+    display: block;
+}
+
+.form-pe-input,
+.form-pe-select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--color-border-dark);
+    border-radius: 7px;
+    font: 400 13px var(--font-body);
+    color: var(--color-text-primary);
+    background: #FFFFFF;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    outline: none;
+}
+
+.form-pe-input:focus,
+.form-pe-select:focus {
+    border-color: var(--color-action);
+    box-shadow: 0 0 0 3px rgba(26,115,232,0.12);
+}
+
+.form-pe-input.is-invalid {
+    border-color: var(--color-rojo);
+}
+
+.form-pe-input.is-invalid:focus {
+    box-shadow: 0 0 0 3px rgba(234,67,53,0.12);
+}
+
+.form-pe-error {
+    font: 400 11px var(--font-body);
+    color: var(--color-rojo);
+    margin-top: 4px;
+    display: block;
+}
+
+/* ── Modal (DS § 5.7) ─────────────────────────────────────── */
+.modal-pe .modal-content {
+    border: none;
+    border-radius: 12px;
+    box-shadow: var(--shadow-modal);
+}
+
+.modal-pe .modal-header {
+    background: var(--color-navy);
+    color: #FFFFFF;
+    padding: 16px 24px;
+    border-radius: 12px 12px 0 0;
+    border: none;
+}
+
+.modal-pe .modal-header .modal-title {
+    font: 600 16px var(--font-heading);
+}
+
+.modal-pe .modal-body {
+    padding: 24px;
+}
+
+.modal-pe .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--color-border);
+}
+
+/* ── Responsive (DS § 11) ─────────────────────────────────── */
+
+/* ≥ 1024px (Laptop): sidebar 200px */
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .sidebar {
+        width: 200px;
+    }
+
+    .layout-pe__content {
+        margin-left: 200px;
+    }
+}
+
+/* ≥ 768px (Tablet): sidebar colapsada a iconos (48px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .sidebar {
+        width: 48px;
+    }
+
+    .layout-pe__content {
+        margin-left: 48px;
+    }
+
+    .sidebar-section-label {
+        display: none;
+    }
+
+    .sidebar-nav-item {
+        justify-content: center;
+        padding: 10px 0;
+        margin: 2px 6px;
+    }
+
+    .sidebar-nav-item__label {
+        display: none;
+    }
+
+    .sidebar-nav-item.active {
+        border-left: none;
+        border-right: 3px solid var(--color-accent);
+    }
+}
+
+/* < 768px: sidebar como drawer overlay */
+@media (max-width: 767px) {
+    .navbar-top__toggle {
+        display: block;
+    }
+
+    .navbar-top__slogan {
+        display: none;
+    }
+
+    .navbar-top__user span {
+        display: none;
+    }
+
+    .sidebar {
+        transform: translateX(-100%);
+        width: var(--sidebar-width);
+    }
+
+    .layout-pe__content {
+        margin-left: 0;
+        padding: 16px;
+    }
+
+    .sidebar-nav-item__label {
+        display: inline;
+    }
+
+    .sidebar-section-label {
+        display: block;
+    }
+
+    body.sidebar-open .sidebar {
+        transform: translateX(0);
+        box-shadow: 4px 0 20px rgba(0,0,0,0.2);
+    }
+
+    body.sidebar-open::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: rgba(11,37,69,0.5);
+        z-index: 98;
+    }
+}

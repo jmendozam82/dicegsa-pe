@@ -1,0 +1,132 @@
+@model TenantFormViewModel
+@{
+    ViewData["Title"] = "Editar Tenant";
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Administración SaaS</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>Tenants</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">@Model.Nombre</span>
+    </div>
+    <h1 class="page-header__title">Editar Tenant</h1>
+    <p class="page-header__subtitle">Actualiza los datos generales de la gerencia.</p>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <strong>No se pudo guardar el tenant:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="card-pe">
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post" id="formTenant" novalidate>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-pe-label" for="nombre">Nombre *</label>
+                <input class="form-pe-input" type="text" id="nombre" name="nombre" value="@Model.Nombre"
+                       maxlength="150" placeholder="Ej: Grupo Empresarial XYZ" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="planId">Plan *</label>
+                <select class="form-pe-select" id="planId" name="planId">
+                    <option value="">Seleccione un plan</option>
+                    @foreach (var plan in Model.Planes)
+                    {
+                        <option value="@plan.Id" selected="@(Model.PlanId == plan.Id)">@plan.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-pe-label" for="descripcion">Descripción</label>
+                <textarea class="form-pe-input" id="descripcion" name="descripcion" rows="3"
+                          maxlength="1000" placeholder="Descripción breve de la gerencia">@Model.Descripcion</textarea>
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="zonaHoraria">Zona horaria</label>
+                <input class="form-pe-input" type="text" id="zonaHoraria" name="zonaHoraria" value="@Model.ZonaHoraria"
+                       maxlength="50" placeholder="America/Managua" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="eslogan">Eslogan</label>
+                <input class="form-pe-input" type="text" id="eslogan" name="eslogan" value="@Model.Eslogan"
+                       maxlength="200" placeholder="Eslogan corporativo" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="logoUrl">URL del logo</label>
+                <input class="form-pe-input" type="url" id="logoUrl" name="logoUrl" value="@Model.LogoUrl"
+                       maxlength="500" placeholder="https://ejemplo.com/logo.png" />
+            </div>
+
+            @* ── Estado: badge no editable (D-1) + acciones contextuales ── *@
+            <div class="col-md-6">
+                <span class="form-pe-label d-block">Estado</span>
+                <div class="d-flex align-items-center gap-2">
+                    @if (Model.Estado == "Activo")
+                    {
+                        <span class="semaforo semaforo--verde">
+                            <i class="bi bi-circle-fill" aria-hidden="true"></i> Activo
+                        </span>
+                        <button type="button" class="btn-pe btn-pe--secondary btn-pe--sm"
+                                data-bs-toggle="modal" data-bs-target="#modalConfirmarAccion"
+                                data-tenant-id="@Model.Id" data-tenant-nombre="@Model.Nombre" data-accion="desactivar">
+                            <i class="bi bi-stop-circle" aria-hidden="true"></i> Desactivar
+                        </button>
+                    }
+                    else
+                    {
+                        <span class="semaforo semaforo--rojo">
+                            <i class="bi bi-circle-fill" aria-hidden="true"></i> Inactivo
+                        </span>
+                        <button type="button" class="btn-pe btn-pe--secondary btn-pe--sm"
+                                data-bs-toggle="modal" data-bs-target="#modalConfirmarAccion"
+                                data-tenant-id="@Model.Id" data-tenant-nombre="@Model.Nombre" data-accion="activar">
+                            <i class="bi bi-play-circle" aria-hidden="true"></i> Activar
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+            </button>
+            <a class="btn-pe btn-pe--secondary" asp-action="Index">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@* ── Modal de confirmación activar/desactivar (DS § 5.7) ── *@
+<div class="modal fade modal-pe" id="modalConfirmarAccion" tabindex="-1" aria-labelledby="modalConfirmarTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalConfirmarTitulo">Confirmar acción</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="body-md mb-0" id="modalConfirmarTexto"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-pe btn-pe--secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formConfirmarAccion" method="post" action="">
+                    <button type="submit" id="modalConfirmarBoton" class="btn-pe btn-pe--danger">Confirmar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/tenants.js" asp-append-version="true"></script>
+}
