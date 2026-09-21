@@ -159,9 +159,10 @@ public class ActualizarProgresoServiceTests
     public async Task ActualizarProgreso_Progreso0_FechaVencida_StatusAtrasado()
     {
         // Arrange — RN-017 regla 4: progreso = 0 pero fecha ya venció → Atrasado (no NoIniciado)
-        var accion = BuildAccion(0,
-            fechaInicio:       DateTime.UtcNow.AddDays(-10),
-            fechaVencimiento:  DateTime.UtcNow.AddDays(-2)); // vencida
+        // La acción parte de progreso=30 para que F3 (idempotente) no cortocircuite al enviar 0.
+        var accion = BuildAccion(30m,
+            fechaInicio:      DateTime.UtcNow.AddDays(-10),
+            fechaVencimiento: DateTime.UtcNow.AddDays(-2)); // vencida
         SetupAccion(accion);
         var request = new ActualizarProgresoRequest { Progreso = 0m };
 
