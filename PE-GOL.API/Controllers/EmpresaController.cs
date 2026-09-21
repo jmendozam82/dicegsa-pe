@@ -65,7 +65,7 @@ public class EmpresaController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> SubirLogo([FromForm] IFormFile? archivo, CancellationToken ct = default)
+    public async Task<IActionResult> SubirLogo(IFormFile archivo)
     {
         // Guard del controller: sin archivo → 400 (el resto de validaciones de formato/tamaño
         // las hace la BLL → 422, fuente de verdad UX-04).
@@ -78,7 +78,7 @@ public class EmpresaController : ControllerBase
             });
 
         await using var stream = archivo.OpenReadStream();
-        var data = await _service.SubirLogoAsync(stream, archivo.FileName, archivo.ContentType, archivo.Length, ct);
+        var data = await _service.SubirLogoAsync(stream, archivo.FileName, archivo.ContentType, archivo.Length, HttpContext.RequestAborted);
         return Ok(new ApiResponse<EmpresaResponse> { Success = true, Message = "Logo actualizado", Data = data });
     }
 }

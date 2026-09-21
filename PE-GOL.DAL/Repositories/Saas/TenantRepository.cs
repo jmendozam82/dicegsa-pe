@@ -251,7 +251,7 @@ public sealed class TenantRepository : ITenantRepository, IDisposable
         const string sql = @"
             INSERT INTO log_auditoria (tenant_id, usuario_id, accion, entidad, entidad_id,
                                        valor_anterior, valor_nuevo)
-            VALUES (@TenantId, @UsuarioId, @Accion, @Entidad, @EntidadId,
+            VALUES (@TenantId, @UsuarioId, @Accion::accion_auditoria, @Entidad, @EntidadId,
                     @ValorAnterior::jsonb, @ValorNuevo::jsonb);";
 
         if (tx is not null)

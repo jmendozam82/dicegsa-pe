@@ -99,6 +99,7 @@ public class ObjetivoCgGerenteServiceTests
 
         var res = await _service.ListarConsolidadoGerenteAsync(new ObjetivoCgFilterRequest());
         Assert.True(res.Success);
+        Assert.NotNull(res.Data);
         Assert.Single(res.Data);
     }
 
@@ -169,6 +170,7 @@ public class ObjetivoCgGerenteServiceTests
             
         var res = await _service.ListarConsolidadoGerenteAsync(new ObjetivoCgFilterRequest());
         Assert.True(res.Success);
+        Assert.NotNull(res.Data);
         Assert.Empty(res.Data);
     }
 
@@ -185,6 +187,7 @@ public class ObjetivoCgGerenteServiceTests
             
         var res = await _service.ListarConsolidadoGerenteAsync(new ObjetivoCgFilterRequest());
         Assert.True(res.Success);
+        Assert.NotNull(res.Data);
         Assert.Equal("Sistemas", res.Data.First().AreaNombre);
         Assert.Equal("Innovación", res.Data.First().PilarNombre);
     }
@@ -202,6 +205,7 @@ public class ObjetivoCgGerenteServiceTests
             .ReturnsAsync(mockData);
             
         var res = await _service.ListarConsolidadoGerenteAsync(new ObjetivoCgFilterRequest());
+        Assert.NotNull(res.Data);
         var array = res.Data.ToArray();
         Assert.Equal("A", array[0].AreaNombre);
         Assert.Equal("B", array[1].AreaNombre);

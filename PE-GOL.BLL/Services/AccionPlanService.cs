@@ -58,7 +58,7 @@ public class AccionPlanService : IAccionPlanService
 
     private async Task ValidarFechasCicloAsync(Guid cicloId, DateTime fechaInicio, DateTime fechaVencimiento, CancellationToken ct)
     {
-        var ciclo = await _cicloRepository.ObtenerPorIdAsync(cicloId, _tenantContext.TenantId.Value, ct)
+        var ciclo = await _cicloRepository.ObtenerPorIdAsync(cicloId, ObtenerTenantIdOThrow(), ct)
             ?? throw new NotFoundException("Ciclo no encontrado.");
 
         var (inicioCiclo, finCiclo) = CicloFechaHelper.ObtenerRango(ciclo.AñoFiscal, ciclo.MesInicio);
@@ -110,23 +110,23 @@ public class AccionPlanService : IAccionPlanService
 
     public async Task<AccionPlanResponse> CrearAsync(Guid objetivoCgId, AccionPlanCreateRequest request, CancellationToken ct = default)
     {
-        var objetivo = await _objetivoCgRepository.ObtenerPorIdSinAreaAsync(_tenantContext.TenantId.Value, objetivoCgId)
+        var objetivo = await _objetivoCgRepository.ObtenerPorIdSinAreaAsync(ObtenerTenantIdOThrow(), objetivoCgId)
             ?? throw new NotFoundException("Objetivo CG no encontrado.");
 
         ValidarRolJefeArea(objetivo.AreaId);
         await ValidarFechasCicloAsync(objetivo.CicloId, request.FechaInicio, request.FechaVencimiento, ct);
 
-        var sumaPesos = await _repository.ObtenerSumaPesosAsync(objetivoCgId, _tenantContext.TenantId.Value, ct);
+        var sumaPesos = await _repository.ObtenerSumaPesosAsync(objetivoCgId, ObtenerTenantIdOThrow(), ct);
         if (sumaPesos + request.Peso > 1.0m)
             throw new ValidacionException($"La suma de los pesos de las acciones excede el 100% (1.0). Peso acumulado actual: {sumaPesos}.");
 
-        var maxOrden  = await _repository.ObtenerMaximoOrdenAsync(objetivoCgId, _tenantContext.TenantId.Value, ct);
+        var maxOrden  = await _repository.ObtenerMaximoOrdenAsync(objetivoCgId, ObtenerTenantIdOThrow(), ct);
         var nuevoOrden = maxOrden + 1;
         var nuevoCodigo = $"{objetivo.Codigo}.{nuevoOrden:D2}";
 
         var entity = new AccionPlanEntity
         {
-            TenantId              = _tenantContext.TenantId.Value,
+            TenantId              = ObtenerTenantIdOThrow(),
             CicloId               = objetivo.CicloId,
             AreaId                = objetivo.AreaId,
             ObjetivoCgId          = objetivoCgId,
@@ -152,16 +152,16 @@ public class AccionPlanService : IAccionPlanService
 
     public async Task<AccionPlanResponse> ActualizarAsync(Guid id, AccionPlanUpdateRequest request, CancellationToken ct = default)
     {
-        var entity = await _repository.ObtenerPorIdAsync(id, _tenantContext.TenantId.Value, ct)
+        var entity = await _repository.ObtenerPorIdAsync(id, ObtenerTenantIdOThrow(), ct)
             ?? throw new NotFoundException("Acción no encontrada.");
 
-        var objetivo = await _objetivoCgRepository.ObtenerPorIdSinAreaAsync(_tenantContext.TenantId.Value, entity.ObjetivoCgId)
+        var objetivo = await _objetivoCgRepository.ObtenerPorIdSinAreaAsync(ObtenerTenantIdOThrow(), entity.ObjetivoCgId)
             ?? throw new NotFoundException("Objetivo CG no encontrado.");
 
         ValidarRolJefeArea(objetivo.AreaId);
         await ValidarFechasCicloAsync(objetivo.CicloId, request.FechaInicio, request.FechaVencimiento, ct);
 
-        var sumaPesosActual = await _repository.ObtenerSumaPesosAsync(entity.ObjetivoCgId, _tenantContext.TenantId.Value, ct);
+        var sumaPesosActual = await _repository.ObtenerSumaPesosAsync(entity.ObjetivoCgId, ObtenerTenantIdOThrow(), ct);
         var nuevaSuma = sumaPesosActual - entity.Peso + request.Peso;
         if (nuevaSuma > 1.0m)
             throw new ValidacionException($"La suma de los pesos de las acciones excede el 100% (1.0). Peso actual acumulado (sin esta acción): {sumaPesosActual - entity.Peso}.");
@@ -183,19 +183,19 @@ public class AccionPlanService : IAccionPlanService
 
     public async Task EliminarAsync(Guid id, CancellationToken ct = default)
     {
-        var entity = await _repository.ObtenerPorIdAsync(id, _tenantContext.TenantId.Value, ct)
+        var entity = await _repository.ObtenerPorIdAsync(id, ObtenerTenantIdOThrow(), ct)
             ?? throw new NotFoundException("Acción no encontrada.");
 
-        var objetivo = await _objetivoCgRepository.ObtenerPorIdSinAreaAsync(_tenantContext.TenantId.Value, entity.ObjetivoCgId)
+        var objetivo = await _objetivoCgRepository.ObtenerPorIdSinAreaAsync(ObtenerTenantIdOThrow(), entity.ObjetivoCgId)
             ?? throw new NotFoundException("Objetivo CG no encontrado.");
 
         ValidarRolJefeArea(objetivo.AreaId);
-        await _repository.DeleteAsync(id, _tenantContext.TenantId.Value, ct);
+        await _repository.DeleteAsync(id, ObtenerTenantIdOThrow(), ct);
     }
 
     public async Task<AccionPlanResponse> ObtenerPorIdAsync(Guid id, CancellationToken ct = default)
     {
-        var entity = await _repository.ObtenerPorIdAsync(id, _tenantContext.TenantId.Value, ct)
+        var entity = await _repository.ObtenerPorIdAsync(id, ObtenerTenantIdOThrow(), ct)
             ?? throw new NotFoundException("Acción no encontrada.");
 
         if (_tenantContext.Rol == "JefeArea" && entity.AreaId != _tenantContext.AreaId)
@@ -206,13 +206,13 @@ public class AccionPlanService : IAccionPlanService
 
     public async Task<IEnumerable<AccionPlanResponse>> ListarPorObjetivoCgAsync(Guid objetivoCgId, CancellationToken ct = default)
     {
-        var objetivo = await _objetivoCgRepository.ObtenerPorIdSinAreaAsync(_tenantContext.TenantId.Value, objetivoCgId)
+        var objetivo = await _objetivoCgRepository.ObtenerPorIdSinAreaAsync(ObtenerTenantIdOThrow(), objetivoCgId)
             ?? throw new NotFoundException("Objetivo CG no encontrado.");
 
         if (_tenantContext.Rol == "JefeArea" && objetivo.AreaId != _tenantContext.AreaId)
             throw new AccesoDenegadoException("No tiene permisos para ver las acciones de este objetivo.");
 
-        var entities = await _repository.ListarPorObjetivoCgAsync(objetivoCgId, _tenantContext.TenantId.Value, ct);
+        var entities = await _repository.ListarPorObjetivoCgAsync(objetivoCgId, ObtenerTenantIdOThrow(), ct);
         return entities.Select(MapToResponse);
     }
 
@@ -314,5 +314,16 @@ public class AccionPlanService : IAccionPlanService
             return Enumerable.Empty<HistorialProgresoResponse>();
 
         return await _historialRepository.ListarPorAccionAsync(accionId, _tenantContext.TenantId!.Value, ct);
+    }
+
+    // ─── Helpers ────────────────────────────────────────────────────────────
+
+    /// <summary>D17: TenantId null (SuperAdmin sin tenant) → 404 defensivo (los roles autorizados
+    /// siempre tienen tenant_id; el SuperAdmin queda fuera por [Authorize(Roles=...)]).</summary>
+    private Guid ObtenerTenantIdOThrow()
+    {
+        if (_tenantContext.TenantId is null)
+            throw new NotFoundException("No se pudo determinar el tenant del usuario autenticado");
+        return _tenantContext.TenantId.Value;
     }
 }
