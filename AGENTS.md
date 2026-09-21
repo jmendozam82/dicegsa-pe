@@ -1,6 +1,7 @@
 # AGENTS.md — Constitución del Proyecto PE-GOL SaaS
 > Este archivo es la fuente de verdad del proyecto. Todo agente, spec, ADR y plan debe leerlo antes de actuar.
-> Versión: 1.21 · Fecha: 2026-09-20 · Autor: Jorge (Dicegsa)
+> Versión: 1.22 · Fecha: 2026-09-21 · Autor: Jorge (Dicegsa)
+> v1.22 (2026-09-21): auditoría post-Sprint 3 resuelta 100% (3 críticos, 6 medios, 8 mejoras — ver HANDOFF «Cierre de auditoría post-Sprint 3» y ADR-010). Tests: 554/554 en verde. Pre-Sprint 4, sin HU abiertas.
 > v1.21 (2026-09-20): tabla de estado actualizada tras implementar HU-045 (UI de Gestión de Tenants — alcance ampliado) — Sprint 3 completado (6/6 HU).
 > v1.20 (2026-09-20): tabla de estado actualizada tras implementar HU-020 (Actualización de Progreso de Acciones) — Sprint 3 en curso.
 > v1.19 (2026-09-20): tabla de estado actualizada tras implementar HU-019 (CRUD Acciones del Plan) — Sprint 3 en curso.
@@ -238,7 +239,8 @@ dicegsa-pe/
 
 ---
 
-*AGENTS.md — Constitución PE-GOL SaaS · Versión 1.21 · 2026-09-20*
+*AGENTS.md — Constitución PE-GOL SaaS · Versión 1.22 · 2026-09-21*
+*v1.22 (2026-09-21): auditoría post-Sprint 3 resuelta 100% (3 críticos, 6 medios, 8 mejoras — ver HANDOFF y ADR-010). Tests: 554/554 en verde. Pre-Sprint 4, sin HU abiertas.*
 *v1.21 (2026-09-20): tabla de estado actualizada tras implementar HU-045 (UI de Gestión de Tenants — alcance ampliado) — Sprint 3 completado (6/6 HU).*
 *v1.20 (2026-09-20): tabla de estado actualizada tras implementar HU-020 (Actualización de Progreso de Acciones) — Sprint 3 en curso.*
 *v1.19 (2026-09-20): tabla de estado actualizada tras implementar HU-019 (CRUD Acciones del Plan) — Sprint 3 en curso.*

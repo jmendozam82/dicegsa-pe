@@ -436,5 +436,30 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-20 (Sprint 3 completado — 6/6 HU) · Conversación origen: Análisis y Diseño completo*
+## Cierre de auditoría post-Sprint 3 — 2026-09-21
+
+**Contexto:** La auditoría `auditoria_pe_gol.md` (2026-09-21) marcó 3 críticos, 6 medios y 8 mejoras sobre el estado entregado tras Sprint 3 (conocida y aportada por Jorge). Jorge pidió **resolución total antes de Sprint 4**; la auditoría quedó 100% resuelta el 2026-09-21, con build y tests en verde.
+
+1. **CRÍTICO-01 (autorización por política inexistente):** verificado — la solución no tiene `[Authorize(Policy=...)]`; `ObjetivoCgController` usa `[Authorize(Roles="JefeArea")]`/`[Authorize(Roles="Gerente")]` (SEC-07). **Resuelto (verificación).**
+2. **CRÍTICO-02 (wrappers HTTP en BLL):** verificado — `IDashboardService` retorna DTOs planos (`TableroJefeAreaResponse`/`TableroGerenteResponse`); `DashboardController` construye `ApiResponse<T>` (ARCH-07). **Resuelto (verificación).**
+3. **CRÍTICO-03 (deuda ARCH-02 en `IAuthService`):** refactor — `LogoutAsync → Task<bool>`, `CambiarContrasenaAsync → Task`; `AuthController` envuelve con `ApiResponse<object>` ("Sesión cerrada" / "Contraseña actualizada. Inicie sesión nuevamente."); 4 tests de `AuthServiceTests.cs` actualizados. **Resuelto + ADR-010 (Decisión 1).**
+4. **MEDIO-01 (`is null` en `ObjetivoCgService`):** verificado ya corregido + refactor al patrón `ObtenerTenantIdOThrow()` (MEJORA-02). **Resuelto.**
+5. **MEDIO-02 (rutas de `AccionPlanController`):** `[Route("api/v1/acciones")]` + rutas anidadas `~/api/v1/objetivos-cg/{objetivoCgId:guid}/acciones`; internas `{id:guid}`, `{id:guid}/progreso`, `{id:guid}/historial`. Contrato público del frontend intacto; sin controllers con `Route("api/v1")` genérico. **Resuelto.**
+6. **MEDIO-03 (Swagger):** descripción actualizada en `Program.cs` (Sprints 1-3, ~40 endpoints, JWT por roles, ARCH-07). **Resuelto.**
+7. **MEDIO-04 (migraciones V001-V004):** no eran pendientes — **ejecutadas y verificadas en Supabase Cloud (PostgreSQL 17.6) durante HU-045**. Verificación viva 2026-09-21 (`pg_indexes`): existen `uq_tenant_nombre`, `uq_plan_nombre`, `uq_ciclo_unico_activo`, `uq_area_responsable_unico`. Headers de V002/V003/V004 actualizados de "NO EJECUTADA" a "EJECUTADA y verificada". **Resuelto (verificación viva).**
+8. **MEDIO-05 (`EmailService` stub):** verificado — loguea y retorna `Task.CompletedTask`, nunca lanza; TODO(HU-045+) MailKit (STACK-10). **Resuelto (verificación).**
+9. **MEDIO-06 (nav "Ciclos"):** ítem "Ciclos" agregado al sidebar Gerente (`_Sidebar.cshtml`, `asp-controller="Ciclo"`, `bi-calendar-range`). **Resuelto.**
+10. **MEJORA-01/02 (patrón `ObtenerTenantIdOThrow`):** estandarizado en toda la BLL. **Resuelto.**
+11. **MEJORA-03 (CORS):** política "Default" `AllowAnyOrigin` documentada — hardening a allowlist diferido a despliegue. **Resuelto + ADR-010 (Decisión 2).**
+12. **MEJORA-04 (cobertura `ObjetivoCgService`/`AccionPlanService`):** servicios cubiertos por sus suites; cobertura BLL 88.9% ≥ 70% (TEST-02). **Resuelto.**
+13. **MEJORA-05 (ambigüedad de namespaces):** verificado — `PE_GOL.Aplicacion.Exceptions` solo `ApiClientException`; `PE_GOL.Utility.Exceptions` define `Validacion/Unauthorized/AccesoDenegado/Infraestructura/NotFound`; sin colisión. **Resuelto + ADR-010 (Decisión 3).**
+14. **MEJORA-06 (deuda namespace `PE-GOL` vs `PE_GOL`):** aceptada para v1.0 (convención oficial: proyecto con guion, namespace con guion bajo). **Resuelto + ADR-010 (Decisión 3).**
+15. **MEJORA-07 (`HistorialProgresoRepository`):** verificado — implementación Dapper real. **Resuelto (verificación).**
+16. **MEJORA-08 (count de tests):** Sprint 3 cerró en 553; tras el refactor de `IAuthService` el suite queda en **554 tests en verde** (build 0/0 · tests 554/554). **Resuelto (este HANDOFF).**
+
+**Artefactos del cierre:** `adrs/ADR-010.md` (3 decisiones) · headers de `db/migrations/V002/V003/V004` actualizados · `docs/HANDOFF_PE_GOL.md` (esta sección).
+
+---
+
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-21 (Sprint 3 completado — 6/6 HU · Auditoría post-Sprint 3 resuelta 100%) · Conversación origen: Análisis y Diseño completo*
 *Siguiente conversación recomendada: Continuar con el Loop de HU-021 (@QA, TDD) — Sprint 4*

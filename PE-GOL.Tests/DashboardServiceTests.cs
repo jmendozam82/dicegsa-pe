@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using Moq;
 using PE_GOL.BLL.Interfaces;
 using PE_GOL.BLL.Services;
@@ -280,17 +280,16 @@ public class DashboardServiceTests
         var resultado = await _service.ObtenerTableroJefeAreaAsync();
 
         // Assert: 200 con ceros y estado vacío; semáforos "Rojo" (0 < umbral amarillo, D-N)
-        Assert.True(resultado.Success);
-        Assert.NotNull(resultado.Data);
-        Assert.Equal(0, resultado.Data.Tarjetas.TotalOkrs);
-        Assert.Equal(0, resultado.Data.Tarjetas.OkrsAlcanzados);
-        Assert.Equal(0m, resultado.Data.Tarjetas.AvancePlanAccion);
-        Assert.Equal(0, resultado.Data.Tarjetas.AccionesAtrasadas);
-        Assert.Null(resultado.Data.Tarjetas.DiasAlVencimientoMasCercano);
-        Assert.Equal("Rojo", resultado.Data.Semaforo.Okrs);
-        Assert.Equal("Rojo", resultado.Data.Semaforo.PlanAccion);
-        Assert.Equal("Rojo", resultado.Data.Semaforo.Global);
-        Assert.Equal(0m, resultado.Data.Semaforo.PromedioPuntuacionOkrs);
+        Assert.NotNull(resultado);
+        Assert.Equal(0, resultado.Tarjetas.TotalOkrs);
+        Assert.Equal(0, resultado.Tarjetas.OkrsAlcanzados);
+        Assert.Equal(0m, resultado.Tarjetas.AvancePlanAccion);
+        Assert.Equal(0, resultado.Tarjetas.AccionesAtrasadas);
+        Assert.Null(resultado.Tarjetas.DiasAlVencimientoMasCercano);
+        Assert.Equal("Rojo", resultado.Semaforo.Okrs);
+        Assert.Equal("Rojo", resultado.Semaforo.PlanAccion);
+        Assert.Equal("Rojo", resultado.Semaforo.Global);
+        Assert.Equal(0m, resultado.Semaforo.PromedioPuntuacionOkrs);
     }
 
     // Caso 7 ─ con datos → tarjetas calculadas desde los DTOs DAL (D-C)
@@ -311,10 +310,10 @@ public class DashboardServiceTests
         var resultado = await _service.ObtenerTableroJefeAreaAsync();
 
         // Assert: tarjetas CA #1 pobladas desde los DTOs DAL
-        Assert.NotNull(resultado.Data);
-        Assert.Equal(5, resultado.Data.Tarjetas.TotalOkrs);
-        Assert.Equal(3, resultado.Data.Tarjetas.OkrsAlcanzados);
-        Assert.Equal(0.7m, resultado.Data.Tarjetas.AvancePlanAccion);
+        Assert.NotNull(resultado);
+        Assert.Equal(5, resultado.Tarjetas.TotalOkrs);
+        Assert.Equal(3, resultado.Tarjetas.OkrsAlcanzados);
+        Assert.Equal(0.7m, resultado.Tarjetas.AvancePlanAccion);
     }
 
     // Caso 8 ─ acción vencida sin terminar → atrasada (RN-017 regla 4, D-D: NO usa status persistido)
@@ -334,8 +333,8 @@ public class DashboardServiceTests
         var resultado = await _service.ObtenerTableroJefeAreaAsync();
 
         // Assert: 1 atrasada (DateTime.Today > FechaVencimiento.Date && Progreso < 100)
-        Assert.NotNull(resultado.Data);
-        Assert.Equal(1, resultado.Data.Tarjetas.AccionesAtrasadas);
+        Assert.NotNull(resultado);
+        Assert.Equal(1, resultado.Tarjetas.AccionesAtrasadas);
     }
 
     // Caso 9 ─ acción terminada (progreso=100) aunque vencida → NO atrasada (RN-017 regla 4)
@@ -354,8 +353,8 @@ public class DashboardServiceTests
         var resultado = await _service.ObtenerTableroJefeAreaAsync();
 
         // Assert: 0 atrasadas
-        Assert.NotNull(resultado.Data);
-        Assert.Equal(0, resultado.Data.Tarjetas.AccionesAtrasadas);
+        Assert.NotNull(resultado);
+        Assert.Equal(0, resultado.Tarjetas.AccionesAtrasadas);
     }
 
     // Caso 10 ─ días al vencimiento: min sobre PENDIENTES (la terminada se excluye)
@@ -379,8 +378,8 @@ public class DashboardServiceTests
         var resultado = await _service.ObtenerTableroJefeAreaAsync();
 
         // Assert: min sobre pendientes (Progreso < 100) de (FechaVencimiento.Date - Today).Days
-        Assert.NotNull(resultado.Data);
-        Assert.Equal(2, resultado.Data.Tarjetas.DiasAlVencimientoMasCercano);
+        Assert.NotNull(resultado);
+        Assert.Equal(2, resultado.Tarjetas.DiasAlVencimientoMasCercano);
     }
 
     // Caso 11 ─ sin acciones pendientes → DiasAlVencimientoMasCercano = null
@@ -403,8 +402,8 @@ public class DashboardServiceTests
         var resultado = await _service.ObtenerTableroJefeAreaAsync();
 
         // Assert: null (no hay pendientes → sin vencimiento más cercano)
-        Assert.NotNull(resultado.Data);
-        Assert.Null(resultado.Data.Tarjetas.DiasAlVencimientoMasCercano);
+        Assert.NotNull(resultado);
+        Assert.Null(resultado.Tarjetas.DiasAlVencimientoMasCercano);
     }
 
     // Caso 12 ─ acción pendiente vencida → días negativo (vencida hace N días)
@@ -426,8 +425,8 @@ public class DashboardServiceTests
         var resultado = await _service.ObtenerTableroJefeAreaAsync();
 
         // Assert: -3 (negativo = vencida hace N días)
-        Assert.NotNull(resultado.Data);
-        Assert.Equal(-3, resultado.Data.Tarjetas.DiasAlVencimientoMasCercano);
+        Assert.NotNull(resultado);
+        Assert.Equal(-3, resultado.Tarjetas.DiasAlVencimientoMasCercano);
     }
 
     // ─── Caso 13-16. Semáforos (CA #2, D-E) ─────────────────────────────────
@@ -448,9 +447,9 @@ public class DashboardServiceTests
         var resultado = await _service.ObtenerTableroJefeAreaAsync();
 
         // Assert: SemaforoHelper.Evaluar(0.92, 0.90, 0.70) = "Verde"
-        Assert.NotNull(resultado.Data);
-        Assert.Equal("Verde", resultado.Data.Semaforo.Okrs);
-        Assert.Equal(0.92m, resultado.Data.Semaforo.PromedioPuntuacionOkrs);
+        Assert.NotNull(resultado);
+        Assert.Equal("Verde", resultado.Semaforo.Okrs);
+        Assert.Equal(0.92m, resultado.Semaforo.PromedioPuntuacionOkrs);
     }
 
     // Caso 14 ─ semáforo plan de acción con umbrales PlanAccion: 0.75 → "Amarillo"
@@ -469,8 +468,8 @@ public class DashboardServiceTests
         var resultado = await _service.ObtenerTableroJefeAreaAsync();
 
         // Assert: SemaforoHelper.Evaluar(0.75, 0.90, 0.70) = "Amarillo"
-        Assert.NotNull(resultado.Data);
-        Assert.Equal("Amarillo", resultado.Data.Semaforo.PlanAccion);
+        Assert.NotNull(resultado);
+        Assert.Equal("Amarillo", resultado.Semaforo.PlanAccion);
     }
 
     // Caso 15 ─ semáforo global = promedio numérico (OKRs + plan) / 2 contra umbrales KPI (D-E)
@@ -490,9 +489,9 @@ public class DashboardServiceTests
         var resultado = await _service.ObtenerTableroJefeAreaAsync();
 
         // Assert: (0.85 + 0.75) / 2 = 0.80 → "Amarillo" contra umbrales KPI (0.90/0.70)
-        Assert.NotNull(resultado.Data);
-        Assert.Equal("Amarillo", resultado.Data.Semaforo.Global);
-        Assert.Equal(0.85m, resultado.Data.Semaforo.PromedioPuntuacionOkrs);
+        Assert.NotNull(resultado);
+        Assert.Equal("Amarillo", resultado.Semaforo.Global);
+        Assert.Equal(0.85m, resultado.Semaforo.PromedioPuntuacionOkrs);
     }
 
     // Caso 16 ─ umbral faltante (sin fila PlanAccion) → defaults 0.90/0.70 (H5, patrón HU-008 D5)
@@ -512,8 +511,8 @@ public class DashboardServiceTests
         var resultado = await _service.ObtenerTableroJefeAreaAsync();
 
         // Assert: 0.95 ≥ 0.90 (default verde) → "Verde" (sin fila PlanAccion en umbral_semaforo)
-        Assert.NotNull(resultado.Data);
-        Assert.Equal("Verde", resultado.Data.Semaforo.PlanAccion);
+        Assert.NotNull(resultado);
+        Assert.Equal("Verde", resultado.Semaforo.PlanAccion);
     }
 
     // ─── Caso 17-20. Contrato completo, CA #4, SEC-07 y auditoría ───────────
@@ -542,22 +541,21 @@ public class DashboardServiceTests
         var resultado = await _service.ObtenerTableroJefeAreaAsync();
 
         // Assert: 200 con el contrato completo poblado (ARCH-07: ApiResponse<T>)
-        Assert.True(resultado.Success);
-        Assert.NotNull(resultado.Data);
-        Assert.Equal(ciclo.Id, resultado.Data.CicloId);
-        Assert.Equal("PE 2026", resultado.Data.CicloNombre);
-        Assert.Equal(2026, resultado.Data.AñoFiscal);
-        Assert.Equal(areaId, resultado.Data.AreaId);
-        Assert.Equal("GOL1", resultado.Data.AreaCodigo);
-        Assert.Equal("CEDIS FARMA", resultado.Data.AreaNombre);
-        Assert.Equal(5, resultado.Data.Tarjetas.TotalOkrs);
-        Assert.Equal(3, resultado.Data.Tarjetas.OkrsAlcanzados);
-        Assert.Equal(0.75m, resultado.Data.Tarjetas.AvancePlanAccion);
-        Assert.Equal(1, resultado.Data.Tarjetas.AccionesAtrasadas);
-        Assert.Equal(3, resultado.Data.Tarjetas.DiasAlVencimientoMasCercano);
-        Assert.Equal("Amarillo", resultado.Data.Semaforo.Okrs);       // 0.85 → Amarillo
-        Assert.Equal("Amarillo", resultado.Data.Semaforo.PlanAccion); // 0.75 → Amarillo
-        Assert.Equal("Amarillo", resultado.Data.Semaforo.Global);     // (0.85+0.75)/2 = 0.80 → Amarillo
+        Assert.NotNull(resultado);
+        Assert.Equal(ciclo.Id, resultado.CicloId);
+        Assert.Equal("PE 2026", resultado.CicloNombre);
+        Assert.Equal(2026, resultado.AñoFiscal);
+        Assert.Equal(areaId, resultado.AreaId);
+        Assert.Equal("GOL1", resultado.AreaCodigo);
+        Assert.Equal("CEDIS FARMA", resultado.AreaNombre);
+        Assert.Equal(5, resultado.Tarjetas.TotalOkrs);
+        Assert.Equal(3, resultado.Tarjetas.OkrsAlcanzados);
+        Assert.Equal(0.75m, resultado.Tarjetas.AvancePlanAccion);
+        Assert.Equal(1, resultado.Tarjetas.AccionesAtrasadas);
+        Assert.Equal(3, resultado.Tarjetas.DiasAlVencimientoMasCercano);
+        Assert.Equal("Amarillo", resultado.Semaforo.Okrs);       // 0.85 → Amarillo
+        Assert.Equal("Amarillo", resultado.Semaforo.PlanAccion); // 0.75 → Amarillo
+        Assert.Equal("Amarillo", resultado.Semaforo.Global);     // (0.85+0.75)/2 = 0.80 → Amarillo
     }
 
     // Caso 18 ─ CA #4: solo el ciclo Activo; las queries filtran por ciclo.Id (nunca el Cerrado)
@@ -597,10 +595,10 @@ public class DashboardServiceTests
         var resultado = await _service.ObtenerTableroJefeAreaAsync();
 
         // Assert: el tablero es del ciclo Activo; DAL-D3/D4/D5 se invocan con ciclo.Id (CA #4)
-        Assert.NotNull(resultado.Data);
-        Assert.Equal(cicloActivo.Id, resultado.Data.CicloId);
-        Assert.Equal("PE 2026", resultado.Data.CicloNombre);
-        Assert.Equal(2026, resultado.Data.AñoFiscal);
+        Assert.NotNull(resultado);
+        Assert.Equal(cicloActivo.Id, resultado.CicloId);
+        Assert.Equal("PE 2026", resultado.CicloNombre);
+        Assert.Equal(2026, resultado.AñoFiscal);
         _mockRepo.Verify(r => r.ObtenerResumenOkrsAreaAsync(tenantId, cicloActivo.Id, areaId, It.IsAny<CancellationToken>()), Times.Once);
         _mockRepo.Verify(r => r.ObtenerResumenPlanAccionAreaAsync(tenantId, cicloActivo.Id, areaId, It.IsAny<CancellationToken>()), Times.Once);
         _mockRepo.Verify(r => r.ListarAccionesAreaAsync(tenantId, cicloActivo.Id, areaId, It.IsAny<CancellationToken>()), Times.Once);

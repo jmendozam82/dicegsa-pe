@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -98,9 +98,8 @@ public class ObjetivoCgGerenteServiceTests
             .ReturnsAsync(new List<ObjetivoCgConsolidadoResponse> { new ObjetivoCgConsolidadoResponse { Id = Guid.NewGuid() } });
 
         var res = await _service.ListarConsolidadoGerenteAsync(new ObjetivoCgFilterRequest());
-        Assert.True(res.Success);
-        Assert.NotNull(res.Data);
-        Assert.Single(res.Data);
+        Assert.NotNull(res);
+        Assert.Single(res);
     }
 
     [Fact]
@@ -169,9 +168,8 @@ public class ObjetivoCgGerenteServiceTests
             .ReturnsAsync(new List<ObjetivoCgConsolidadoResponse>());
             
         var res = await _service.ListarConsolidadoGerenteAsync(new ObjetivoCgFilterRequest());
-        Assert.True(res.Success);
-        Assert.NotNull(res.Data);
-        Assert.Empty(res.Data);
+        Assert.NotNull(res);
+        Assert.Empty(res);
     }
 
     [Fact]
@@ -186,10 +184,9 @@ public class ObjetivoCgGerenteServiceTests
             .ReturnsAsync(mockData);
             
         var res = await _service.ListarConsolidadoGerenteAsync(new ObjetivoCgFilterRequest());
-        Assert.True(res.Success);
-        Assert.NotNull(res.Data);
-        Assert.Equal("Sistemas", res.Data.First().AreaNombre);
-        Assert.Equal("Innovación", res.Data.First().PilarNombre);
+        Assert.NotNull(res);
+        Assert.Equal("Sistemas", res.First().AreaNombre);
+        Assert.Equal("Innovación", res.First().PilarNombre);
     }
 
     [Fact]
@@ -205,8 +202,8 @@ public class ObjetivoCgGerenteServiceTests
             .ReturnsAsync(mockData);
             
         var res = await _service.ListarConsolidadoGerenteAsync(new ObjetivoCgFilterRequest());
-        Assert.NotNull(res.Data);
-        var array = res.Data.ToArray();
+        Assert.NotNull(res);
+        var array = res.ToArray();
         Assert.Equal("A", array[0].AreaNombre);
         Assert.Equal("B", array[1].AreaNombre);
     }

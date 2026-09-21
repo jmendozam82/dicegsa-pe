@@ -1,7 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
-    <ProjectReference Include="..\PE-GOL.API\PE-GOL.API.csproj" />
+    <!-- ARCH-02 + 04_ARQUITECTURA.md L17-20: el MVC consume la API por HTTP interno (ApiClient),
+         NO por referencia de proyecto. Referenciar PE-GOL.API hacía que AddControllersWithViews()
+         descubriera los controllers de la API en el proceso del MVC y fallara al resolver
+         IAuthService (no registrado en el DI del MVC). -->
+    <ProjectReference Include="..\PE-GOL.DTO\PE-GOL.DTO.csproj" />
+    <ProjectReference Include="..\PE-GOL.Utility\PE-GOL.Utility.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

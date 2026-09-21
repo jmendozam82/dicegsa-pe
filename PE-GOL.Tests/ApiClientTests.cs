@@ -257,19 +257,66 @@ public class ApiClientTests
         Assert.Contains("El plan no existe", ex.Errors);
     }
 
-    // ─── 7. GetAsync_SinTokenEnSesion_LanzaUnauthorized ─────────────────────
+    // ─── 7. GetAsync_SinTokenEnSesion_EnviaSinBearerYFallaCon401 ───────────
 
     [Fact]
-    public async Task GetAsync_SinTokenEnSesion_LanzaUnauthorized()
+    public async Task GetAsync_SinTokenEnSesion_EnviaSinBearerYFallaCon401()
     {
-        // Arrange: sin sesión → UnauthorizedException SIN llamar a la API
-        var (client, handler, _) = CrearCliente();
+        // Arrange: sin sesión → el request se envía SIN header Authorization (los endpoints
+        // [AllowAnonymous] como login no requieren token) → la API responde 401 → el refresh
+        // falla (no hay refresh token) → UnauthorizedException
+        var (client, handler, sesion) = CrearCliente();
+        handler.AgregarRespuesta(RespuestaJson(HttpStatusCode.Unauthorized, new ApiResponse<string>
+        {
+            Success = false,
+            Message = "No autorizado",
+            Errors = ["No autorizado"]
+        }));
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<UnauthorizedException>(() => client.GetAsync<string>("/api/v1/tenants"));
 
         Assert.NotNull(ex);
-        Assert.Empty(handler.Requests); // nunca se construyó ni envió el request HTTP
+        Assert.Single(handler.Requests); // el request SÍ se envió (sin Bearer)
+        Assert.Null(handler.Requests[0].Headers.Authorization);
+        Assert.Null(sesion.ObtenerAccessToken());
+        Assert.Null(sesion.ObtenerRefreshToken());
+    }
+
+    // ─── 9. PostAsync_LoginSinSesion_NoExigeBearerYRetornaData ─────────────
+
+    [Fact]
+    public async Task PostAsync_LoginSinSesion_NoExigeBearerYRetornaData()
+    {
+        // Arrange: POST /api/v1/auth/login es [AllowAnonymous] → sin sesión → el request se
+        // envía SIN Bearer → la API responde 200 con el LoginResponse (fix "No hay sesión activa")
+        var (client, handler, _) = CrearCliente();
+        var loginResponse = new LoginResponse
+        {
+            AccessToken = "access-1",
+            RefreshToken = "refresh-1",
+            ExpiraEn = DateTimeOffset.UtcNow.AddMinutes(60),
+            RefreshExpiraEn = DateTimeOffset.UtcNow.AddDays(7),
+            RequiereCambioPwd = true,
+            Usuario = CrearUsuario()
+        };
+        handler.AgregarRespuesta(RespuestaJson(HttpStatusCode.OK, new ApiResponse<LoginResponse>
+        {
+            Success = true,
+            Data = loginResponse
+        }));
+
+        // Act
+        var resultado = await client.PostAsync<LoginRequest, LoginResponse>(
+            "/api/v1/auth/login",
+            new LoginRequest { Correo = "superadmin@pegol.app", Password = "SuperAdmin@2026" });
+
+        // Assert: 1 request, sin Bearer, y la respuesta desenvuelta
+        Assert.NotNull(resultado);
+        Assert.Equal("access-1", resultado.AccessToken);
+        Assert.True(resultado.RequiereCambioPwd);
+        Assert.Single(handler.Requests);
+        Assert.Null(handler.Requests[0].Headers.Authorization);
     }
 
     // ─── 8. GetAsync_500_RetornaErrorGenerico ───────────────────────────────

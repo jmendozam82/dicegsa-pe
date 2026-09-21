@@ -43,7 +43,7 @@ public class DashboardController : ControllerBase
     public async Task<IActionResult> ObtenerTableroJefeArea(CancellationToken ct = default)
     {
         var data = await _service.ObtenerTableroJefeAreaAsync(ct);
-        return Ok(data);
+        return Ok(new ApiResponse<TableroJefeAreaResponse> { Success = true, Data = data });
     }
 
     /// <summary>GET /api/v1/dashboard/gerente — Tablero consolidado del Gerente para el ciclo
@@ -59,6 +59,6 @@ public class DashboardController : ControllerBase
     public async Task<IActionResult> ObtenerTableroGerente(CancellationToken ct = default)
     {
         var data = await _service.ObtenerTableroGerenteAsync(ct);
-        return Ok(data);
+        return Ok(new ApiResponse<TableroGerenteResponse> { Success = true, Data = data });
     }
 }

@@ -1,4 +1,3 @@
-using PE_GOL.DTO.Common;
 using PE_GOL.DTO.Requests;
 using PE_GOL.DTO.Responses;
 
@@ -18,9 +17,12 @@ public interface IAuthService
     /// <summary>POST /api/v1/auth/refresh — 200 con RefreshResponse (rotación D1) · 401 token inválido/revocado/expirado/usuario no activo.</summary>
     Task<RefreshResponse> RefreshAsync(RefreshRequest request, CancellationToken ct = default);
 
-    /// <summary>POST /api/v1/auth/logout — 200 ApiResponse&lt;object&gt; (Data null) · idempotente (D10).</summary>
-    Task<ApiResponse<object>> LogoutAsync(LogoutRequest request, CancellationToken ct = default);
+    /// <summary>POST /api/v1/auth/logout — revoca el refresh token presentado (idempotente D10).
+    /// ARCH-02 (auditoría 2026-09-21): la BLL NO construye el wrapper HTTP — el controller lo hace
+    /// (ARCH-07). Retorna true siempre (200 idempotente).</summary>
+    Task<bool> LogoutAsync(LogoutRequest request, CancellationToken ct = default);
 
-    /// <summary>POST /api/v1/auth/cambiar-contrasena — 200 · 401 · 422 (actual incorrecta/política débil/igual a la actual) · 404.</summary>
-    Task<ApiResponse<object>> CambiarContrasenaAsync(Guid usuarioId, CambiarContrasenaRequest request, CancellationToken ct = default);
+    /// <summary>POST /api/v1/auth/cambiar-contrasena — 200 · 401 · 422 (actual incorrecta/política débil/igual a la actual) · 404.
+    /// ARCH-02 (auditoría 2026-09-21): la BLL NO construye el wrapper HTTP — el controller lo hace (ARCH-07).</summary>
+    Task CambiarContrasenaAsync(Guid usuarioId, CambiarContrasenaRequest request, CancellationToken ct = default);
 }

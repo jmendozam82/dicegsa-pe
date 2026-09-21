@@ -5,7 +5,6 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using PE_GOL.BLL.Interfaces;
 using PE_GOL.DAL.Interfaces;
-using PE_GOL.DTO.Common;
 using PE_GOL.DTO.Dtos;
 using PE_GOL.DTO.Requests;
 using PE_GOL.DTO.Responses;
@@ -226,8 +225,9 @@ public class AuthService : IAuthService
         };
     }
 
-    /// <summary>Spec §3 · LogoutAsync: revoca el refresh token presentado (idempotente D10) y audita LOGOUT.</summary>
-    public async Task<ApiResponse<object>> LogoutAsync(LogoutRequest request, CancellationToken ct = default)
+    /// <summary>Spec §3 · LogoutAsync: revoca el refresh token presentado (idempotente D10) y audita LOGOUT.
+    /// Retorna true siempre (200 idempotente). ARCH-02: el wrapper ApiResponse&lt;T&gt; lo construye el controller.</summary>
+    public async Task<bool> LogoutAsync(LogoutRequest request, CancellationToken ct = default)
     {
         var hash = JwtTokenHelper.HashRefreshToken(request.RefreshToken);
 
@@ -235,7 +235,7 @@ public class AuthService : IAuthService
         var token = await _repository.ObtenerRefreshTokenPorHashAsync(hash, ct);
         if (token is null || token.Revocado)
         {
-            return new ApiResponse<object> { Success = true, Message = "Sesión cerrada", Data = null };
+            return true;
         }
 
         await _repository.RevocarRefreshTokenPorHashAsync(hash, null, ct);
@@ -257,13 +257,14 @@ public class AuthService : IAuthService
             "Logout. UsuarioId={UsuarioId}. Modulo=Saas, Accion=LOGOUT, Entidad={Entidad}",
             token.UsuarioId, EntidadAuditoriaAuth);
 
-        return new ApiResponse<object> { Success = true, Message = "Sesión cerrada", Data = null };
+        return true;
     }
 
     /// <summary>Spec §4 · CambiarContrasenaAsync: verifica actual, re-valida política (D4), rechaza
     /// igual a la actual (D26), BCrypt 12 (SEC-02), limpia flag + revoca TODOS los tokens (D14) y
-    /// audita UPDATE sin hash (ADR-003). usuarioId SIEMPRE del JWT (SEC-06), nunca del body.</summary>
-    public async Task<ApiResponse<object>> CambiarContrasenaAsync(Guid usuarioId, CambiarContrasenaRequest request, CancellationToken ct = default)
+    /// audita UPDATE sin hash (ADR-003). usuarioId SIEMPRE del JWT (SEC-06), nunca del body.
+    /// ARCH-02: sin retorno — el wrapper ApiResponse&lt;T&gt; lo construye el controller.</summary>
+    public async Task CambiarContrasenaAsync(Guid usuarioId, CambiarContrasenaRequest request, CancellationToken ct = default)
     {
         // DAL-A1b: usuario con hash (defensivo: el usuario autenticado existe).
         var usuario = await _repository.ObtenerUsuarioPorIdConHashAsync(usuarioId, ct)
@@ -317,13 +318,6 @@ public class AuthService : IAuthService
         _logger?.LogInformation(
             "Contraseña del usuario {UsuarioId} cambiada. Modulo=Saas, Accion=UPDATE, Entidad={Entidad}",
             usuarioId, EntidadAuditoriaUsuario);
-
-        return new ApiResponse<object>
-        {
-            Success = true,
-            Message = "Contraseña actualizada. Inicie sesión nuevamente.",
-            Data = null
-        };
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────

@@ -17,8 +17,9 @@ namespace PE_GOL.Aplicacion.Services;
 /// BaseAddress desde la configuración Api:BaseUrl (nunca hardcodeada).
 ///
 /// Comportamiento (contrato @QA):
-/// 1. Bearer token desde SesionService.ObtenerAccessToken(); sin token → UnauthorizedException
-///    SIN llamar a la API.
+/// 1. Bearer token desde SesionService.ObtenerAccessToken(); si hay token se adjunta al
+///    request. Sin token NO se lanza: los endpoints [AllowAnonymous] (login/refresh/logout)
+///    no lo requieren; si el endpoint exige auth, la API responde 401 y se intenta el refresh.
 /// 2. Desenvolvimiento del wrapper (ARCH-07): Success=true → Data; Success=false →
 ///    ApiClientException con StatusCode y Errors.
 /// 3. 401 → POST /api/v1/auth/refresh con el refresh token almacenado (rotación D1 HU-004) →
@@ -153,12 +154,14 @@ public class ApiClient : IApiClient
         object? body)
     {
         var accessToken = _sesionService.ObtenerAccessToken();
-        if (string.IsNullOrEmpty(accessToken))
-            throw new UnauthorizedException("No hay sesión activa.");
-
         var uri = ConstruirUri(path, query);
         var request = new HttpRequestMessage(method, uri);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        // SEC-01: si hay sesión, adjunta el Bearer. Sin sesión NO se lanza: los endpoints
+        // [AllowAnonymous] (login/refresh/logout) no requieren token. Si el endpoint exige
+        // autenticación, la API responde 401 y EnviarAsync intenta el refresh (rotación D1).
+        if (!string.IsNullOrEmpty(accessToken))
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         if (body is not null)
         {

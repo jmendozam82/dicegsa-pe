@@ -8,6 +8,12 @@ using PE_GOL.DTO.Responses.Objetivos;
 
 namespace PE_GOL.API.Controllers;
 
+/// <summary>
+/// Controlador de Objetivos Corporativos por Área (HU-017/HU-018).
+/// GET listado/detalle/CRUD → solo JefeArea (SEC-07: solo ve su área, TenantContext.AreaId).
+/// GET consolidado → Gerente (vista consolidada HU-018).
+/// ARCH-07: todas las respuestas envueltas en ApiResponse<T>.
+/// </summary>
 [ApiController]
 [Route("api/v1/objetivos-cg")]
 [Authorize]
@@ -21,8 +27,11 @@ public class ObjetivoCgController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Policy = "RequireJefeAreaRole")]
+    [Authorize(Roles = "JefeArea")]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<ObjetivoCgResponse>>), 200)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Listar()
     {
         var result = await _objetivoCgService.ListarAsync();
@@ -30,7 +39,7 @@ public class ObjetivoCgController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "RequireJefeAreaRole")]
+    [Authorize(Roles = "JefeArea")]
     [ProducesResponseType(typeof(ApiResponse<ObjetivoCgResponse>), 200)]
     [ProducesResponseType(typeof(ApiResponse<object>), 404)]
     public async Task<IActionResult> ObtenerPorId(Guid id)
@@ -40,7 +49,7 @@ public class ObjetivoCgController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = "RequireJefeAreaRole")]
+    [Authorize(Roles = "JefeArea")]
     [ProducesResponseType(typeof(ApiResponse<ObjetivoCgResponse>), 201)]
     [ProducesResponseType(typeof(ApiResponse<object>), 400)]
     [ProducesResponseType(typeof(ApiResponse<object>), 422)]
@@ -51,7 +60,7 @@ public class ObjetivoCgController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "RequireJefeAreaRole")]
+    [Authorize(Roles = "JefeArea")]
     [ProducesResponseType(typeof(ApiResponse<ObjetivoCgResponse>), 200)]
     [ProducesResponseType(typeof(ApiResponse<object>), 400)]
     [ProducesResponseType(typeof(ApiResponse<object>), 404)]
@@ -63,7 +72,7 @@ public class ObjetivoCgController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "RequireJefeAreaRole")]
+    [Authorize(Roles = "JefeArea")]
     [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
     [ProducesResponseType(typeof(ApiResponse<object>), 404)]
     [ProducesResponseType(typeof(ApiResponse<object>), 422)]
@@ -73,12 +82,16 @@ public class ObjetivoCgController : ControllerBase
         return Ok(new ApiResponse<bool> { Success = true, Data = true, Message = "Objetivo corporativo eliminado exitosamente." });
     }
 
+    /// <summary>GET /api/v1/objetivos-cg/consolidado — Vista consolidada del Gerente (HU-018).
+    /// Requiere rol Gerente. ARCH-07: respuesta envuelta en ApiResponse<T>.</summary>
     [HttpGet("consolidado")]
-    [Authorize]
+    [Authorize(Roles = "Gerente")]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<ObjetivoCgConsolidadoResponse>>), 200)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> ListarConsolidadoGerente([FromQuery] ObjetivoCgFilterRequest filtros)
     {
         var result = await _objetivoCgService.ListarConsolidadoGerenteAsync(filtros);
-        return Ok(result);
+        return Ok(new ApiResponse<IEnumerable<ObjetivoCgConsolidadoResponse>> { Success = true, Data = result });
     }
 }

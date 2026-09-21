@@ -4,7 +4,7 @@
 -- a nivel de base de datos (CA #1 HU-002).
 -- Autor: Jorge (Dicegsa) / @Arquitecto · Fecha: 2026-09-13
 -- Creada por: @BackendDev (HU-002) · Migración versionada conforme a DB-02
--- NO EJECUTADA: requiere Supabase; pendiente de aplicar en deploy.
+-- EJECUTADA y verificada en Supabase Cloud (2026-09-21, pg_indexes).
 -- ============================================================
 
 -- Índice único funcional: colisionan nombres que difieren solo

@@ -1,4 +1,3 @@
-using PE_GOL.DTO.Common;
 using PE_GOL.DTO.Responses.Dashboard;
 
 namespace PE_GOL.BLL.Interfaces;
@@ -15,13 +14,15 @@ namespace PE_GOL.BLL.Interfaces;
 /// </summary>
 public interface IDashboardService
 {
-    /// <summary>GET /api/v1/dashboard/jefe-area — 200 con ApiResponse&lt;TableroJefeAreaResponse&gt;
+    /// <summary>GET /api/v1/dashboard/jefe-area — 200 con TableroJefeAreaResponse
     /// · 403 rol ≠ JefeArea (D12/D-F) · 404 (sin tenant / sin ciclo activo CA #4 / JEF sin área /
-    /// área inexistente). SEC-07: DAL-D3/D4/D5 filtran por TenantContext.AreaId.</summary>
-    Task<ApiResponse<TableroJefeAreaResponse>> ObtenerTableroJefeAreaAsync(CancellationToken ct = default);
+    /// área inexistente). SEC-07: DAL-D3/D4/D5 filtran por TenantContext.AreaId.
+    /// ARCH-07: el wrapper ApiResponse<T> lo construye el controller, no la BLL (ARCH-02).</summary>
+    Task<TableroJefeAreaResponse> ObtenerTableroJefeAreaAsync(CancellationToken ct = default);
 
-    /// <summary>GET /api/v1/dashboard/gerente — 200 con ApiResponse<TableroGerenteResponse>
+    /// <summary>GET /api/v1/dashboard/gerente — 200 con TableroGerenteResponse
     /// · 403 rol ≠ Gerente · 404 (sin tenant / sin ciclo activo). SEC-07 NO APLICA (D-Q).
-    /// El GER ve todas las áreas activas. DAL-D6/D7/D8 sin parámetro areaId.</summary>
-    Task<ApiResponse<TableroGerenteResponse>> ObtenerTableroGerenteAsync(CancellationToken ct = default);
+    /// El GER ve todas las áreas activas. DAL-D6/D7/D8 sin parámetro areaId.
+    /// ARCH-07: el wrapper ApiResponse<T> lo construye el controller, no la BLL (ARCH-02).</summary>
+    Task<TableroGerenteResponse> ObtenerTableroGerenteAsync(CancellationToken ct = default);
 }

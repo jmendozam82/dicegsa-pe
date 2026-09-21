@@ -37,7 +37,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "PE-GOL SaaS API",
         Version = "v1",
-        Description = "API REST de PE-GOL SaaS · Gestión de Tenants (HU-001) y Planes de Suscripción (HU-002) · [Authorize(Roles = \"SuperAdmin\")]"
+        Description = "API REST de PE-GOL SaaS · Sprints 1-3 completados: SaaS (HU-001..HU-004, HU-006..HU-008), Auditoría (HU-005), Planeación Estratégica (HU-009..HU-015), Objetivos y Plan de Acción (HU-016..HU-020) y UI de Tenants (HU-045). ~40 endpoints · Auth JWT por roles (SuperAdmin, AdminTenant, Gerente, JefeArea). Respuestas siempre en ApiResponse<T> (ARCH-07)."
     });
 
     // Esquema de seguridad Bearer JWT para Swagger (SEC-01).

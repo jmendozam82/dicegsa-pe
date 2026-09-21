@@ -66,8 +66,10 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken ct = default)
     {
-        var data = await _service.LogoutAsync(request, ct);
-        return Ok(data);
+        // ARCH-07: LogoutAsync retorna bool (BLL NO conoce el wrapper HTTP — ARCH-02);
+        // el controller construye ApiResponse<object> (Data null, 200 idempotente D10).
+        await _service.LogoutAsync(request, ct);
+        return Ok(new ApiResponse<object> { Success = true, Message = "Sesión cerrada", Data = null });
     }
 
     /// <summary>POST /api/v1/auth/cambiar-contrasena — Cambio de contraseña (primer login y
@@ -86,7 +88,9 @@ public class AuthController : ControllerBase
         if (!Guid.TryParse(usuarioIdClaim, out var usuarioId))
             throw new UnauthorizedException("No se pudo identificar al usuario autenticado.");
 
-        var data = await _service.CambiarContrasenaAsync(usuarioId, request, ct);
-        return Ok(data);
+        // ARCH-07: CambiarContrasenaAsync no retorna valor (BLL NO conoce el wrapper HTTP — ARCH-02);
+        // el controller construye ApiResponse<object> (Data null).
+        await _service.CambiarContrasenaAsync(usuarioId, request, ct);
+        return Ok(new ApiResponse<object> { Success = true, Message = "Contraseña actualizada. Inicie sesión nuevamente.", Data = null });
     }
 }

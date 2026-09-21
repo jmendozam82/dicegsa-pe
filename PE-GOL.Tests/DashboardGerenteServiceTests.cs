@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using Moq;
 using PE_GOL.BLL.Interfaces;
 using PE_GOL.BLL.Services;
@@ -159,13 +159,12 @@ public class DashboardGerenteServiceTests
         var resultado = await _service.ObtenerTableroGerenteAsync();
 
         // Assert: 200, paneles vacío, totales = 0, AreasConAlertaActiva = 0
-        Assert.True(resultado.Success);
-        Assert.NotNull(resultado.Data);
-        Assert.Empty(resultado.Data.Paneles);
-        Assert.Equal(0, resultado.Data.Totales.TotalAcciones);
-        Assert.Equal(0, resultado.Data.Totales.AccionesAtrasadas);
-        Assert.Equal(0m, resultado.Data.Totales.PromedioOkrs);
-        Assert.Equal(0, resultado.Data.AreasConAlertaActiva);
+        Assert.NotNull(resultado);
+        Assert.Empty(resultado.Paneles);
+        Assert.Equal(0, resultado.Totales.TotalAcciones);
+        Assert.Equal(0, resultado.Totales.AccionesAtrasadas);
+        Assert.Equal(0m, resultado.Totales.PromedioOkrs);
+        Assert.Equal(0, resultado.AreasConAlertaActiva);
     }
 
     // ─── Caso 5. Con áreas ───────────────────────────────────────────────────
@@ -184,12 +183,12 @@ public class DashboardGerenteServiceTests
         var resultado = await _service.ObtenerTableroGerenteAsync();
 
         // Assert
-        Assert.NotNull(resultado.Data);
-        Assert.Equal(2, resultado.Data.Paneles.Count);
-        Assert.Equal(0.85m, resultado.Data.Paneles[0].AvanceOkrs);
-        Assert.Equal(0.75m, resultado.Data.Paneles[0].AvancePlanAccion);
-        Assert.Equal(0.60m, resultado.Data.Paneles[1].AvanceOkrs);
-        Assert.Equal(0.50m, resultado.Data.Paneles[1].AvancePlanAccion);
+        Assert.NotNull(resultado);
+        Assert.Equal(2, resultado.Paneles.Count);
+        Assert.Equal(0.85m, resultado.Paneles[0].AvanceOkrs);
+        Assert.Equal(0.75m, resultado.Paneles[0].AvancePlanAccion);
+        Assert.Equal(0.60m, resultado.Paneles[1].AvanceOkrs);
+        Assert.Equal(0.50m, resultado.Paneles[1].AvancePlanAccion);
     }
 
     // ─── Caso 6-8. Acciones atrasadas ────────────────────────────────────────
@@ -210,9 +209,9 @@ public class DashboardGerenteServiceTests
         var resultado = await _service.ObtenerTableroGerenteAsync();
 
         // Assert: recalcula en BLL
-        Assert.NotNull(resultado.Data);
-        Assert.Equal(1, resultado.Data.Paneles[0].AccionesAtrasadas);
-        Assert.Equal(1, resultado.Data.Totales.AccionesAtrasadas);
+        Assert.NotNull(resultado);
+        Assert.Equal(1, resultado.Paneles[0].AccionesAtrasadas);
+        Assert.Equal(1, resultado.Totales.AccionesAtrasadas);
     }
 
     [Fact]
@@ -231,8 +230,8 @@ public class DashboardGerenteServiceTests
         var resultado = await _service.ObtenerTableroGerenteAsync();
 
         // Assert
-        Assert.NotNull(resultado.Data);
-        Assert.Equal(0, resultado.Data.Paneles[0].AccionesAtrasadas);
+        Assert.NotNull(resultado);
+        Assert.Equal(0, resultado.Paneles[0].AccionesAtrasadas);
     }
 
     [Fact]
@@ -260,12 +259,12 @@ public class DashboardGerenteServiceTests
         var resultado = await _service.ObtenerTableroGerenteAsync();
 
         // Assert
-        Assert.NotNull(resultado.Data);
-        var panel1 = resultado.Data.Paneles.First(p => p.AreaId == area1);
-        var panel2 = resultado.Data.Paneles.First(p => p.AreaId == area2);
+        Assert.NotNull(resultado);
+        var panel1 = resultado.Paneles.First(p => p.AreaId == area1);
+        var panel2 = resultado.Paneles.First(p => p.AreaId == area2);
         Assert.Equal(1, panel1.AccionesAtrasadas);
         Assert.Equal(2, panel2.AccionesAtrasadas);
-        Assert.Equal(3, resultado.Data.Totales.AccionesAtrasadas);
+        Assert.Equal(3, resultado.Totales.AccionesAtrasadas);
     }
 
     // ─── Caso 9-11. Semáforo Global ──────────────────────────────────────────
@@ -283,8 +282,8 @@ public class DashboardGerenteServiceTests
         var resultado = await _service.ObtenerTableroGerenteAsync();
 
         // Assert
-        Assert.NotNull(resultado.Data);
-        Assert.Equal("Amarillo", resultado.Data.Paneles[0].SemaforoGlobal);
+        Assert.NotNull(resultado);
+        Assert.Equal("Amarillo", resultado.Paneles[0].SemaforoGlobal);
     }
 
     [Fact]
@@ -300,8 +299,8 @@ public class DashboardGerenteServiceTests
         var resultado = await _service.ObtenerTableroGerenteAsync();
 
         // Assert
-        Assert.NotNull(resultado.Data);
-        Assert.Equal("Rojo", resultado.Data.Paneles[0].SemaforoGlobal);
+        Assert.NotNull(resultado);
+        Assert.Equal("Rojo", resultado.Paneles[0].SemaforoGlobal);
     }
 
     [Fact]
@@ -317,8 +316,8 @@ public class DashboardGerenteServiceTests
         var resultado = await _service.ObtenerTableroGerenteAsync();
 
         // Assert
-        Assert.NotNull(resultado.Data);
-        Assert.Equal("Verde", resultado.Data.Paneles[0].SemaforoGlobal);
+        Assert.NotNull(resultado);
+        Assert.Equal("Verde", resultado.Paneles[0].SemaforoGlobal);
     }
 
     // ─── Caso 12-13. Alerta Activa ───────────────────────────────────────────
@@ -337,9 +336,9 @@ public class DashboardGerenteServiceTests
         var resultado = await _service.ObtenerTableroGerenteAsync();
 
         // Assert
-        Assert.NotNull(resultado.Data);
-        Assert.True(resultado.Data.Paneles[0].AlertaActiva);
-        Assert.Equal(1, resultado.Data.AreasConAlertaActiva);
+        Assert.NotNull(resultado);
+        Assert.True(resultado.Paneles[0].AlertaActiva);
+        Assert.Equal(1, resultado.AreasConAlertaActiva);
     }
 
     [Fact]
@@ -356,9 +355,9 @@ public class DashboardGerenteServiceTests
         var resultado = await _service.ObtenerTableroGerenteAsync();
 
         // Assert
-        Assert.NotNull(resultado.Data);
-        Assert.False(resultado.Data.Paneles[0].AlertaActiva);
-        Assert.Equal(0, resultado.Data.AreasConAlertaActiva);
+        Assert.NotNull(resultado);
+        Assert.False(resultado.Paneles[0].AlertaActiva);
+        Assert.Equal(0, resultado.AreasConAlertaActiva);
     }
 
     // ─── Caso 14. Totales Consolidados ───────────────────────────────────────
@@ -376,9 +375,9 @@ public class DashboardGerenteServiceTests
         var resultado = await _service.ObtenerTableroGerenteAsync();
 
         // Assert
-        Assert.NotNull(resultado.Data);
-        Assert.Equal(12, resultado.Data.Totales.TotalAcciones);
-        Assert.Equal(0.62m, resultado.Data.Totales.PromedioOkrs);
+        Assert.NotNull(resultado);
+        Assert.Equal(12, resultado.Totales.TotalAcciones);
+        Assert.Equal(0.62m, resultado.Totales.PromedioOkrs);
     }
 
     // ─── Caso 15. Contrato completo ──────────────────────────────────────────
@@ -399,19 +398,18 @@ public class DashboardGerenteServiceTests
         var resultado = await _service.ObtenerTableroGerenteAsync();
 
         // Assert
-        Assert.True(resultado.Success);
-        Assert.NotNull(resultado.Data);
-        Assert.Equal(ciclo.Id, resultado.Data.CicloId);
-        Assert.Equal("PE 2026", resultado.Data.CicloNombre);
-        Assert.Equal(2026, resultado.Data.AñoFiscal);
-        Assert.Single(resultado.Data.Paneles);
-        Assert.Equal(areaId, resultado.Data.Paneles[0].AreaId);
-        Assert.Equal("GOL1", resultado.Data.Paneles[0].AreaCodigo);
-        Assert.Equal("CEDIS FARMA", resultado.Data.Paneles[0].AreaNombre);
-        Assert.Equal(5, resultado.Data.Totales.TotalAcciones);
-        Assert.Equal(1, resultado.Data.Totales.AccionesAtrasadas);
-        Assert.Equal(0.8m, resultado.Data.Totales.PromedioOkrs);
-        Assert.Equal(0, resultado.Data.AreasConAlertaActiva);
+        Assert.NotNull(resultado);
+        Assert.Equal(ciclo.Id, resultado.CicloId);
+        Assert.Equal("PE 2026", resultado.CicloNombre);
+        Assert.Equal(2026, resultado.AñoFiscal);
+        Assert.Single(resultado.Paneles);
+        Assert.Equal(areaId, resultado.Paneles[0].AreaId);
+        Assert.Equal("GOL1", resultado.Paneles[0].AreaCodigo);
+        Assert.Equal("CEDIS FARMA", resultado.Paneles[0].AreaNombre);
+        Assert.Equal(5, resultado.Totales.TotalAcciones);
+        Assert.Equal(1, resultado.Totales.AccionesAtrasadas);
+        Assert.Equal(0.8m, resultado.Totales.PromedioOkrs);
+        Assert.Equal(0, resultado.AreasConAlertaActiva);
     }
 
     // ─── Caso 16-20. Casos de arquitectura ───────────────────────────────────
@@ -500,8 +498,8 @@ public class DashboardGerenteServiceTests
         var resultado = await _service.ObtenerTableroGerenteAsync();
 
         // Assert
-        Assert.NotNull(resultado.Data);
-        Assert.Single(resultado.Data.Paneles);
-        Assert.Equal("Activa", resultado.Data.Paneles[0].AreaNombre);
+        Assert.NotNull(resultado);
+        Assert.Single(resultado.Paneles);
+        Assert.Equal("Activa", resultado.Paneles[0].AreaNombre);
     }
 }

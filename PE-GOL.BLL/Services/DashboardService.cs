@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using PE_GOL.BLL.Interfaces;
 using PE_GOL.DAL.Interfaces;
-using PE_GOL.DTO.Common;
+using PE_GOL.DTO.Dtos;
 using PE_GOL.DTO.Responses.Dashboard;
 using PE_GOL.Utility.Exceptions;
 using PE_GOL.Utility.Helpers;
@@ -50,7 +50,7 @@ public class DashboardService : IDashboardService
     /// área del JEF para el ciclo activo del tenant. 403 rol ≠ JefeArea (D12/D-F) · 404 (sin
     /// tenant / sin ciclo activo CA #4 / JEF sin área / área inexistente). SEC-07: DAL-D3/D4/D5
     /// filtran por TenantContext.AreaId. Sin auditoría (D-H) y sin transacción (solo lecturas).</summary>
-    public async Task<ApiResponse<TableroJefeAreaResponse>> ObtenerTableroJefeAreaAsync(CancellationToken ct = default)
+    public async Task<TableroJefeAreaResponse> ObtenerTableroJefeAreaAsync(CancellationToken ct = default)
     {
         // Paso 1 · D12: re-validación defensiva de rol (D-F: solo el JEF tiene tablero en esta HU;
         // el [Authorize(Roles)] del controller es la primera capa; la BLL es la fuente de verdad).
@@ -148,7 +148,7 @@ public class DashboardService : IDashboardService
             "Tablero del Jefe de Área {AreaId} consultado (ciclo {CicloId}). Modulo=Dashboard, Accion=READ",
             areaId, ciclo.Id);
 
-        return new ApiResponse<TableroJefeAreaResponse> { Success = true, Data = tablero };
+        return tablero;
     }
 
     private Guid ObtenerTenantIdOThrow()
@@ -161,7 +161,7 @@ public class DashboardService : IDashboardService
     /// <summary>Spec HU-016 Lógica BLL (pasos 1-11) · ObtenerTableroGerenteAsync: 200 con el tablero
     /// consolidado del GER para el ciclo activo del tenant. 403 rol ≠ Gerente · 404 (sin tenant /
     /// sin ciclo activo). SEC-07 NO APLICA (GER ve todas las áreas). Sin auditoría y sin tx.</summary>
-    public async Task<ApiResponse<TableroGerenteResponse>> ObtenerTableroGerenteAsync(CancellationToken ct = default)
+    public async Task<TableroGerenteResponse> ObtenerTableroGerenteAsync(CancellationToken ct = default)
     {
         // Paso 1 · D12: re-validación de rol
         if (!string.Equals(_tenantContext.Rol, "Gerente", StringComparison.Ordinal))
@@ -240,6 +240,6 @@ public class DashboardService : IDashboardService
             "Tablero consolidado del Gerente consultado (ciclo {CicloId}). Modulo=Dashboard, Accion=READ",
             ciclo.Id);
 
-        return new ApiResponse<TableroGerenteResponse> { Success = true, Data = tablero };
+        return tablero;
     }
 }

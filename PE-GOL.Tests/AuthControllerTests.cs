@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -26,10 +26,10 @@ namespace PE_GOL.Tests;
 ///   IActionResult CambiarContrasena()  ·  [HttpPost] IActionResult CambiarContrasena(CambiarContrasenaRequest request)
 /// Comportamientos: Login POST → POST /api/v1/auth/login → GuardarSesion(tokens, usuario) →
 /// SignInAsync con claims (NameIdentifier=usuario.Id, Role=usuario.Rol, Name=usuario.Nombre) →
-/// si RequiereCambioPwd → RedirectToAction("CambiarContrasena","Auth"); si no → RedirectToAction("Index","Tenants");
+/// si RequiereCambioPwd → RedirectToAction("CambiarContrasena","Auth"); si no → RedirectToAction("Index","Tenant");
 /// 401 → re-render Login con ModelState error del servidor. Logout POST → POST /api/v1/auth/logout
 /// (best-effort) → CerrarSesion() + SignOutAsync → RedirectToAction("Login","Auth").
-/// CambiarContrasena POST → POST /api/v1/auth/cambiar-contrasena → RedirectToAction("Index","Tenants").
+/// CambiarContrasena POST → POST /api/v1/auth/cambiar-contrasena → RedirectToAction("Index","Tenant").
 /// Moq sobre IApiClient + SesionService real con FakeSession (TEST-03). Patrón Arrange/Act/Assert (TEST-05).
 /// </summary>
 public class AuthControllerTests
@@ -125,7 +125,7 @@ public class AuthControllerTests
         // Assert: tokens en sesión + cookie emitida con claims + redirect a /Tenants
         var redirect = Assert.IsType<RedirectToActionResult>(resultado);
         Assert.Equal("Index", redirect.ActionName);
-        Assert.Equal("Tenants", redirect.ControllerName);
+        Assert.Equal("Tenant", redirect.ControllerName);
 
         Assert.Equal("access-1", _sesion.ObtenerAccessToken());
         Assert.Equal("refresh-1", _sesion.ObtenerRefreshToken());
@@ -246,6 +246,6 @@ public class AuthControllerTests
         // Assert: limpia flag requiereCambioPwd (server-side) y redirige a /Tenants
         var redirect = Assert.IsType<RedirectToActionResult>(resultado);
         Assert.Equal("Index", redirect.ActionName);
-        Assert.Equal("Tenants", redirect.ControllerName);
+        Assert.Equal("Tenant", redirect.ControllerName);
     }
 }

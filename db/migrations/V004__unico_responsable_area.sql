@@ -4,8 +4,8 @@
 -- responsable por área por ciclo" a nivel de base de datos
 -- (CA #3 HU-009).
 -- Autor: Jorge (Dicegsa) / @Arquitecto · Fecha: 2026-09-17
--- Migración versionada conforme a DB-02 · NO EJECUTADA: requiere
--- Supabase; pendiente de aplicar en deploy junto a V001/V002/V003.
+-- Migración versionada conforme a DB-02 · EJECUTADA y verificada en
+-- Supabase Cloud (2026-09-21, pg_indexes).
 -- ============================================================
 
 -- Índice único parcial: indexa solo las filas con responsable asignado

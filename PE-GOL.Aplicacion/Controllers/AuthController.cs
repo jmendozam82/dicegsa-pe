@@ -66,7 +66,7 @@ public class AuthController : Controller
             if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                 return Redirect(returnUrl);
 
-            return new RedirectToActionResult("Index", "Tenants", null);
+            return new RedirectToActionResult("Index", "Tenant", null);
         }
         catch (UnauthorizedException ex)
         {
@@ -117,7 +117,7 @@ public class AuthController : Controller
         try
         {
             await _apiClient.PostAsync<CambiarContrasenaRequest, object>("/api/v1/auth/cambiar-contrasena", request);
-            return new RedirectToActionResult("Index", "Tenants", null);
+            return new RedirectToActionResult("Index", "Tenant", null);
         }
         catch (ApiClientException ex)
         {

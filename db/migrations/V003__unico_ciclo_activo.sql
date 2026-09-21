@@ -3,8 +3,8 @@
 -- ADR-006 (Aceptado 2026-09-14): garantizar RC-01 "solo un
 -- ciclo Activo por tenant" a nivel de base de datos (CA #3 HU-007).
 -- Autor: @Arquitecto · Fecha: 2026-09-14
--- Migración versionada conforme a DB-02 · NO EJECUTADA: requiere
--- Supabase; pendiente de aplicar en deploy junto a V001/V002.
+-- Migración versionada conforme a DB-02 · EJECUTADA y verificada en
+-- Supabase Cloud (2026-09-21, pg_indexes).
 -- ============================================================
 
 -- Índice único parcial: indexa solo las filas con estado='Activo' y

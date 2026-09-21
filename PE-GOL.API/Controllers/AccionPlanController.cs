@@ -12,7 +12,7 @@ using PE_GOL.DTO.Responses.Objetivos;
 namespace PE_GOL.API.Controllers;
 
 [ApiController]
-[Route("api/v1")]
+[Route("api/v1/acciones")]
 [Authorize] // Default es usuario autenticado
 public class AccionPlanController : ControllerBase
 {
@@ -23,7 +23,7 @@ public class AccionPlanController : ControllerBase
         _service = service;
     }
 
-    [HttpGet("objetivos-cg/{objetivoCgId:guid}/acciones")]
+    [HttpGet("~/api/v1/objetivos-cg/{objetivoCgId:guid}/acciones")]
     [Authorize(Roles = "JefeArea,Gerente")]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<AccionPlanResponse>>), 200)]
     public async Task<IActionResult> Listar(Guid objetivoCgId, CancellationToken ct)
@@ -32,7 +32,7 @@ public class AccionPlanController : ControllerBase
         return Ok(new ApiResponse<IEnumerable<AccionPlanResponse>> { Success = true, Data = acciones });
     }
 
-    [HttpGet("acciones/{id:guid}")]
+    [HttpGet("{id:guid}")]
     [Authorize(Roles = "JefeArea,Gerente")]
     [ProducesResponseType(typeof(ApiResponse<AccionPlanResponse>), 200)]
     public async Task<IActionResult> Obtener(Guid id, CancellationToken ct)
@@ -41,7 +41,7 @@ public class AccionPlanController : ControllerBase
         return Ok(new ApiResponse<AccionPlanResponse> { Success = true, Data = accion });
     }
 
-    [HttpPost("objetivos-cg/{objetivoCgId:guid}/acciones")]
+    [HttpPost("~/api/v1/objetivos-cg/{objetivoCgId:guid}/acciones")]
     [Authorize(Roles = "JefeArea")]
     [ProducesResponseType(typeof(ApiResponse<AccionPlanResponse>), 201)]
     public async Task<IActionResult> Crear(Guid objetivoCgId, [FromBody] AccionPlanCreateRequest request, CancellationToken ct)
@@ -50,7 +50,7 @@ public class AccionPlanController : ControllerBase
         return CreatedAtAction(nameof(Obtener), new { id = accion.Id }, new ApiResponse<AccionPlanResponse> { Success = true, Data = accion, Message = "Acción creada exitosamente." });
     }
 
-    [HttpPut("acciones/{id:guid}")]
+    [HttpPut("{id:guid}")]
     [Authorize(Roles = "JefeArea")]
     [ProducesResponseType(typeof(ApiResponse<AccionPlanResponse>), 200)]
     public async Task<IActionResult> Actualizar(Guid id, [FromBody] AccionPlanUpdateRequest request, CancellationToken ct)
@@ -59,7 +59,7 @@ public class AccionPlanController : ControllerBase
         return Ok(new ApiResponse<AccionPlanResponse> { Success = true, Data = accion, Message = "Acción actualizada exitosamente." });
     }
 
-    [HttpDelete("acciones/{id:guid}")]
+    [HttpDelete("{id:guid}")]
     [Authorize(Roles = "JefeArea")]
     [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
     public async Task<IActionResult> Eliminar(Guid id, CancellationToken ct)
@@ -75,7 +75,7 @@ public class AccionPlanController : ControllerBase
     /// Recalcula status (RN-017), puntuación ponderada, historial y semáforo del CG (RN-018, F2).
     /// Idempotente: si el progreso no cambia retorna 200 OK sin efectos secundarios (F3).
     /// </summary>
-    [HttpPatch("acciones/{id:guid}/progreso")]
+    [HttpPatch("{id:guid}/progreso")]
     [Authorize(Roles = "JefeArea")]
     [ProducesResponseType(typeof(ApiResponse<AccionPlanResponse>), 200)]
     [ProducesResponseType(typeof(ApiResponse<object>), 400)]
@@ -89,7 +89,7 @@ public class AccionPlanController : ControllerBase
     }
 
     /// <summary>Lista el historial de cambios de progreso de una acción (F1: JefeArea + Gerente).</summary>
-    [HttpGet("acciones/{id:guid}/historial")]
+    [HttpGet("{id:guid}/historial")]
     [Authorize(Roles = "JefeArea,Gerente")]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<HistorialProgresoResponse>>), 200)]
     [ProducesResponseType(typeof(ApiResponse<object>), 403)]

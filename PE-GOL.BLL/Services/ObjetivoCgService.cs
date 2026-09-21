@@ -4,7 +4,6 @@ using PE_GOL.BLL.Interfaces;
 using PE_GOL.DAL.Interfaces;
 using PE_GOL.DTO.Requests.Objetivos;
 using PE_GOL.DTO.Responses.Objetivos;
-using PE_GOL.DTO.Common;
 using PE_GOL.Utility.Exceptions;
 using PE_GOL.Utility.Security;
 
@@ -37,25 +36,29 @@ public class ObjetivoCgService : IObjetivoCgService
         _tenantContext = tenantContext;
     }
 
-    private void ValidarTenantContext()
+    /// <summary>Patrón MEJORA-02 (auditoría 2026-09-21): centraliza la validación del TenantId
+    /// (Guid?) y retorna el valor no-null — mismo patrón ObtenerTenantIdOThrow() del resto de la BLL.
+    /// MEDIO-01: `is null` cubre el caso de SuperAdmin sin tenant (== Guid.Empty NO captura null).</summary>
+    private Guid ObtenerTenantIdOThrow()
     {
-        if (_tenantContext.TenantId == Guid.Empty)
+        if (_tenantContext.TenantId is null)
             throw new NotFoundException("Tenant no identificado en el contexto actual.");
+        return _tenantContext.TenantId.Value;
     }
 
     private void ValidarPermisoEscritura()
     {
-        ValidarTenantContext();
+        ObtenerTenantIdOThrow();
         if (_tenantContext.Rol != RolJefeArea)
             throw new AccesoDenegadoException($"El rol {_tenantContext.Rol} no tiene permisos para modificar objetivos corporativos del área.");
         
-        if (_tenantContext.AreaId == null || _tenantContext.AreaId == Guid.Empty)
+        if (_tenantContext.AreaId is null)
             throw new NotFoundException("El usuario no tiene un área asignada.");
     }
 
     private async Task<Guid> ObtenerCicloActivoIdAsync()
     {
-        var tenantId = _tenantContext.TenantId!.Value;
+        var tenantId = ObtenerTenantIdOThrow();
         var cicloActivo = await _cicloRepository.ObtenerCicloActivoAsync(tenantId);
         if (cicloActivo == null)
             throw new NotFoundException("No hay ningún ciclo activo para este tenant.");
@@ -64,7 +67,7 @@ public class ObjetivoCgService : IObjetivoCgService
 
     private async Task<Guid> ObtenerCicloActivoYVerificarEstadoAsync(bool soloLectura)
     {
-        var tenantId = _tenantContext.TenantId!.Value;
+        var tenantId = ObtenerTenantIdOThrow();
         var cicloActivo = await _cicloRepository.ObtenerCicloActivoAsync(tenantId);
         if (cicloActivo == null)
             throw new NotFoundException("No hay ningún ciclo activo para este tenant.");
@@ -77,22 +80,22 @@ public class ObjetivoCgService : IObjetivoCgService
 
     public async Task<IEnumerable<ObjetivoCgResponse>> ListarAsync()
     {
-        ValidarTenantContext();
+        ObtenerTenantIdOThrow();
         var cicloId = await ObtenerCicloActivoIdAsync();
         
         if (_tenantContext.AreaId == null || _tenantContext.AreaId == Guid.Empty)
             throw new NotFoundException("El usuario no tiene un área asignada.");
 
-        return await _repo.ListarAsync(_tenantContext.TenantId!.Value, cicloId, _tenantContext.AreaId!.Value);
+        return await _repo.ListarAsync(ObtenerTenantIdOThrow(), cicloId, _tenantContext.AreaId!.Value);
     }
 
     public async Task<ObjetivoCgResponse> ObtenerPorIdAsync(Guid id)
     {
-        ValidarTenantContext();
+        ObtenerTenantIdOThrow();
         if (_tenantContext.AreaId == null || _tenantContext.AreaId == Guid.Empty)
             throw new NotFoundException("El usuario no tiene un área asignada.");
 
-        var objetivo = await _repo.ObtenerPorIdAsync(_tenantContext.TenantId!.Value, _tenantContext.AreaId!.Value, id);
+        var objetivo = await _repo.ObtenerPorIdAsync(ObtenerTenantIdOThrow(), _tenantContext.AreaId!.Value, id);
         if (objetivo == null)
             throw new NotFoundException("El objetivo corporativo no existe o no pertenece a su área.");
 
@@ -102,7 +105,7 @@ public class ObjetivoCgService : IObjetivoCgService
     public async Task<ObjetivoCgResponse> CrearAsync(ObjetivoCgCreateRequest request)
     {
         ValidarPermisoEscritura();
-        var tenantId = _tenantContext.TenantId!.Value;
+        var tenantId = ObtenerTenantIdOThrow();
         var areaId = _tenantContext.AreaId!.Value;
         var cicloId = await ObtenerCicloActivoYVerificarEstadoAsync(soloLectura: false);
 
@@ -162,7 +165,7 @@ public class ObjetivoCgService : IObjetivoCgService
     public async Task<ObjetivoCgResponse> ActualizarAsync(Guid id, ObjetivoCgUpdateRequest request)
     {
         ValidarPermisoEscritura();
-        var tenantId = _tenantContext.TenantId!.Value;
+        var tenantId = ObtenerTenantIdOThrow();
         var areaId = _tenantContext.AreaId!.Value;
         var cicloId = await ObtenerCicloActivoYVerificarEstadoAsync(soloLectura: false);
 
@@ -211,7 +214,7 @@ public class ObjetivoCgService : IObjetivoCgService
     public async Task EliminarAsync(Guid id)
     {
         ValidarPermisoEscritura();
-        var tenantId = _tenantContext.TenantId!.Value;
+        var tenantId = ObtenerTenantIdOThrow();
         var areaId = _tenantContext.AreaId!.Value;
         await ObtenerCicloActivoYVerificarEstadoAsync(soloLectura: false);
 
@@ -246,15 +249,12 @@ public class ObjetivoCgService : IObjetivoCgService
         }
     }
 
-    public async Task<ApiResponse<IEnumerable<ObjetivoCgConsolidadoResponse>>> ListarConsolidadoGerenteAsync(ObjetivoCgFilterRequest filtros, CancellationToken ct = default)
+    public async Task<IEnumerable<ObjetivoCgConsolidadoResponse>> ListarConsolidadoGerenteAsync(ObjetivoCgFilterRequest filtros, CancellationToken ct = default)
     {
         if (_tenantContext.Rol != "Gerente" && _tenantContext.Rol != "SuperAdmin" && _tenantContext.Rol != "AdminTenant")
             throw new AccesoDenegadoException("No tiene permisos para ver el consolidado.");
 
-        if (!_tenantContext.TenantId.HasValue)
-            throw new NotFoundException("Tenant no identificado en el contexto.");
-
-        var tenantId = _tenantContext.TenantId.Value;
+        var tenantId = ObtenerTenantIdOThrow();
 
         var ciclo = await _cicloRepository.ObtenerCicloActivoAsync(tenantId, ct);
         if (ciclo == null)
@@ -262,6 +262,8 @@ public class ObjetivoCgService : IObjetivoCgService
 
         var resultados = await _repo.ListarConsolidadoGerenteAsync(tenantId, ciclo.Id, filtros, ct);
 
-        return new ApiResponse<IEnumerable<ObjetivoCgConsolidadoResponse>> { Success = true, Data = resultados };
+        // ARCH-02: La BLL retorna el DTO directamente. El wrapper ApiResponse<T> es
+        // responsabilidad del controller (ARCH-07). Corregido por auditoría 2026-09-21.
+        return resultados;
     }
 }

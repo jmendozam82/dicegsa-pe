@@ -756,9 +756,7 @@ public class AuthServiceTests
         var resultado = await _service.LogoutAsync(new LogoutRequest { RefreshToken = "token-activo" });
 
         // Assert: 200 con Data null (D10) y DAL-A5 invocado
-        Assert.NotNull(resultado);
-        Assert.True(resultado.Success);
-        Assert.Null(resultado.Data);
+        Assert.True(resultado);
         _mockRepo.Verify(
             r => r.RevocarRefreshTokenPorHashAsync(It.IsAny<string>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
             Times.Once);
@@ -777,8 +775,7 @@ public class AuthServiceTests
         var resultado = await _service.LogoutAsync(new LogoutRequest { RefreshToken = "token-inexistente" });
 
         // Assert: 200 idempotente, sin revocación ni auditoría (D10)
-        Assert.NotNull(resultado);
-        Assert.True(resultado.Success);
+        Assert.True(resultado);
         _mockRepo.Verify(
             r => r.RevocarRefreshTokenPorHashAsync(It.IsAny<string>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
             Times.Never);
@@ -801,8 +798,7 @@ public class AuthServiceTests
         var resultado = await _service.LogoutAsync(new LogoutRequest { RefreshToken = "token-ya-revocado" });
 
         // Assert: 200 idempotente, sin re-revocar (D10)
-        Assert.NotNull(resultado);
-        Assert.True(resultado.Success);
+        Assert.True(resultado);
         _mockRepo.Verify(
             r => r.RevocarRefreshTokenPorHashAsync(It.IsAny<string>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
             Times.Never);
@@ -928,15 +924,13 @@ public class AuthServiceTests
         ConfigurarCambioContrasenaFeliz(_mockRepo, usuario);
 
         // Act
-        var resultado = await _service.CambiarContrasenaAsync(usuarioId, new CambiarContrasenaRequest
+        await _service.CambiarContrasenaAsync(usuarioId, new CambiarContrasenaRequest
         {
             ContrasenaActual = "Password#123",
             NuevaContrasena = "Nueva#Contrasena1"
         });
 
         // Assert: 200 + DAL-A9 (requiere_cambio_pwd=FALSE) + DAL-A6 (revoca TODOS, D14)
-        Assert.NotNull(resultado);
-        Assert.True(resultado.Success);
         _mockRepo.Verify(
             r => r.CambiarContrasenaAsync(usuarioId, It.IsAny<string>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
             Times.Once);
