@@ -8,6 +8,8 @@ namespace PE_GOL.API.Validators;
 /// FluentValidation). UX-04: la validación del servidor es la fuente de verdad; la BLL re-valida
 /// responsable (RN-011: existe/JefeArea/Activo), RN-012 y RN-010 — el validator cubre la FORMA
 /// (obligatorios/longitud). codigo/orden NUNCA viajan en requests (auto-generados, DB-04).
+/// ResponsableId es OPCIONAL en creación (RN-011 2026-09-21): el requisito "área activa con
+/// responsable" se valida en CicloService.ActivarAsync; el área puede crearse en Borrador sin él.
 /// </summary>
 public class AreaCreateRequestValidator : AbstractValidator<AreaCreateRequest>
 {
@@ -17,8 +19,5 @@ public class AreaCreateRequestValidator : AbstractValidator<AreaCreateRequest>
             .NotEmpty().WithMessage("El nombre del área es requerido")
             .MaximumLength(150).WithMessage("El nombre del área no puede exceder 150 caracteres")
             .Must(n => !string.IsNullOrWhiteSpace(n)).WithMessage("El nombre del área no puede contener solo espacios");
-
-        RuleFor(x => x.ResponsableId)
-            .NotEmpty().WithMessage("Debe asignar un Jefe de Área responsable (RN-011)");
     }
 }

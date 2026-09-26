@@ -1,0 +1,197 @@
+@model LogAuditoriaIndexViewModel
+@{
+    ViewData["Title"] = "Log de Auditoría";
+    var acciones = new[] { "CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT", "ACTIVATE", "DEACTIVATE" };
+    string ClaseAccion(string accion) => accion switch
+    {
+        "DELETE" or "LOGIN" or "LOGOUT" => "badge border text-danger",
+        "ACTIVATE" or "DEACTIVATE" => "badge border text-primary",
+        _ => "badge border text-success"
+    };
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Administración SaaS</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Auditoría</span>
+    </div>
+    <h1 class="page-header__title">Log de Auditoría</h1>
+    <p class="page-header__subtitle">@Model.Total registro(s) · Página @Model.Page de @(Model.TotalPages > 0 ? Model.TotalPages : 1)</p>
+</div>
+
+@if (TempData["Error"] is string mensajeError)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @mensajeError
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@* ── Barra de filtros (form GET a Index) ── *@
+<div class="card-pe mb-4">
+    <form method="get" asp-action="Index" id="formFiltros" class="row g-3 align-items-end">
+        <div class="col-md-2">
+            <label class="form-pe-label" for="accion">Acción</label>
+            <select class="form-pe-select" id="accion" name="accion">
+                <option value="">Todas</option>
+                @foreach (var a in acciones)
+                {
+                    <option value="@a" selected="@(Model.AccionFiltro == a)">@a</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-pe-label" for="tenantId">Tenant</label>
+            <select class="form-pe-select" id="tenantId" name="tenantId">
+                <option value="">Todos los tenants</option>
+                @foreach (var tenant in Model.Tenants)
+                {
+                    <option value="@tenant.Id" selected="@(Model.TenantIdFiltro == tenant.Id)">@tenant.Nombre</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-pe-label" for="desde">Desde</label>
+            <input class="form-pe-input" type="datetime-local" id="desde" name="desde"
+                   value="@(Model.DesdeFiltro?.LocalDateTime.ToString("yyyy-MM-ddTHH:mm"))" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-pe-label" for="hasta">Hasta</label>
+            <input class="form-pe-input" type="datetime-local" id="hasta" name="hasta"
+                   value="@(Model.HastaFiltro?.LocalDateTime.ToString("yyyy-MM-ddTHH:mm"))" />
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-funnel" aria-hidden="true"></i> Filtrar
+            </button>
+            <a class="btn-pe btn-pe--secondary" asp-action="Index">
+                <i class="bi bi-x-lg" aria-hidden="true"></i> Limpiar
+            </a>
+        </div>
+    </form>
+</div>
+
+@if (Model.Items.Count == 0)
+{
+    @* ── Estado vacío (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-card-list empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">No hay entradas de auditoría</h3>
+            <p class="empty-state__message">Ajusta los filtros o realiza acciones en la plataforma para registrarlas aquí.</p>
+        </div>
+    </div>
+}
+else
+{
+    @* ── Tabla (UX-03) ── *@
+    <div class="card-pe p-0">
+        <div class="table-responsive">
+            <table class="tabla-pe mb-0">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Acción</th>
+                        <th>Entidad</th>
+                        <th>Tenant</th>
+                        <th>Usuario</th>
+                        <th>Registro</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var registro in Model.Items)
+                    {
+                        <tr>
+                            <td class="text-nowrap">@registro.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td><span class="@ClaseAccion(registro.Accion)">@registro.Accion</span></td>
+                            <td class="fw-semibold">@registro.Entidad</td>
+                            <td>
+                                @if (string.IsNullOrWhiteSpace(registro.TenantNombre))
+                                {
+                                    <span class="text-secondary">SaaS</span>
+                                }
+                                else
+                                {
+                                    @registro.TenantNombre
+                                }
+                            </td>
+                            <td>
+                                @if (string.IsNullOrWhiteSpace(registro.UsuarioNombre))
+                                {
+                                    <span class="text-secondary">—</span>
+                                }
+                                else
+                                {
+                                    <span class="cell-truncate d-inline-block" title="@registro.UsuarioNombre">@registro.UsuarioNombre</span>
+                                }
+                            </td>
+                            <td>
+                                @if (string.IsNullOrWhiteSpace(registro.EntidadId))
+                                {
+                                    <span class="text-secondary">—</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">@registro.EntidadId[..Math.Min(8, registro.EntidadId.Length)]</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Detalle" asp-route-id="@registro.Id" title="Ver detalle">
+                                    <i class="bi bi-eye" aria-hidden="true"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @* ── Paginación (preserva filtros activos) ── *@
+    <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2">
+        <form method="get" asp-action="Index" class="d-flex align-items-center gap-2">
+            <input type="hidden" name="accion" value="@Model.AccionFiltro" />
+            <input type="hidden" name="tenantId" value="@Model.TenantIdFiltro" />
+            <input type="hidden" name="desde" value="@(Model.DesdeFiltro?.ToString("o"))" />
+            <input type="hidden" name="hasta" value="@(Model.HastaFiltro?.ToString("o"))" />
+            <label class="form-pe-label mb-0" for="pageSize">Registros por página</label>
+            <select class="form-pe-select w-auto" id="pageSize" name="pageSize" onchange="this.form.submit()">
+                <option value="10" selected="@(Model.PageSize == 10)">10</option>
+                <option value="25" selected="@(Model.PageSize == 25)">25</option>
+                <option value="50" selected="@(Model.PageSize == 50)">50</option>
+            </select>
+        </form>
+
+        <nav aria-label="Paginación de auditoría">
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index"
+                       asp-route-page="@(Model.Page - 1)" asp-route-pageSize="@Model.PageSize"
+                       asp-route-accion="@Model.AccionFiltro" asp-route-tenantId="@Model.TenantIdFiltro"
+                       asp-route-desde="@(Model.DesdeFiltro?.ToString("o"))" asp-route-hasta="@(Model.HastaFiltro?.ToString("o"))">Anterior</a>
+                </li>
+                @for (var i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <a class="page-link" asp-action="Index"
+                           asp-route-page="@i" asp-route-pageSize="@Model.PageSize"
+                           asp-route-accion="@Model.AccionFiltro" asp-route-tenantId="@Model.TenantIdFiltro"
+                           asp-route-desde="@(Model.DesdeFiltro?.ToString("o"))" asp-route-hasta="@(Model.HastaFiltro?.ToString("o"))">@i</a>
+                    </li>
+                }
+                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index"
+                       asp-route-page="@(Model.Page + 1)" asp-route-pageSize="@Model.PageSize"
+                       asp-route-accion="@Model.AccionFiltro" asp-route-tenantId="@Model.TenantIdFiltro"
+                       asp-route-desde="@(Model.DesdeFiltro?.ToString("o"))" asp-route-hasta="@(Model.HastaFiltro?.ToString("o"))">Siguiente</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/log-auditoria.js" asp-append-version="true"></script>
+}

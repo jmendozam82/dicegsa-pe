@@ -222,10 +222,10 @@ public sealed class PlanRepository : IPlanRepository, IDisposable
     {
         const string sql = @"
             SELECT
-              COALESCE(MAX(areas_por_ciclo), 0) AS areas_actuales,
-              (SELECT COUNT(1) FROM usuario WHERE tenant_id = @TenantId) AS usuarios_actuales,
+              COALESCE(MAX(areas_por_ciclo), 0)::int AS areas_actuales,
+              (SELECT COUNT(1) FROM usuario WHERE tenant_id = @TenantId)::int AS usuarios_actuales,
               (SELECT COUNT(1) FROM ciclo   WHERE tenant_id = @TenantId
-                                              AND estado = 'Activo'::estado_ciclo) AS ciclos_activos_actuales
+                                              AND estado = 'Activo'::estado_ciclo)::int AS ciclos_activos_actuales
             FROM (
               SELECT COUNT(1) AS areas_por_ciclo
               FROM area

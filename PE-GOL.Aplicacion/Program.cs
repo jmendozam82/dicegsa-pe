@@ -1,9 +1,19 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using PE_GOL.Aplicacion.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+
+// ── Data protection: persiste las llaves en disco (App_Data/ bajo ContentRoot). La llave
+//    por defecto es efímera por proceso → reiniciar invalidaba el cookie de sesión del
+//    usuario (warn "Error unprotecting the session cookie" y bounce a Login). Con
+//    PersistKeysToFileSystem el usuario no pierde la sesión en cada restart de dev.
+var claveDp = Path.Combine(builder.Environment.ContentRootPath, "App_Data");
+Directory.CreateDirectory(claveDp);
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(claveDp, "keys-data-protection")));
 
 // ── Sesión MVC (cookie de sesión ASP.NET Core) — guarda JWT + usuario (HU-045 cimiento).
 builder.Services.AddDistributedMemoryCache();
@@ -32,7 +42,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     .AddCookie(options =>
     {
         options.LoginPath = "/Auth/Login";
-        options.AccessDeniedPath = "/Auth/Login";
+        options.AccessDeniedPath = "/Auth/AccessDenied";
         options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
         options.SlidingExpiration = true;
     });

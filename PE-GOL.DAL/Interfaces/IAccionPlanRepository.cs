@@ -14,5 +14,6 @@ public interface IAccionPlanRepository
     Task<AccionPlanEntity?> ObtenerPorIdAsync(Guid id, Guid tenantId, CancellationToken ct = default);
     Task<IEnumerable<AccionPlanEntity>> ListarPorObjetivoCgAsync(Guid objetivoCgId, Guid tenantId, CancellationToken ct = default);
     Task<decimal> ObtenerSumaPesosAsync(Guid objetivoCgId, Guid tenantId, CancellationToken ct = default);
+    Task<decimal> ObtenerSumaPonderadaProgresoAsync(Guid objetivoCgId, Guid tenantId, CancellationToken ct = default);
     Task<int> ObtenerMaximoOrdenAsync(Guid objetivoCgId, Guid tenantId, CancellationToken ct = default);
 }

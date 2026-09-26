@@ -157,12 +157,15 @@ public class AreaServiceTests
         _mockRepo
             .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
-        _mockRepo
-            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CrearResponsable(request.ResponsableId, tenantId));
-        _mockRepo
-            .Setup(r => r.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId, null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(0);
+        if (request.ResponsableId is { } refId)
+        {
+            _mockRepo
+                .Setup(r => r.ObtenerResponsableAsync(tenantId, refId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CrearResponsable(refId, tenantId));
+            _mockRepo
+                .Setup(r => r.ContarAreasConResponsableAsync(tenantId, cicloId, refId, null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(0);
+        }
         _mockRepo
             .Setup(r => r.ObtenerPlanIdDelTenantAsync(tenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(planId);
@@ -203,10 +206,10 @@ public class AreaServiceTests
             .ReturnsAsync(original)      // 1ª llamada: validación de existencia + snapshot
             .ReturnsAsync(actualizada);  // 2ª llamada: re-lectura post-commit
         _mockRepo
-            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CrearResponsable(request.ResponsableId, tenantId));
+            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId!.Value, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearResponsable(request.ResponsableId!.Value, tenantId));
         _mockRepo
-            .Setup(r => r.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId, areaId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId!.Value, areaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
         _mockRepo
             .Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
@@ -370,7 +373,7 @@ public class AreaServiceTests
             .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
         _mockRepo
-            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId!.Value, It.IsAny<CancellationToken>()))
             .ReturnsAsync((UsuarioEntity?)null);
 
         // Act & Assert: 422 y el INSERT nunca se ejecuta
@@ -394,8 +397,8 @@ public class AreaServiceTests
             .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
         _mockRepo
-            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CrearResponsable(request.ResponsableId, tenantId, rol: "Gerente"));
+            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId!.Value, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearResponsable(request.ResponsableId!.Value, tenantId, rol: "Gerente"));
 
         // Act & Assert: 422 y el INSERT nunca se ejecuta
         var ex = await Assert.ThrowsAsync<ValidacionException>(() => _service.CrearAsync(cicloId, request));
@@ -418,8 +421,8 @@ public class AreaServiceTests
             .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
         _mockRepo
-            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CrearResponsable(request.ResponsableId, tenantId, estado: "Inactivo"));
+            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId!.Value, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearResponsable(request.ResponsableId!.Value, tenantId, estado: "Inactivo"));
 
         // Act & Assert: 422 y el INSERT nunca se ejecuta
         var ex = await Assert.ThrowsAsync<ValidacionException>(() => _service.CrearAsync(cicloId, request));
@@ -442,10 +445,10 @@ public class AreaServiceTests
             .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
         _mockRepo
-            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CrearResponsable(request.ResponsableId, tenantId));
+            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId!.Value, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearResponsable(request.ResponsableId!.Value, tenantId));
         _mockRepo
-            .Setup(r => r.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId, null, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId!.Value, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
         // Act & Assert: 422 (RN-012) y el INSERT nunca se ejecuta
@@ -471,10 +474,10 @@ public class AreaServiceTests
             .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
         _mockRepo
-            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CrearResponsable(request.ResponsableId, tenantId));
+            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId!.Value, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearResponsable(request.ResponsableId!.Value, tenantId));
         _mockRepo
-            .Setup(r => r.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId, null, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId!.Value, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
         _mockRepo
             .Setup(r => r.ObtenerPlanIdDelTenantAsync(tenantId, It.IsAny<CancellationToken>()))
@@ -511,10 +514,10 @@ public class AreaServiceTests
             .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
         _mockRepo
-            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CrearResponsable(request.ResponsableId, tenantId));
+            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId!.Value, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearResponsable(request.ResponsableId!.Value, tenantId));
         _mockRepo
-            .Setup(r => r.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId, null, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId!.Value, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
         _mockRepo
             .Setup(r => r.ObtenerPlanIdDelTenantAsync(tenantId, It.IsAny<CancellationToken>()))
@@ -602,7 +605,7 @@ public class AreaServiceTests
             Times.Once);
         _mockRepo.Verify(
             r => r.ActualizarAreaIdUsuarioAsync(
-                request.ResponsableId, nuevoId, mockTx.Object, It.IsAny<CancellationToken>()),
+                request.ResponsableId!.Value, nuevoId, mockTx.Object, It.IsAny<CancellationToken>()),
             Times.Once);
         _mockRepo.Verify(
             r => r.InsertLogAsync(
@@ -620,6 +623,42 @@ public class AreaServiceTests
         mockTx.Verify(t => t.Commit(), Times.Once);
     }
 
+    // Caso 13b ─ área SIN responsable (RN-011 diferido: exigencia en activación, no en creación,
+    // 2026-09-21) → INSERT con ResponsableId=null y SIN sync de usuario.area_id → 201
+    [Fact]
+    public async Task Crear_SinResponsable_InsertaAreaSinSincronizar()
+    {
+        // Arrange: request.ResponsableId = null (resolución chicken-egg área↔responsable)
+        var tenantId = _tenantContext.TenantId!.Value;
+        var cicloId = Guid.NewGuid();
+        var request = new AreaCreateRequest { Nombre = "CEDIS FARMA", ResponsableId = null };
+        var nuevoId = Guid.NewGuid();
+        var mockTx = new Mock<IDbTransaction>();
+        var areaCreada = CrearArea(nuevoId, tenantId, cicloId, "GOL1", "CEDIS FARMA",
+            responsableId: null);
+
+        ConfigurarFlujoFelizCrear(cicloId, tenantId, request, nuevoId, areaCreada, mockTx);
+
+        // Act
+        var resultado = await _service.CrearAsync(cicloId, request);
+
+        // Assert: se persiste con ResponsableId=null y NO se sincroniza usuario.area_id (no hay
+        // responsable que vincular); auditoría CREATE igualmente se registra en la misma tx
+        Assert.Equal(nuevoId, resultado.Id);
+        Assert.True(resultado.ResponsableId is null);
+        _mockRepo.Verify(
+            r => r.InsertarAreaAsync(
+                It.Is<AreaInsertDto>(d =>
+                    d.CicloId == cicloId && d.Codigo == "GOL1" &&
+                    d.ResponsableId == null && d.Orden == 1 && d.Activa),
+                mockTx.Object, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mockRepo.Verify(
+            r => r.ActualizarAreaIdUsuarioAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        mockTx.Verify(t => t.Commit(), Times.Once);
+    }
+
     // Caso 14 ─ colisión concurrente 23505 (UNIQUE (ciclo_id, codigo), DDL L206) → rollback +
     // ValidacionException 422 (patrón ADR-001)
     [Fact]
@@ -634,10 +673,10 @@ public class AreaServiceTests
             .Setup(r => r.ObtenerPorIdAsync(tenantId, cicloId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CrearCiclo(cicloId, tenantId, "PE 2026", 2026, 1, "Borrador"));
         _mockRepo
-            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CrearResponsable(request.ResponsableId, tenantId));
+            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId!.Value, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearResponsable(request.ResponsableId!.Value, tenantId));
         _mockRepo
-            .Setup(r => r.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId, null, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId!.Value, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
         _mockRepo
             .Setup(r => r.ObtenerPlanIdDelTenantAsync(tenantId, It.IsAny<CancellationToken>()))
@@ -746,10 +785,10 @@ public class AreaServiceTests
             .Setup(r => r.ObtenerAreaPorIdAsync(tenantId, cicloId, areaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(original);
         _mockRepo
-            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CrearResponsable(request.ResponsableId, tenantId));
+            .Setup(r => r.ObtenerResponsableAsync(tenantId, request.ResponsableId!.Value, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CrearResponsable(request.ResponsableId!.Value, tenantId));
         _mockRepo
-            .Setup(r => r.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId, areaId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId!.Value, areaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
         // Act & Assert: 422 (RN-012) y el UPDATE nunca se ejecuta

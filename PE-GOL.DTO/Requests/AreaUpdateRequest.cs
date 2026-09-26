@@ -13,6 +13,7 @@ public class AreaUpdateRequest
     /// <summary>Opcional (TEXT, sin límite en DDL).</summary>
     public string? Comentarios { get; set; }
 
-    /// <summary>Requerido (RN-011): usuario del tenant con rol JefeArea y estado Activo.</summary>
-    public Guid ResponsableId { get; set; }
+    /// <summary>Opcional (RN-011 2026-09-21): usuario del tenant con rol JefeArea y estado Activo.
+    /// Responder null LIBERA al responsable actual (usuario.area_id = null).</summary>
+    public Guid? ResponsableId { get; set; }
 }

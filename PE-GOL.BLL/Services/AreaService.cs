@@ -138,17 +138,23 @@ public class AreaService : IAreaService
 
         var nombre = NormalizarNombre(request.Nombre);
 
-        // RN-011 (CA #2): el responsable debe existir en el tenant, tener rol JefeArea y estado Activo.
-        var responsable = await _repository.ObtenerResponsableAsync(tenantId, request.ResponsableId, ct)
-            ?? throw new ValidacionException("El responsable no existe en el tenant");
-        if (!string.Equals(responsable.Rol, RolJefeArea, StringComparison.Ordinal))
-            throw new ValidacionException("El responsable debe tener rol JefeArea");
-        if (!string.Equals(responsable.Estado, "Activo", StringComparison.Ordinal))
-            throw new ValidacionException("El responsable debe estar en estado Activo");
+        // RN-011 (CA #2): si se asigna responsable en la creación, debe existir en el tenant,
+        // tener rol JefeArea y estado Activo. OPCIONAL desde 2026-09-21: el área puede crearse en
+        // Borrador sin responsable (el requisito "área activa con responsable" se valida al activar
+        // el ciclo en CicloService.ActivarAsync). Null → no se valida ni se sincroniza usuario.area_id.
+        if (request.ResponsableId is { } responsableId)
+        {
+            var responsable = await _repository.ObtenerResponsableAsync(tenantId, responsableId, ct)
+                ?? throw new ValidacionException("El responsable no existe en el tenant");
+            if (!string.Equals(responsable.Rol, RolJefeArea, StringComparison.Ordinal))
+                throw new ValidacionException("El responsable debe tener rol JefeArea");
+            if (!string.Equals(responsable.Estado, "Activo", StringComparison.Ordinal))
+                throw new ValidacionException("El responsable debe estar en estado Activo");
 
-        // RN-012: un responsable en UNA sola área ACTIVA por ciclo (DAL-A8 sin excludeAreaId).
-        if (await _repository.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId, null, ct) > 0)
-            throw new ValidacionException("El responsable ya está asignado a otra área activa de este ciclo");
+            // RN-012: un responsable en UNA sola área ACTIVA por ciclo (DAL-A8 sin excludeAreaId).
+            if (await _repository.ContarAreasConResponsableAsync(tenantId, cicloId, responsableId, null, ct) > 0)
+                throw new ValidacionException("El responsable ya está asignado a otra área activa de este ciclo");
+        }
 
         // RN-010 (D-D): chequeo PRECISO por ciclo — DAL-A6 >= MaxAreas detecta el caso "ciclo al
         // tope" que el MAX-per-ciclo de DAL-P8 (comparación estricta >) NO detecta (Flag #2).
@@ -186,8 +192,10 @@ public class AreaService : IAreaService
             var nuevoId = await _repository.InsertarAreaAsync(dto, tx, ct)
                 ?? throw new InvalidOperationException("No se pudo insertar el área: id nulo.");
 
-            // SEC-07 (D-J): el responsable queda vinculado al área (usuario.area_id = nuevoId).
-            await _repository.ActualizarAreaIdUsuarioAsync(request.ResponsableId, nuevoId, tx, ct);
+            // SEC-07 (D-J): si se asignó responsable, queda vinculado al área (usuario.area_id = nuevoId).
+            // Si el área se creó SIN responsable, no se toca usuario.area_id de nadie.
+            if (request.ResponsableId is { } responsableAsignado)
+                await _repository.ActualizarAreaIdUsuarioAsync(responsableAsignado, nuevoId, tx, ct);
 
             _logger?.LogInformation(
                 "Área {AreaId} creada en ciclo {CicloId} por {UserId}. Modulo=Ciclo, Accion=CREATE, Entidad={Entidad}",
@@ -257,18 +265,22 @@ public class AreaService : IAreaService
 
         var nombre = NormalizarNombre(request.Nombre);
 
-        // RN-011 (CA #2): el responsable debe existir en el tenant, tener rol JefeArea y estado Activo.
-        var responsable = await _repository.ObtenerResponsableAsync(tenantId, request.ResponsableId, ct)
-            ?? throw new ValidacionException("El responsable no existe en el tenant");
-        if (!string.Equals(responsable.Rol, RolJefeArea, StringComparison.Ordinal))
-            throw new ValidacionException("El responsable debe tener rol JefeArea");
-        if (!string.Equals(responsable.Estado, "Activo", StringComparison.Ordinal))
-            throw new ValidacionException("El responsable debe estar en estado Activo");
+        // RN-011 (CA #2): si el request trae responsable, debe existir en el tenant, tener rol
+        // JefeArea y estado Activo. OPCIONAL (2026-09-21): null LIBERA al responsable actual.
+        if (request.ResponsableId is { } responsableId)
+        {
+            var responsable = await _repository.ObtenerResponsableAsync(tenantId, responsableId, ct)
+                ?? throw new ValidacionException("El responsable no existe en el tenant");
+            if (!string.Equals(responsable.Rol, RolJefeArea, StringComparison.Ordinal))
+                throw new ValidacionException("El responsable debe tener rol JefeArea");
+            if (!string.Equals(responsable.Estado, "Activo", StringComparison.Ordinal))
+                throw new ValidacionException("El responsable debe estar en estado Activo");
 
-        // RN-012 excluyendo self (DAL-A8 con excludeAreaId = areaId): el responsable puede seguir
-        // en SU área, pero no puede estar asignado a OTRA área activa del ciclo.
-        if (await _repository.ContarAreasConResponsableAsync(tenantId, cicloId, request.ResponsableId, areaId, ct) > 0)
-            throw new ValidacionException("El responsable ya está asignado a otra área activa de este ciclo");
+            // RN-012 excluyendo self (DAL-A8 con excludeAreaId = areaId): el responsable puede seguir
+            // en SU área, pero no puede estar asignado a OTRA área activa del ciclo.
+            if (await _repository.ContarAreasConResponsableAsync(tenantId, cicloId, responsableId, areaId, ct) > 0)
+                throw new ValidacionException("El responsable ya está asignado a otra área activa de este ciclo");
+        }
 
         var dto = new AreaUpdateDto
         {
@@ -293,7 +305,8 @@ public class AreaService : IAreaService
             {
                 if (original.ResponsableId is not null)
                     await _repository.ActualizarAreaIdUsuarioAsync(original.ResponsableId.Value, null, tx, ct);
-                await _repository.ActualizarAreaIdUsuarioAsync(request.ResponsableId, areaId, tx, ct);
+                if (request.ResponsableId is { } nuevoResponsable)
+                    await _repository.ActualizarAreaIdUsuarioAsync(nuevoResponsable, areaId, tx, ct);
             }
 
             _logger?.LogInformation(

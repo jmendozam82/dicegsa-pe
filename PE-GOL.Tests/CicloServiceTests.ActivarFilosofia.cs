@@ -126,6 +126,9 @@ public partial class CicloServiceTests
             .Setup(r => r.ObtenerFilosofiaAsync(tenantId, id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(filosofia);
         _mockRepo
+            .Setup(r => r.ListarAreasSinResponsableAsync(tenantId, id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<string>());
+        _mockRepo
             .Setup(r => r.ObtenerPlanIdDelTenantAsync(tenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(planId);
         _mockPlanService
@@ -161,5 +164,52 @@ public partial class CicloServiceTests
                 It.IsAny<IDbTransaction?>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    // Caso 19 ─ Hay áreas ACTIVAS sin responsable en el ciclo → 422 (RN-011, 2026-09-21)
+    [Fact]
+    public async Task Activar_AreasSinResponsable_LanzaValidacion()
+    {
+        // Arrange: filosofía completa (pasa CA #2) pero existen áreas activas sin responsable →
+        // la validación RN-011 (DAL-A6b) corta ANTES del límite del plan y del UPDATE de estado.
+        var tenantId = _tenantContext.TenantId!.Value;
+        var id = Guid.NewGuid();
+        var borrador = CrearCiclo(id, tenantId, "PE 2026", 2026, 1, "Borrador");
+        var filosofia = new FilosofiaEntity
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            CicloId = id,
+            Vision = "<p>Ser el líder del mercado</p>",
+            Mision = "<p>Servir con excelencia</p>",
+            Valores = "[]",
+            UpdatedBy = _tenantContext.UserId,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        _mockRepo
+            .Setup(r => r.ObtenerPorIdAsync(tenantId, id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(borrador);
+        _mockRepo
+            .Setup(r => r.ContarCiclosActivosAsync(tenantId, id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+        _mockRepo
+            .Setup(r => r.ObtenerFilosofiaAsync(tenantId, id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(filosofia);
+        _mockRepo
+            .Setup(r => r.ListarAreasSinResponsableAsync(tenantId, id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<string> { "GOL1", "GOL3" });
+
+        // Act & Assert: 422 con los códigos pendientes; ni UPDATE de estado ni límite del plan
+        var ex = await Assert.ThrowsAsync<ValidacionException>(() => _service.ActivarAsync(id));
+
+        Assert.Contains("responsable", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("GOL1", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("GOL3", ex.Message, StringComparison.Ordinal);
+        _mockRepo.Verify(
+            r => r.UpdateEstadoAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTimeOffset?>(), It.IsAny<DateTimeOffset?>(), It.IsAny<IDbTransaction?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _mockRepo.Verify(
+            r => r.ObtenerPlanIdDelTenantAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

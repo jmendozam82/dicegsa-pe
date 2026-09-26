@@ -1,0 +1,84 @@
+@model UsuarioFormViewModel
+@{
+    ViewData["Title"] = "Editar Usuario";
+    var roles = new[] { "AdminTenant", "Gerente", "JefeArea" };
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Administración SaaS</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>Usuarios</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Editar Usuario</span>
+    </div>
+    <h1 class="page-header__title">Editar Usuario</h1>
+    <p class="page-header__subtitle">Actualiza datos del usuario. Para la contraseña usa la acción "Resetear" del listado.</p>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <strong>No se pudo guardar el usuario:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="card-pe">
+    <form asp-action="Editar" asp-route-id="@Model.Id" method="post" id="formUsuario" novalidate>
+        <input type="hidden" id="rolOriginal" value="@Model.Rol" />
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-pe-label" for="nombre">Nombre *</label>
+                <input class="form-pe-input" type="text" id="nombre" name="nombre" value="@Model.Nombre"
+                       maxlength="150" placeholder="Ej: Carlos Urbina" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="correo">Correo *</label>
+                <input class="form-pe-input" type="email" id="correo" name="correo" value="@Model.Correo"
+                       maxlength="200" placeholder="Ej: admin.gerencia@correo.com" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="tenantId">Tenant *</label>
+                <select class="form-pe-select" id="tenantId" name="tenantId">
+                    <option value="">Seleccione un tenant</option>
+                    @foreach (var tenant in Model.Tenants)
+                    {
+                        <option value="@tenant.Id" selected="@(Model.TenantId == tenant.Id)">@tenant.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="rol">Rol *</label>
+                <select class="form-pe-select" id="rol" name="rol">
+                    @foreach (var r in roles)
+                    {
+                        <option value="@r" selected="@(Model.Rol == r)">@r</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-6" id="campoArea">
+                <label class="form-pe-label" for="areaId">Área (ID) *</label>
+                <input class="form-pe-input" type="text" id="areaId" name="areaId" value="@(Model.AreaId?.ToString())"
+                       maxlength="36" placeholder="GUID del área asignada (solo JefeArea)" />
+                <span class="form-pe-hint">Requerido solo para el rol JefeArea (RN-011).</span>
+            </div>
+        </div>
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+            </button>
+            <a class="btn-pe btn-pe--secondary" asp-action="Index">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="~/js/usuario-form.js" asp-append-version="true"></script>
+}

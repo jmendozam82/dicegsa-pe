@@ -438,6 +438,27 @@ public sealed class CicloRepository : ICicloRepository, IDisposable
         return await conn.ExecuteScalarAsync<int>(cmd);
     }
 
+    /// <summary>DAL-A6b · SELECT codigos de áreas ACTIVAS del ciclo SIN responsable asignado
+    /// (RN-011 2026-09-21: el requisito "área activa con responsable" se valida al activar el ciclo).
+    /// Retorna lista de códigos (vacía ⇒ todas con responsable).</summary>
+    public async Task<List<string>> ListarAreasSinResponsableAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT codigo
+            FROM area
+            WHERE tenant_id = @TenantId
+              AND ciclo_id = @CicloId
+              AND activa = TRUE
+              AND responsable_id IS NULL
+            ORDER BY orden ASC;";
+
+        using var conn = _factory.CreateConnection();
+        conn.Open();
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId, CicloId = cicloId }, cancellationToken: ct);
+        var codigos = await conn.QueryAsync<string>(cmd);
+        return codigos.ToList();
+    }
+
     /// <summary>DAL-A7 · MAX(orden)+1 sobre TODAS las áreas del ciclo (incl. inactivas → sin reutilizar
     /// códigos tras desactivar). Retorna el siguiente orden/código GOL (CA #1, DB-04).</summary>
     public async Task<int> ObtenerSiguienteOrdenAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default)

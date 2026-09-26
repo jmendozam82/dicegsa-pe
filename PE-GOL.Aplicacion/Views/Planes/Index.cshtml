@@ -1,0 +1,131 @@
+@model PlanesIndexViewModel
+@{
+    ViewData["Title"] = "Planes de Suscripción";
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Administración SaaS</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Planes</span>
+    </div>
+    <h1 class="page-header__title">Planes de Suscripción</h1>
+    <p class="page-header__subtitle">@Model.Total plan(es) configurados en la plataforma</p>
+</div>
+
+@if (TempData["Success"] is string mensajeExito)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle" aria-hidden="true"></i> @mensajeExito
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+@if (TempData["Error"] is string mensajeError)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @mensajeError
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+<div class="d-flex justify-content-end mb-3">
+    <a class="btn-pe btn-pe--primary" asp-action="Create">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo Plan
+    </a>
+</div>
+
+@if (Model.Items.Count == 0)
+{
+    @* ── Estado vacío (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-bounding-box-circles empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">No hay planes registrados</h3>
+            <p class="empty-state__message">Configura el primer plan de suscripción para asignarlo a los tenants.</p>
+            <a class="btn-pe btn-pe--primary" asp-action="Create">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo Plan
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    @* ── Tabla (UX-03) ── *@
+    <div class="card-pe p-0">
+        <div class="table-responsive">
+            <table class="tabla-pe mb-0">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th>Máx. áreas</th>
+                        <th>Máx. usuarios</th>
+                        <th>Máx. ciclos</th>
+                        <th>Creado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var plan in Model.Items)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@plan.Nombre</td>
+                            <td>
+                                @if (string.IsNullOrWhiteSpace(plan.Descripcion))
+                                {
+                                    <span class="text-secondary">—</span>
+                                }
+                                else
+                                {
+                                    <span class="cell-truncate d-inline-block" title="@plan.Descripcion">@plan.Descripcion</span>
+                                }
+                            </td>
+                            <td><span class="badge border text-secondary">@plan.MaxAreas</span></td>
+                            <td><span class="badge border text-secondary">@plan.MaxUsuarios</span></td>
+                            <td><span class="badge border text-secondary">@plan.MaxCiclosActivos</span></td>
+                            <td>@plan.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                            <td class="text-end">
+                                <div class="d-inline-flex gap-1">
+                                    <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Edit" asp-route-id="@plan.Id" title="Editar">
+                                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                                    </a>
+                                    <button type="button" class="btn-pe btn-pe--secondary btn-pe--sm"
+                                            data-bs-toggle="modal" data-bs-target="#modalConfirmarEliminar"
+                                            data-plan-id="@plan.Id" data-plan-nombre="@plan.Nombre"
+                                            title="Eliminar">
+                                        <i class="bi bi-trash" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@* ── Modal de confirmación eliminar (DS § 5.7) ── *@
+<div class="modal fade modal-pe" id="modalConfirmarEliminar" tabindex="-1" aria-labelledby="modalEliminarTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEliminarTitulo">Eliminar plan</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="body-md mb-0" id="modalEliminarTexto"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-pe btn-pe--secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formEliminar" method="post" action="">
+                    <button type="submit" class="btn-pe btn-pe--danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/planes.js" asp-append-version="true"></script>
+}

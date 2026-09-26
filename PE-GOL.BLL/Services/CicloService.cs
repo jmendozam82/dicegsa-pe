@@ -266,7 +266,8 @@ public class CicloService : ICicloService
 
     /// <summary>Spec §5 · ActivarAsync: rol ADM (403) → tenantId (404) → ciclo (404) → ya Activo
     /// (422) → Cerrado (422, RC-12) → RC-01 DAL-C7 (422) → HU-011 CA #2: filosofía (Visión y
-    /// Misión) registrada (422, DAL-F1) → límite del plan vía IPlanService (422, D-C) → tx:
+    /// Misión) registrada (422, DAL-F1) → RN-011: todas las áreas ACTIVAS con responsable (422,
+    /// DAL-A6b) → límite del plan vía IPlanService (422, D-C) → tx:
     /// UPDATE estado + auditoría ACTIVATE → commit → re-lectura → 200.
     /// Captura 23505 del índice parcial uq_ciclo_unico_activo (ADR-006/V003) → 422.</summary>
     public async Task<CicloResponse> ActivarAsync(Guid id, CancellationToken ct = default)
@@ -301,6 +302,15 @@ public class CicloService : ICicloService
             string.IsNullOrWhiteSpace(HtmlSanitizerHelper.StripHtml(filosofia.Vision)) ||
             string.IsNullOrWhiteSpace(HtmlSanitizerHelper.StripHtml(filosofia.Mision)))
             throw new ValidacionException("Debe registrar la Visión y Misión del ciclo antes de activarlo");
+
+        // RN-011 (2026-09-21): todas las áreas ACTIVAS del ciclo deben tener un Jefe de Área
+        // responsable asignado antes de activar (DAL-A6b). El área pudo crearse en Borrador sin
+        // responsable (ResponsableId opcional en AreaCreate) → este chequeo cierra el requisito
+        // "área activa con responsable" en el punto de activación (mismo patrón que HU-011 CA #2).
+        var areasSinResponsable = await _repository.ListarAreasSinResponsableAsync(tenantId, id, ct);
+        if (areasSinResponsable.Count > 0)
+            throw new ValidacionException(
+                $"Debe asignar un Jefe de Área como responsable en: {string.Join(", ", areasSinResponsable)} antes de activar el ciclo (RN-011)");
 
         // D-C (CA #2 HU-002): límite max_ciclos_activos del plan vía IPlanService (DAL-C8 evita
         // acoplar a ITenantRepository). Si el plan no está asignado → 404 defensivo.

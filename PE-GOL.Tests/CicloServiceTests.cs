@@ -735,6 +735,10 @@ public partial class CicloServiceTests
         _mockRepo
             .Setup(r => r.ObtenerFilosofiaAsync(tenantId, id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new FilosofiaEntity { Vision = "Visión", Mision = "Misión" });
+        // RN-011 (2026-09-21): sin áreas activas sin responsable → el check DAL-A6b pasa
+        _mockRepo
+            .Setup(r => r.ListarAreasSinResponsableAsync(tenantId, id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
         _mockRepo
             .Setup(r => r.ObtenerPlanIdDelTenantAsync(tenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(planId);
@@ -782,6 +786,9 @@ public partial class CicloServiceTests
         _mockRepo
             .Setup(r => r.ObtenerFilosofiaAsync(tenantId, id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new FilosofiaEntity { Vision = "Visión", Mision = "Misión" });
+        _mockRepo
+            .Setup(r => r.ListarAreasSinResponsableAsync(tenantId, id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
         _mockRepo
             .Setup(r => r.ObtenerPlanIdDelTenantAsync(tenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(planId);

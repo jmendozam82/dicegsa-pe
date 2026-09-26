@@ -82,6 +82,11 @@ public interface ICicloRepository
     /// <summary>DAL-A6 · COUNT áreas ACTIVAS del ciclo (RN-010, chequeo preciso por ciclo — D-D).</summary>
     Task<int> ContarAreasActivasEnCicloAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default);
 
+    /// <summary>DAL-A6b · SELECT codigos de áreas ACTIVAS del ciclo SIN responsable asignado
+    /// (RN-011 2026-09-21: el requisito "área activa con responsable" se valida al activar el ciclo).
+    /// Retorna lista de códigos (vacía ⇒ todas con responsable).</summary>
+    Task<List<string>> ListarAreasSinResponsableAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default);
+
     /// <summary>DAL-A7 · MAX(orden)+1 sobre TODAS las áreas del ciclo (incl. inactivas → sin reutilizar
     /// códigos tras desactivar). Retorna el siguiente orden/código GOL (CA #1, DB-04).</summary>
     Task<int> ObtenerSiguienteOrdenAsync(Guid tenantId, Guid cicloId, CancellationToken ct = default);

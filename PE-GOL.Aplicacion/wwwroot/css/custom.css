@@ -510,6 +510,18 @@ body {
 .btn-pe--sm { padding: 5px 12px; font-size: 12px; border-radius: 5px; }
 .btn-pe--lg { padding: 11px 24px; font-size: 14px; }
 
+/* Botón secundario sobre navbar Navy (DS § 4.3): texto/borde claros y
+   fondo translúcido en hover, reutilizando la misma clase (sin .btn-pe--inverse). */
+.navbar-top .btn-pe--secondary {
+    color: #FFFFFF;
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+.navbar-top .btn-pe--secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #FFFFFF;
+}
+
 /* ── Formularios (DS § 5.6) ───────────────────────────────── */
 .form-pe-label {
     font: 500 12px var(--font-body);

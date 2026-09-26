@@ -1,0 +1,116 @@
+@model PlanFormViewModel
+@{
+    ViewData["Title"] = "Editar Plan";
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Administración SaaS</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>Planes</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Editar Plan</span>
+    </div>
+    <h1 class="page-header__title">Editar Plan</h1>
+    <p class="page-header__subtitle">Actualiza la configuración del plan de suscripción.</p>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <strong>No se pudo guardar el plan:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="card-pe">
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post" id="formPlan" novalidate>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-pe-label" for="nombre">Nombre *</label>
+                <input class="form-pe-input" type="text" id="nombre" name="nombre" value="@Model.Nombre"
+                       maxlength="50" placeholder="Ej: Profesional" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-pe-label" for="maxAreas">Máx. áreas *</label>
+                <input class="form-pe-input" type="number" id="maxAreas" name="maxAreas" value="@Model.MaxAreas"
+                       min="1" max="20" placeholder="10" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-pe-label" for="maxCiclosActivos">Máx. ciclos *</label>
+                <input class="form-pe-input" type="number" id="maxCiclosActivos" name="maxCiclosActivos" value="@Model.MaxCiclosActivos"
+                       min="1" max="10" placeholder="1" />
+            </div>
+            <div class="col-12">
+                <label class="form-pe-label" for="descripcion">Descripción</label>
+                <textarea class="form-pe-input" id="descripcion" name="descripcion" rows="3"
+                          maxlength="2000" placeholder="Descripción breve del plan">@Model.Descripcion</textarea>
+            </div>
+            <div class="col-md-6">
+                <label class="form-pe-label" for="maxUsuarios">Máx. usuarios *</label>
+                <input class="form-pe-input" type="number" id="maxUsuarios" name="maxUsuarios" value="@Model.MaxUsuarios"
+                       min="1" max="1000" placeholder="25" />
+            </div>
+        </div>
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+            </button>
+            <a class="btn-pe btn-pe--secondary" asp-action="Index">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+            $('#formPlan').validate({
+                rules: {
+                    nombre: { required: true, maxlength: 50 },
+                    descripcion: { maxlength: 2000 },
+                    maxAreas: { required: true, min: 1, max: 20, number: true },
+                    maxUsuarios: { required: true, min: 1, max: 1000, number: true },
+                    maxCiclosActivos: { required: true, min: 1, max: 10, number: true }
+                },
+                messages: {
+                    nombre: {
+                        required: 'El nombre es obligatorio.',
+                        maxlength: 'El nombre no puede superar 50 caracteres.'
+                    },
+                    descripcion: {
+                        maxlength: 'La descripción no puede superar 2000 caracteres.'
+                    },
+                    maxAreas: {
+                        required: 'Indique el máximo de áreas.',
+                        min: 'Debe ser al menos 1.',
+                        max: 'No puede superar 20.',
+                        number: 'Ingrese un número válido.'
+                    },
+                    maxUsuarios: {
+                        required: 'Indique el máximo de usuarios.',
+                        min: 'Debe ser al menos 1.',
+                        max: 'No puede superar 1000.',
+                        number: 'Ingrese un número válido.'
+                    },
+                    maxCiclosActivos: {
+                        required: 'Indique el máximo de ciclos.',
+                        min: 'Debe ser al menos 1.',
+                        max: 'No puede superar 10.',
+                        number: 'Ingrese un número válido.'
+                    }
+                },
+                errorElement: 'span',
+                errorClass: 'form-pe-error',
+                errorPlacement: function (error, element) {
+                    error.insertAfter(element);
+                }
+            });
+        });
+    </script>
+}

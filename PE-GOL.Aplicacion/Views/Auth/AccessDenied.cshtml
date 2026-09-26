@@ -1,0 +1,27 @@
+@{
+    ViewData["Title"] = "Acceso denegado";
+    var homeUrl = User.IsInRole("AdminTenant") ? Url.Action("Index", "Empresa")
+        : User.IsInRole("Gerente") ? Url.Action("Gerente", "Dashboard")
+        : User.IsInRole("JefeArea") ? Url.Action("JefeArea", "Dashboard")
+        : Url.Action("Index", "Tenant");
+}
+<div class="card-pe auth-pe__card text-center">
+    <div class="auth-pe__brand">
+        <span class="auth-pe__logo">PE-GOL</span>
+        <p class="auth-pe__title">Acceso denegado</p>
+    </div>
+
+    <div class="alert alert-warning" role="alert">
+        <i class="bi bi-shield-lock" aria-hidden="true"></i>
+        <p class="mb-2 mt-2">
+            Tu rol de usuario no tiene permisos para acceder a esta sección.
+        </p>
+        <p class="mb-0 body-sm text-muted">
+            Si crees que esto es un error, contacta al administrador del sistema.
+        </p>
+    </div>
+
+    <a href="@homeUrl" class="btn-pe btn-pe--primary w-100">
+        <i class="bi bi-house-door" aria-hidden="true"></i> Ir al inicio
+    </a>
+</div>

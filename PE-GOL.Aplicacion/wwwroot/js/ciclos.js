@@ -29,14 +29,14 @@ $(function () {
         if (esActivar) {
             titulo.textContent = 'Activar ciclo';
             texto.textContent = "¿Activar el ciclo '" + cicloNombre + "'? Solo puede haber un ciclo activo a la vez (RN-004).";
-            formulario.setAttribute('action', '/Ciclos/Activar/' + cicloId);
+            formulario.setAttribute('action', '/Ciclo/Activar/' + cicloId);
             botonConfirmar.textContent = 'Activar';
             botonConfirmar.classList.remove('btn-pe--danger');
             botonConfirmar.classList.add('btn-pe--primary');
         } else {
             titulo.textContent = 'Cerrar ciclo';
             texto.textContent = "¿Cerrar el ciclo '" + cicloNombre + "'? El cierre es irreversible y bloquea la edición de sus datos.";
-            formulario.setAttribute('action', '/Ciclos/Cerrar/' + cicloId);
+            formulario.setAttribute('action', '/Ciclo/Cerrar/' + cicloId);
             botonConfirmar.textContent = 'Cerrar';
             botonConfirmar.classList.remove('btn-pe--primary');
             botonConfirmar.classList.add('btn-pe--danger');

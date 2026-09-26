@@ -63,10 +63,14 @@ public class AuthController : Controller
             if (respuesta.RequiereCambioPwd)
                 return new RedirectToActionResult("CambiarContrasena", "Auth", null);
 
-            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            // El returnUrl solo se honra si es la home del rol del usuario. De lo contrario
+            // (p. ej. ReturnUrl=/Tenant/Index para un AdminTenant) caería en /Tenant/Index,
+            // recibiría AccessDenied y rebotaría al login en un bucle.
+            var home = HomePorRol(respuesta.Usuario.Rol);
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) && EsHomeDelRol(returnUrl, home))
                 return Redirect(returnUrl);
 
-            return new RedirectToActionResult("Index", "Tenant", null);
+            return home;
         }
         catch (UnauthorizedException ex)
         {
@@ -117,7 +121,8 @@ public class AuthController : Controller
         try
         {
             await _apiClient.PostAsync<CambiarContrasenaRequest, object>("/api/v1/auth/cambiar-contrasena", request);
-            return new RedirectToActionResult("Index", "Tenant", null);
+            // En este request el User ya trae el claim de rol (cookie del login previo).
+            return HomePorRol(User.FindFirstValue(ClaimTypes.Role) ?? string.Empty);
         }
         catch (ApiClientException ex)
         {
@@ -130,5 +135,42 @@ public class AuthController : Controller
             ModelState.AddModelError(string.Empty, ex.Message);
             return View(request);
         }
+    }
+
+    /// <summary>
+    /// Página de AccesoDenied propia (App → only 403/403 the cookie middleware): un usuario
+    /// autenticado que no tiene rol para una ruta ve un 403 claro con link a su home, no el
+    /// formulario de login (antes AccessDeniedPath=/Auth/Login → bucle confuso).
+    /// </summary>
+    [HttpGet]
+    public IActionResult AccessDenied()
+    {
+        return View();
+    }
+
+/// <summary>
+    /// Home tras login/Password-change por rol (fix: /Tenant/Index era solo SuperAdmin →
+    /// AdminTenant recibía AccessDenied y rebotaba al login en un loop). Empresa es la
+    /// pantalla de entrada del AdminTenant; Gerente/JefeArea van a su Dashboard; el resto
+    /// (SuperAdmin) a la gestión de Tenants. Recibe el rol por parámetro porque en el POST
+    /// de login (request sin cookie previa) SignInAsync aún no puebla User.
+    /// </summary>
+    private static RedirectToActionResult HomePorRol(string rol)
+    {
+        return rol switch
+        {
+            "AdminTenant" => new RedirectToActionResult("Index", "Empresa", null),
+            "Gerente" => new RedirectToActionResult("Gerente", "Dashboard", null),
+            "JefeArea" => new RedirectToActionResult("JefeArea", "Dashboard", null),
+            _ => new RedirectToActionResult("Index", "Tenant", null)
+        };
+    }
+
+    private static bool EsHomeDelRol(string returnUrl, RedirectToActionResult home)
+    {
+        var ruta = $"/{home.ControllerName}/{home.ActionName}";
+        return returnUrl.Equals(ruta, StringComparison.OrdinalIgnoreCase)
+            || returnUrl.StartsWith(ruta + "/", StringComparison.OrdinalIgnoreCase)
+            || returnUrl.StartsWith(ruta + "?", StringComparison.OrdinalIgnoreCase);
     }
 }

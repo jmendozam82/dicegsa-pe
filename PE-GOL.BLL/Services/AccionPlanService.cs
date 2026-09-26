@@ -58,7 +58,7 @@ public class AccionPlanService : IAccionPlanService
 
     private async Task ValidarFechasCicloAsync(Guid cicloId, DateTime fechaInicio, DateTime fechaVencimiento, CancellationToken ct)
     {
-        var ciclo = await _cicloRepository.ObtenerPorIdAsync(cicloId, ObtenerTenantIdOThrow(), ct)
+        var ciclo = await _cicloRepository.ObtenerPorIdAsync(ObtenerTenantIdOThrow(), cicloId, ct)
             ?? throw new NotFoundException("Ciclo no encontrado.");
 
         var (inicioCiclo, finCiclo) = CicloFechaHelper.ObtenerRango(ciclo.AñoFiscal, ciclo.MesInicio);
@@ -92,6 +92,7 @@ public class AccionPlanService : IAccionPlanService
             Descripcion           = entity.Descripcion,
             DescripcionEntregable = entity.DescripcionEntregable,
             ResponsableId         = entity.ResponsableId,
+            ResponsableNombre     = entity.ResponsableNombre,
             FechaInicio           = entity.FechaInicio,
             FechaVencimiento      = entity.FechaVencimiento,
             Clasificacion         = entity.Clasificacion,
@@ -274,7 +275,7 @@ public class AccionPlanService : IAccionPlanService
         // 8c-8d: obtener umbrales del ciclo para recalcular semáforo del CG (F2)
         decimal umbralVerde    = 0.90m;
         decimal umbralAmarillo = 0.70m;
-        var ciclo = await _cicloRepository.ObtenerPorIdAsync(entity.CicloId, _tenantContext.TenantId!.Value, ct);
+        var ciclo = await _cicloRepository.ObtenerPorIdAsync(_tenantContext.TenantId!.Value, entity.CicloId, ct);
         if (ciclo != null)
         {
             var umbrales   = (await _cicloRepository.ObtenerUmbralesAsync(_tenantContext.TenantId!.Value, ciclo.Id, ct)).ToList();
@@ -286,11 +287,11 @@ public class AccionPlanService : IAccionPlanService
             }
         }
 
-        // El semáforo del CG se evalúa sobre el porcentaje ponderado de esta acción como indicativo.
-        // El RecalcularProgresoAsync en la DAL hace el UPDATE con los parámetros ya calculados.
-        // @BackendDev: verificar RLS (service_role) para que el subquery en BD sume todas las áreas (spec HU-020 Nota RLS).
-        var semaforo    = SemaforoHelper.Evaluar(nuevaPuntuacion, umbralVerde, umbralAmarillo);
-        var porcentajeCg = nuevaPuntuacion * 100m;
+        // 8c-8d (spec HU-020): RN-018 recalcula el progreso del CG como la suma ponderada
+        // de TODAS las acciones del objetivo (SUM(peso * progreso / 100.0)).
+        var porcentajeCg = await _repository.ObtenerSumaPonderadaProgresoAsync(
+            entity.ObjetivoCgId, _tenantContext.TenantId!.Value, ct);
+        var semaforo     = SemaforoHelper.Evaluar(porcentajeCg / 100m, umbralVerde, umbralAmarillo);
 
         // 8e: UPDATE objetivo_cg progreso + semaforo
         await _objetivoCgRepository.RecalcularProgresoAsync(

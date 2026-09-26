@@ -8,6 +8,7 @@ namespace PE_GOL.API.Validators;
 /// Validaciones FluentValidation). Mismos campos que AreaCreateRequest (nombre, comentarios,
 /// responsable). codigo/orden inmutables (auto-generados por la BLL, DB-04). UX-04: la BLL
 /// re-valida responsable (RN-011), RN-012 excluyendo self y el estado del ciclo (RC-12).
+/// ResponsableId OPCIONAL (RN-011 2026-09-21): null libera al responsable actual.
 /// </summary>
 public class AreaUpdateRequestValidator : AbstractValidator<AreaUpdateRequest>
 {
@@ -17,8 +18,5 @@ public class AreaUpdateRequestValidator : AbstractValidator<AreaUpdateRequest>
             .NotEmpty().WithMessage("El nombre del área es requerido")
             .MaximumLength(150).WithMessage("El nombre del área no puede exceder 150 caracteres")
             .Must(n => !string.IsNullOrWhiteSpace(n)).WithMessage("El nombre del área no puede contener solo espacios");
-
-        RuleFor(x => x.ResponsableId)
-            .NotEmpty().WithMessage("Debe asignar un Jefe de Área responsable (RN-011)");
     }
 }

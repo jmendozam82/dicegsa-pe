@@ -13,6 +13,7 @@ public class AccionPlanEntity
     public string Descripcion { get; set; } = string.Empty;
     public string? DescripcionEntregable { get; set; }
     public Guid? ResponsableId { get; set; }
+    public string? ResponsableNombre { get; set; }
     public DateTime FechaInicio { get; set; }
     public DateTime FechaVencimiento { get; set; }
     public string Clasificacion { get; set; } = string.Empty;

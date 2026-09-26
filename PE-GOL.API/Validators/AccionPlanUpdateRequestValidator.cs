@@ -9,7 +9,7 @@ public class AccionPlanUpdateRequestValidator : AbstractValidator<AccionPlanUpda
     {
         RuleFor(x => x.Descripcion)
             .NotEmpty().WithMessage("La descripción es obligatoria.")
-            .MaximumLength(500).WithMessage("La descripción no puede exceder 500 caracteres.");
+            .MaximumLength(1000).WithMessage("La descripción no puede exceder 1000 caracteres.");
 
         RuleFor(x => x.FechaInicio)
             .NotEmpty().WithMessage("La fecha de inicio es obligatoria.");
@@ -23,12 +23,12 @@ public class AccionPlanUpdateRequestValidator : AbstractValidator<AccionPlanUpda
 
         RuleFor(x => x.Clasificacion)
             .NotEmpty().WithMessage("La clasificación es obligatoria.")
-            .Must(x => x == "Estrategico" || x == "Operativo" || x == "Iniciativa" || x == "Proyecto")
+            .Must(x => x == "Proyecto" || x == "Iniciativa" || x == "Operativa")
             .WithMessage("Clasificación no válida.");
 
         RuleFor(x => x.TipoPresupuesto)
             .NotEmpty().WithMessage("El tipo de presupuesto es obligatorio.")
-            .Must(x => x == "Opex" || x == "Capex" || x == "NoAplica")
+            .Must(x => x == "OPEX" || x == "CAPEX")
             .WithMessage("Tipo de presupuesto no válido.");
     }
 }

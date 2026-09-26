@@ -115,6 +115,12 @@ public class AccionPlanRepository : IAccionPlanRepository, IDisposable
         return await GetConnection().ExecuteScalarAsync<decimal>(sql, new { ObjetivoCgId = objetivoCgId, TenantId = tenantId });
     }
 
+    public async Task<decimal> ObtenerSumaPonderadaProgresoAsync(Guid objetivoCgId, Guid tenantId, CancellationToken ct = default)
+    {
+        var sql = "SELECT COALESCE(SUM(peso * progreso / 100.0), 0) FROM accion_plan WHERE objetivo_cg_id = @ObjetivoCgId AND tenant_id = @TenantId;";
+        return await GetConnection().ExecuteScalarAsync<decimal>(sql, new { ObjetivoCgId = objetivoCgId, TenantId = tenantId });
+    }
+
     public async Task<int> ObtenerMaximoOrdenAsync(Guid objetivoCgId, Guid tenantId, CancellationToken ct = default)
     {
         var sql = "SELECT COALESCE(MAX(orden), 0) FROM accion_plan WHERE objetivo_cg_id = @ObjetivoCgId AND tenant_id = @TenantId;";

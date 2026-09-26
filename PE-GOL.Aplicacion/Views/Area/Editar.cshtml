@@ -66,9 +66,9 @@
                        maxlength="150" placeholder="Ej: Gerencia de Operaciones" @(Model.Activa ? "" : "disabled") />
             </div>
             <div class="col-md-6">
-                <label class="form-pe-label" for="responsableId">Responsable *</label>
+                <label class="form-pe-label" for="responsableId">Responsable <span class="body-sm text-muted">(opcional)</span></label>
                 <select class="form-pe-select" id="responsableId" name="responsableId" @(Model.Activa ? "" : "disabled")>
-                    <option value="">Sin responsable</option>
+                    <option value="">Sin responsable (vacío libera al Jefe de Área)</option>
                     @foreach (var candidato in Model.Candidatos)
                     {
                         <option value="@candidato.Id" selected="@(Model.ResponsableId == candidato.Id)">
@@ -100,16 +100,12 @@
         $(function () {
             $('#formArea').validate({
                 rules: {
-                    nombre: { required: true, maxlength: 150 },
-                    responsableId: { required: true }
+                    nombre: { required: true, maxlength: 150 }
                 },
                 messages: {
                     nombre: {
                         required: 'El nombre es obligatorio.',
                         maxlength: 'El nombre no puede superar 150 caracteres.'
-                    },
-                    responsableId: {
-                        required: 'Seleccione un responsable (RN-011).'
                     }
                 },
                 errorElement: 'span',

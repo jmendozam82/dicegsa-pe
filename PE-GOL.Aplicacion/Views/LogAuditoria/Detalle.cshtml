@@ -1,0 +1,102 @@
+@model LogAuditoriaDetalleViewModel
+@{
+    ViewData["Title"] = "Detalle de Auditoría";
+    var d = Model.Detalle;
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Administración SaaS</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>Auditoría</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Detalle</span>
+    </div>
+    <h1 class="page-header__title">Detalle de Auditoría</h1>
+    <p class="page-header__subtitle">Inspección forense de la entrada #@d.Id.ToString("N")[..8]</p>
+</div>
+
+<div class="d-flex gap-2 mb-3">
+    <a class="btn-pe btn-pe--secondary" asp-action="Index">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al log
+    </a>
+</div>
+
+<div class="card-pe">
+    <h2 class="h6 fw-semibold mb-3">Cabecera de la entrada</h2>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <span class="badge border text-secondary">Acción</span>
+            <p class="body-md fw-semibold mb-0 mt-1">@d.Accion</p>
+        </div>
+        <div class="col-md-3">
+            <span class="badge border text-secondary">Entidad</span>
+            <p class="body-md fw-semibold mb-0 mt-1">@d.Entidad</p>
+        </div>
+        <div class="col-md-3">
+            <span class="badge border text-secondary">Registro afectado</span>
+            <p class="body-md mb-0 mt-1 text-muted">@(!string.IsNullOrWhiteSpace(d.EntidadId) ? d.EntidadId : "—")</p>
+        </div>
+        <div class="col-md-3">
+            <span class="badge border text-secondary">Fecha</span>
+            <p class="body-md mb-0 mt-1 text-nowrap">@d.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</p>
+        </div>
+        <div class="col-md-6">
+            <span class="badge border text-secondary">Tenant</span>
+            <p class="body-md fw-semibold mb-0 mt-1">@(string.IsNullOrWhiteSpace(d.TenantNombre) ? "SaaS (nivel plataforma)" : d.TenantNombre)</p>
+        </div>
+        <div class="col-md-6">
+            <span class="badge border text-secondary">Usuario</span>
+            <p class="body-md fw-semibold mb-0 mt-1">@(string.IsNullOrWhiteSpace(d.UsuarioNombre) ? "Sistema / anónimo" : d.UsuarioNombre)</p>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mt-1">
+    @* ── Valor anterior (solo UPDATE: null en CREATE) ── *@
+    <div class="col-lg-6">
+        <div class="card-pe">
+            <h2 class="h6 fw-semibold mb-2">Valor anterior</h2>
+            @if (string.IsNullOrWhiteSpace(d.ValorAnterior))
+            {
+                <p class="body-md text-secondary mb-0">—</p>
+            }
+            else
+            {
+                <pre class="bg-body p-3 rounded mb-0" id="jsonAnterior">@d.ValorAnterior</pre>
+            }
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card-pe">
+            <h2 class="h6 fw-semibold mb-2">Valor nuevo</h2>
+            @if (string.IsNullOrWhiteSpace(d.ValorNuevo))
+            {
+                <p class="body-md text-secondary mb-0">—</p>
+            }
+            else
+            {
+                <pre class="bg-body p-3 rounded mb-0" id="jsonNuevo">@d.ValorNuevo</pre>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Pretty-print del JSON crudo vía textContent (nunca innerHTML): seguro ante inyección.
+        $(function () {
+            ['jsonAnterior', 'jsonNuevo'].forEach(function (id) {
+                var pre = document.getElementById(id);
+                if (!pre) { return; }
+                var crudo = pre.textContent.trim();
+                if (!crudo) { return; }
+                try {
+                    pre.textContent = JSON.stringify(JSON.parse(crudo), null, 2);
+                } catch (ignored) {
+                    // JSON no parseable: se deja el texto crudo escapado tal cual.
+                }
+            });
+        });
+    </script>
+}

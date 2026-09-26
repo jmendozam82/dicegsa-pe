@@ -66,7 +66,7 @@ public class AccionPlanServiceTests
         _objRepoMock.Setup(r => r.ObtenerPorIdSinAreaAsync(_tenantContext.TenantId!.Value, objId))
             .ReturnsAsync(objEntity);
 
-        _cicloRepoMock.Setup(r => r.ObtenerPorIdAsync(objEntity.CicloId, _tenantContext.TenantId!.Value, It.IsAny<CancellationToken>()))
+        _cicloRepoMock.Setup(r => r.ObtenerPorIdAsync(_tenantContext.TenantId!.Value, objEntity.CicloId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CicloEntity { AñoFiscal = 2026, MesInicio = 6 }); // Rango: 2026-06-01 a 2027-05-31
 
         var request = new AccionPlanCreateRequest 
@@ -89,7 +89,7 @@ public class AccionPlanServiceTests
         _objRepoMock.Setup(r => r.ObtenerPorIdSinAreaAsync(_tenantContext.TenantId!.Value, objId))
             .ReturnsAsync(objEntity);
 
-        _cicloRepoMock.Setup(r => r.ObtenerPorIdAsync(objEntity.CicloId, _tenantContext.TenantId!.Value, It.IsAny<CancellationToken>()))
+        _cicloRepoMock.Setup(r => r.ObtenerPorIdAsync(_tenantContext.TenantId!.Value, objEntity.CicloId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CicloEntity { AñoFiscal = 2026, MesInicio = 1 }); 
 
         _repoMock.Setup(r => r.ObtenerSumaPesosAsync(objId, _tenantContext.TenantId!.Value, It.IsAny<CancellationToken>()))
@@ -116,7 +116,7 @@ public class AccionPlanServiceTests
         _objRepoMock.Setup(r => r.ObtenerPorIdSinAreaAsync(_tenantContext.TenantId!.Value, objId))
             .ReturnsAsync(objEntity);
 
-        _cicloRepoMock.Setup(r => r.ObtenerPorIdAsync(objEntity.CicloId, _tenantContext.TenantId!.Value, It.IsAny<CancellationToken>()))
+        _cicloRepoMock.Setup(r => r.ObtenerPorIdAsync(_tenantContext.TenantId!.Value, objEntity.CicloId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CicloEntity { AñoFiscal = 2026, MesInicio = 1 }); 
 
         _repoMock.Setup(r => r.ObtenerSumaPesosAsync(objId, _tenantContext.TenantId!.Value, It.IsAny<CancellationToken>()))
@@ -164,7 +164,7 @@ public class AccionPlanServiceTests
         _objRepoMock.Setup(r => r.ObtenerPorIdSinAreaAsync(_tenantContext.TenantId!.Value, accionEntity.ObjetivoCgId))
             .ReturnsAsync(objEntity);
 
-        _cicloRepoMock.Setup(r => r.ObtenerPorIdAsync(objEntity.CicloId, _tenantContext.TenantId!.Value, It.IsAny<CancellationToken>()))
+        _cicloRepoMock.Setup(r => r.ObtenerPorIdAsync(_tenantContext.TenantId!.Value, objEntity.CicloId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CicloEntity { AñoFiscal = 2026, MesInicio = 1 });
 
         _repoMock.Setup(r => r.ObtenerSumaPesosAsync(accionEntity.ObjetivoCgId, _tenantContext.TenantId!.Value, It.IsAny<CancellationToken>()))
@@ -203,7 +203,7 @@ public class AccionPlanServiceTests
         _objRepoMock.Setup(r => r.ObtenerPorIdSinAreaAsync(_tenantContext.TenantId!.Value, accionEntity.ObjetivoCgId))
             .ReturnsAsync(objEntity);
 
-        _cicloRepoMock.Setup(r => r.ObtenerPorIdAsync(objEntity.CicloId, _tenantContext.TenantId!.Value, It.IsAny<CancellationToken>()))
+        _cicloRepoMock.Setup(r => r.ObtenerPorIdAsync(_tenantContext.TenantId!.Value, objEntity.CicloId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CicloEntity { AñoFiscal = 2026, MesInicio = 1 });
 
         _repoMock.Setup(r => r.ObtenerSumaPesosAsync(accionEntity.ObjetivoCgId, _tenantContext.TenantId!.Value, It.IsAny<CancellationToken>()))

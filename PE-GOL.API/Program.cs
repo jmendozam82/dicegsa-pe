@@ -80,7 +80,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtAudience,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            // El claim del rol se emite como "rol" (JwtTokenHelper, ADR-004), no como
+            // ClaimTypes.Role ("role"): AspNetCore solo mapea "role"→ClaimTypes.Role por
+            // defecto, por eso [Authorize(Roles=...)] devolvía 403 pese a token válido.
+            // SEC-01/HU-004: el claim "rol" (cuando existe) se trata como claim de rol.
+            RoleClaimType = "rol"
         };
     });
 builder.Services.AddAuthorization();
