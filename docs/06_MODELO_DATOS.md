@@ -204,7 +204,7 @@ CREATE TABLE area (
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     UNIQUE (ciclo_id, codigo)
-    -- Índice parcial (ADR-007/V004): CREATE UNIQUE INDEX uq_area_responsable_unico ON area (ciclo_id, responsable_id) WHERE responsable_id IS NOT NULL AND activa = TRUE;  -- RN-012: un responsable por área activa por ciclo (migración V004, pendiente de deploy)
+    -- Índice parcial (ADR-007/V004): CREATE UNIQUE INDEX uq_area_responsable_unico ON area (ciclo_id, responsable_id) WHERE responsable_id IS NOT NULL AND activa = TRUE;  -- RN-012: un responsable por área activa por ciclo (migración V004, EJECUTADA y verificada en Supabase Cloud en HU-045 - ver docs/HANDOFF_PE_GOL.md, auditoría post-Sprint 3, punto MEDIO-04)
 );
 CREATE INDEX idx_area_ciclo ON area(ciclo_id);
 
@@ -669,7 +669,7 @@ GROUP BY co.area_id, co.ciclo_id, co.id, co.nombre;
 
 ---
 
-## 7. Índices adicionales aplicados vía migraciones versionadas (V001-V004)
+## 7. Índices adicionales aplicados vía migraciones versionadas (V001-V005)
 
 Los siguientes índices **no forman parte del DDL base** (sección 2): se aplican como **migraciones versionadas** en `db/migrations/` conforme a [DB-02], cada una respaldada por su ADR aprobado. El DDL base de la sección 2 se mantiene intacto; los comentarios inline en cada tabla referencian estos artefactos.
 
@@ -679,8 +679,11 @@ Los siguientes índices **no forman parte del DDL base** (sección 2): se aplica
 | `uq_plan_nombre` | `V002__unique_plan_nombre.sql` | ADR-002 | `CREATE UNIQUE INDEX uq_plan_nombre ON plan (LOWER(nombre));` | HU-002 CA #1 — unicidad case-insensitive de nombre de plan |
 | `uq_ciclo_unico_activo` | `V003__unico_ciclo_activo.sql` | ADR-006 | `CREATE UNIQUE INDEX uq_ciclo_unico_activo ON ciclo (tenant_id) WHERE estado = 'Activo';` | RC-01 — máximo 1 ciclo `Activo` por tenant |
 | `uq_area_responsable_unico` | `V004__unico_responsable_area.sql` | ADR-007 | `CREATE UNIQUE INDEX uq_area_responsable_unico ON area (ciclo_id, responsable_id) WHERE responsable_id IS NOT NULL AND activa = TRUE;` | RN-012 — un responsable por área activa por ciclo |
+| `idx_accion_plan_ciclo_area` | `V005__indice_accion_plan_gantt.sql` | ADR-012 | `CREATE INDEX IF NOT EXISTS idx_accion_plan_ciclo_area ON accion_plan (tenant_id, ciclo_id, area_id);` | RNF-001 (< 2 s en p95) + SEC-07 — optimiza la consulta del Gantt del Plan de Acción (HU-021): la API filtra por tenant + ciclo + área (el filtro de área se aplica solo en la DAL) |
 
-> **Estado de deploy:** las 4 migraciones están **pendientes de aplicar en Supabase** (deploy, junto con la configuración del connection string `service_role` del DAL SaaS — ver `docs/HANDOFF_PE_GOL.md` «Decisiones de Jorge — 2026-09-13», punto 4). El equipo desarrolla contra Postgres 15 local (Docker) con las migraciones aplicadas localmente.
+> **Nota de alcance (V005):** a diferencia de las cuatro migraciones anteriores, esta **no** impone una restricción de unicidad: es un índice **compuesto no único** que cubre el filtro real de `ListarParaGanttAsync` (`tenant_id`, `ciclo_id` y, para el rol `JefeArea`, `area_id`). El DDL base de la sección 2 **no** se modifica (criterio vigente para V001–V004). `CREATE INDEX` sin `CONCURRENTLY` bloquea escrituras durante la creación: aceptable en ventana de mantenimiento (pre-deploy, tabla `accion_plan` vacía o casi vacía), ver `adrs/ADR-012.md` § «Consecuencias».
+
+> **Estado de deploy:** las 5 migraciones están **EJECUTADAS y verificadas en Supabase Cloud** — V001–V004 durante HU-045 (verificación viva 2026-09-21 en `pg_indexes`, ver `docs/HANDOFF_PE_GOL.md` «Cierre de auditoría post-Sprint 3», punto MEDIO-04) y `V005__indice_accion_plan_gantt.sql` el 2026-09-27 (`idx_accion_plan_ciclo_area ON public.accion_plan USING btree (tenant_id, ciclo_id, area_id)`). Queda fuera de este alcance la configuración del connection string `service_role` del DAL SaaS, sin verificación registrada (ver `docs/HANDOFF_PE_GOL.md` «Decisiones de Jorge — 2026-09-13», punto 4).
 
 ---
 

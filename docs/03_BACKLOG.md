@@ -145,7 +145,7 @@
 
 > **Nota (2026-09-14, decisión de Jorge):** UI diferida a HUs de frontend (HU-045 y siguientes) — HU-006 entregada **100% backend** en Sprint 1; la vista Razor de configuración de empresa se planificará con el cimiento de frontend. Pts y sprint sin cambios.
 
-**Pts:** 3 · **Prioridad:** Alta · **Sprint:** 2
+**Pts:** 3 · **Prioridad:** Alta · **Sprint:** 1 (corregido de "Sprint: 2" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-006 al Sprint 1, donde ya se implementó y cerró - ver `specs/sprint-01/HU-006.spec.md`)
 
 ---
 
@@ -163,7 +163,7 @@
 
 > **Nota (2026-09-14, decisión de Jorge):** UI diferida a HUs de frontend (HU-045 y siguientes) — HU-007 se entrega **100% backend** en Sprint 1; la vista Razor de gestión de ciclos se planificará con el cimiento de frontend. Pts y sprint sin cambios.
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 2
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 1 (corregido de "Sprint: 2" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-007 al Sprint 1, donde ya se implementó y cerró - ver `specs/sprint-01/HU-007.spec.md`)
 
 ---
 
@@ -179,7 +179,7 @@
 - [ ] Valores por defecto al crear ciclo: Verde ≥ 0.9 · Amarillo ≥ 0.7
 - [ ] No modificables una vez el ciclo pasa a estado Activo
 
-**Pts:** 3 · **Prioridad:** Alta · **Sprint:** 2
+**Pts:** 3 · **Prioridad:** Alta · **Sprint:** 1 (corregido de "Sprint: 2" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-008 al Sprint 1, donde ya se implementó y cerró - ver `specs/sprint-01/HU-008.spec.md`)
 
 ---
 
@@ -213,7 +213,7 @@
 - [ ] El ADM puede reasignar un responsable a otra área (si el área origen queda sin responsable, el sistema advierte)
 - [ ] Listado de responsables con estado (activo/inactivo) y área asignada
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 3
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 2 (corregido de "Sprint: 3" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-010 al Sprint 2, donde ya se implementó y cerró - ver `specs/sprint-02/HU-010.spec.md`)
 
 ---
 
@@ -329,7 +329,7 @@
 - [ ] Click en un área lleva al detalle de esa área (drill-down)
 - [ ] Indicador de áreas con alertas activas (color rojo con cantidad)
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 4
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 3 (corregido de "Sprint: 4" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-016 al Sprint 3, donde ya se implementó y cerró - ver `specs/sprint-03/HU-016.spec.md`)
 
 ---
 
@@ -353,7 +353,7 @@
 - [ ] No se puede eliminar un CG que tenga acciones registradas en el Plan de Acción
 - [ ] Listado de CGs del área con % avance y semáforo
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 4
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 3 (corregido de "Sprint: 4" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-017 al Sprint 3, donde ya se implementó y cerró - ver `specs/sprint-03/HU-017.spec.md`)
 
 ---
 
@@ -368,7 +368,7 @@
 - [ ] Exportable a Excel con todos los campos visibles
 - [ ] Solo lectura para el Gerente en esta vista (la edición es responsabilidad del Jefe)
 
-**Pts:** 3 · **Prioridad:** Alta · **Sprint:** 5
+**Pts:** 3 · **Prioridad:** Alta · **Sprint:** 3 (corregido de "Sprint: 5" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-018 al Sprint 3, donde ya se implementó y cerró - ver `specs/sprint-03/HU-018.spec.md`)
 
 ---
 
@@ -392,7 +392,7 @@
 - [ ] Validación: la suma de pesos de acciones del mismo CG debe ser ≤ 1.0 con advertencia si ≠ 1.0
 - [ ] Código auto-generado de acción: `n.m.k` (área.objetivo.acción)
 
-**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 5
+**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 3 (corregido de "Sprint: 5" el 2026-09-27: el encabezado contradecía la tabla de Sprint Planning, que asigna HU-019 al Sprint 3, donde se implementó y cerró — ver `specs/sprint-03/HU-019.spec.md` y `AGENTS.md` v1.19)
 
 ---
 
@@ -408,7 +408,7 @@
 - [ ] Historial de cambios de progreso: fecha, valor anterior, valor nuevo, usuario
 - [ ] La acción muestra su status con semáforo de color
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 5
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 3 (corregido de "Sprint: 5" el 2026-09-27: el encabezado contradecía la tabla de Sprint Planning, que asigna HU-020 al Sprint 3, donde se implementó y cerró — ver `specs/sprint-03/HU-020.spec.md` y `AGENTS.md` v1.20)
 
 ---
 
@@ -424,7 +424,7 @@
 - [ ] Tooltip al hover con: nombre acción, fechas, % progreso, responsable
 - [ ] Filtro por: CG, status, clasificación (Proyecto/Iniciativa/Operativa)
 
-**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 6
+**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 4 (corregido de "Sprint: 6" en el cierre del 2026-09-27 — el encabezado contradecía la tabla de Sprint Planning, que asigna HU-021 al Sprint 4; decisión F4 de Jorge, ver `specs/sprint-04/HU-021.spec.md`) · **Estado:** ✅ Implementada (2026-09-27)
 
 ---
 
@@ -440,7 +440,7 @@
 - [ ] Descarga de archivos mediante URL firmada de acceso temporal (24 h)
 - [ ] Eliminar adjunto con confirmación (solo quien lo subió o el GER)
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 6
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 4 (corregido de "Sprint: 6" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-022 al Sprint 4)
 
 ---
 
@@ -456,7 +456,7 @@
 - [ ] Exportable a Excel con todos los campos
 - [ ] Vista de solo lectura para el Gerente
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 6
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 4 (corregido de "Sprint: 6" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-023 al Sprint 4)
 
 ---
 
@@ -480,7 +480,7 @@
 - [ ] Listado de OKRs del área con puntuación final y semáforo
 - [ ] Máximo 9 OKRs por área por ciclo
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 7
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 4 (corregido de "Sprint: 7" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-024 al Sprint 4)
 
 ---
 
@@ -495,7 +495,7 @@
 - [ ] Validación: suma de pesos de KRs del mismo OKR debe ser 1.0 (100%); error si difiere
 - [ ] No se puede eliminar un KR con valores reales registrados en el ciclo activo
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 7
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 4 (corregido de "Sprint: 7" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-025 al Sprint 4)
 
 ---
 
@@ -511,7 +511,7 @@
 - [ ] Cálculo automático de puntuación trimestral por KR al guardar
 - [ ] Cálculo automático de puntuación final y ponderada del OKR
 
-**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 7
+**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 5 (corregido de "Sprint: 7" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-026 al Sprint 5)
 
 ---
 
@@ -526,7 +526,7 @@
 - [ ] Resumen global: promedio de OKRs alcanzados, % por estado
 - [ ] Exportable a Excel
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 8
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 5 (corregido de "Sprint: 8" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-027 al Sprint 5)
 
 ---
 
@@ -549,7 +549,7 @@
 - [ ] Listado de proyectos con: nombre, presupuesto aprobado, total planeado, total real, status, cumplimiento
 - [ ] No se puede eliminar un proyecto con desembolsos reales registrados
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 8
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 5 (corregido de "Sprint: 8" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-028 al Sprint 5)
 
 ---
 
@@ -565,7 +565,7 @@
 - [ ] Cumplimiento automático: Cumple / No Cumple (según RN-032)
 - [ ] Variación calculada por mes y acumulada: real − planeado
 
-**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 8
+**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 5 (corregido de "Sprint: 8" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-029 al Sprint 5)
 
 ---
 
@@ -581,7 +581,7 @@
 - [ ] Filtros: área, status del proyecto, cumplimiento
 - [ ] Exportable a Excel
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 9
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 6 (corregido de "Sprint: 9" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-030 al Sprint 6)
 
 ---
 
@@ -605,7 +605,7 @@
 - [ ] No se puede eliminar una Subcuenta con valores presupuestados o reales registrados
 - [ ] El catálogo es reutilizable entre ciclos (se clona al crear un nuevo ciclo)
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 9
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 6 (corregido de "Sprint: 9" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-031 al Sprint 6)
 
 ---
 
@@ -621,7 +621,7 @@
 - [ ] Variación = Real − Presupuesto mostrada en color: verde (ahorro), rojo (sobreejercicio)
 - [ ] Totales del área: suma de todas las cuentas
 
-**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 9
+**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 6 (corregido de "Sprint: 9" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-032 al Sprint 6)
 
 ---
 
@@ -637,7 +637,7 @@
 - [ ] Mínimo 1 rubro requerido en subcuentas con Memoria de Cálculo activada
 - [ ] Vista de memoria de cálculo disponible en los reportes como anexo
 
-**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 10
+**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 6 (corregido de "Sprint: 10" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-033 al Sprint 6)
 
 ---
 
@@ -653,7 +653,7 @@
 - [ ] Exportable a Excel manteniendo la jerarquía de cuentas
 - [ ] Drill-down a la Memoria de Cálculo de cada subcuenta desde la vista consolidada
 
-**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 10
+**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 7 (corregido de "Sprint: 10" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-034 al Sprint 7)
 
 ---
 
@@ -676,7 +676,7 @@
 - [ ] El Jefe ve solo su área; el Gerente elige cualquier área
 - [ ] Exportable a PDF con formato de informe corporativo (logo, encabezado, fecha)
 
-**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 11
+**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 7 (corregido de "Sprint: 11" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-035 al Sprint 7)
 
 ---
 
@@ -692,7 +692,7 @@
 - [ ] Exportable a PDF y a Excel
 - [ ] El Jefe ve solo su área; el Gerente elige cualquier área
 
-**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 11
+**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 7 (corregido de "Sprint: 11" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-036 al Sprint 7)
 
 ---
 
@@ -707,7 +707,7 @@
 - [ ] Exportable a PDF (un solo archivo con todas las áreas)
 - [ ] Exportable a Excel con hoja por área y hoja de resumen global
 
-**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 12
+**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 8 (corregido de "Sprint: 12" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-037 al Sprint 8)
 
 ---
 
@@ -732,7 +732,7 @@
 - [ ] Semáforos de color en todas las métricas según umbrales configurados
 - [ ] Actualización automática de datos al ingresar a la vista
 
-**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 12
+**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 8 (corregido de "Sprint: 12" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-038 al Sprint 8)
 
 ---
 
@@ -749,7 +749,7 @@
 - [ ] Drill-down: clic en área lleva al dashboard individual del área (solo lectura para el GER)
 - [ ] Panel de alertas activas en la parte superior (áreas con rojo)
 
-**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 13
+**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 8 (corregido de "Sprint: 13" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-039 al Sprint 8)
 
 ---
 
@@ -765,7 +765,7 @@
 - [ ] Escala de revisión visible (0.0–1.0)
 - [ ] El Jefe ve solo su área; el GER puede seleccionar cualquier área
 
-**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 13
+**Pts:** 8 · **Prioridad:** Alta · **Sprint:** 9 (corregido de "Sprint: 13" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-040 al Sprint 9)
 
 ---
 
@@ -788,7 +788,7 @@
 - [ ] La alerta se envía una sola vez por acción (no se repite cada día)
 - [ ] Si el Jefe actualiza el progreso y la acción sale de Atrasado, se puede re-alertar si vuelve a atrasar
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 14
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 9 (corregido de "Sprint: 14" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-041 al Sprint 9)
 
 ---
 
@@ -803,7 +803,7 @@
 - [ ] No se reenvía la alerta si el OKR sigue en peligro el mes siguiente (evitar spam)
 - [ ] El Gerente puede ver el historial de alertas enviadas por ciclo
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 14
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 9 (corregido de "Sprint: 14" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-042 al Sprint 9)
 
 ---
 
@@ -819,7 +819,7 @@
 - [ ] El Gerente puede activar/desactivar este resumen en su perfil
 - [ ] Configuración de frecuencia (semanal/quincenal) gestionada por el ADM en la configuración del ciclo
 
-**Pts:** 5 · **Prioridad:** Media · **Sprint:** 14
+**Pts:** 5 · **Prioridad:** Media · **Sprint:** 9 (corregido de "Sprint: 14" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-043 al Sprint 9)
 
 ---
 
@@ -835,7 +835,7 @@
 - [ ] Notificaciones se eliminan automáticamente después de 30 días
 - [ ] El Jefe recibe notificación in-app cuando el Gerente agrega un comentario en su área
 
-**Pts:** 5 · **Prioridad:** Media · **Sprint:** 14
+**Pts:** 5 · **Prioridad:** Media · **Sprint:** 9 (corregido de "Sprint: 14" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-044 al Sprint 9)
 
 ---
 
@@ -925,12 +925,14 @@
 
 | HU | Descripción | Pts |
 |----|-------------|-----|
-| HU-021 | Vista Gantt | 8 |
+| HU-021 | Vista Gantt (EP-07) — ✅ Implementada (2026-09-27) | 8 |
 | HU-022 | Entregables Adjuntos | 5 |
 | HU-023 | Vista Consolidada Plan (Gerente) | 5 |
 | HU-024 | CRUD OKRs | 5 |
 | HU-025 | Gestión de KRs | 5 |
 | **Total** | | **28 pts** |
+
+> **Sprint 4 en curso (1/5 HU, 8 de 28 pts).** HU-021 cerrada el 2026-09-27: endpoint de solo lectura `GET /api/v1/acciones/gantt`, vista Gantt con escala de 12 meses, agrupación por Objetivo CG, color por status y 4 filtros; DHTMLX Gantt Community MIT v10.0.3 vendorizado (ADR-011) e índice `idx_accion_plan_ciclo_area` aplicado (ADR-012 + `V005`). Pendientes HU-022..HU-025.
 
 ---
 

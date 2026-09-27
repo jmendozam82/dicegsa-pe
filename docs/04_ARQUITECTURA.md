@@ -94,7 +94,7 @@ PE-GOL.sln
 │   ├── wwwroot/
 │   │   ├── css/  (design tokens, custom)
 │   │   ├── js/   (módulos por sección)
-│   │   └── lib/  (Bootstrap, jQuery, Chart.js, DHTMLX Gantt)
+│   │   └── lib/  (Bootstrap, jQuery, Chart.js, DHTMLX Gantt Community MIT v10.0.3 — vendorizada en lib/dhtmlx-gantt/, ver adrs/ADR-011.md)
 │   └── Program.cs
 │
 ├── PE-GOL.API/

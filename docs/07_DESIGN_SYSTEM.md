@@ -293,6 +293,7 @@ PE-GOL SaaS comparte la misma base visual de Freiroute. Se diferencia mediante e
 <span class="semaforo semaforo--verde">●  Verde</span>
 <span class="semaforo semaforo--amarillo">●  En Peligro</span>
 <span class="semaforo semaforo--rojo">●  Atrasado</span>
+<span class="semaforo semaforo--gris">●  No iniciado</span>
 ```
 
 ```css
@@ -307,7 +308,13 @@ PE-GOL SaaS comparte la misma base visual de Freiroute. Se diferencia mediante e
 .semaforo--verde    { background: var(--color-verde-bg);    color: #1E6B35; }
 .semaforo--amarillo { background: var(--color-amarillo-bg); color: #8A5E00; }
 .semaforo--rojo     { background: var(--color-rojo-bg);     color: #B71C1C; }
+/* .semaforo--gris — agregada el 2026-09-27 (HU-021 · F2 · CA #2 "No iniciado").
+   Usa el MISMO token que la barra gris del Gantt (--gantt-bar-gris → --color-border-dark),
+   y se usa como chip de la leyenda de conteos del Gantt. Ver § 12. */
+.semaforo--gris     { background: var(--color-border-dark); color: var(--color-text-primary); }
 ```
+
+> **Nota de ubicación (referencia cruzada):** las clases `.semaforo--*` se definen **aquí (§ 5.2)**, no en § 5.5 — § 5.5 es «Botones». El spec `HU-021.spec.md` citaba «§ 5.5» por error (hallazgo 18 del spec); la ubicación normativa es esta sección.
 
 ### 5.3 Progress Bar con Semáforo
 
@@ -817,6 +824,17 @@ const tooltipBase = {
     /* Transiciones */
     --transition-fast:      0.15s ease;
     --transition-normal:    0.25s ease;
+
+    /* Gantt (DHTMLX Gantt) — ver § 12. Los cuatro primeros
+       delegan en tokens existentes; --gantt-bar-cg es un neutro
+       oscuro primario (NO un semáforo). */
+    --gantt-bar-verde:      var(--color-verde);
+    --gantt-bar-amarillo:   var(--color-amarillo);
+    --gantt-bar-rojo:       var(--color-rojo);
+    --gantt-bar-gris:       var(--color-border-dark);
+    --gantt-bar-cg:         var(--color-navy);
+    --gantt-row-height:     34px;
+    --gantt-scale-height:   60px;
 }
 ```
 
@@ -833,5 +851,186 @@ const tooltipBase = {
 
 ---
 
+## 12. Gantt (DHTMLX Gantt)
+
+Estilos del Gantt del Plan de Acción (HU-021, EP-07). La librería es **DHTMLX Gantt Community Edition MIT `v10.0.3`**, vendorizada en `wwwroot/lib/dhtmlx-gantt/` desde el registro oficial de npm — ver `adrs/ADR-011.md`. Sección agregada el **2026-09-27** al aprobarse el flag **F2** de `specs/sprint-04/HU-021.spec.md`.
+
+Esta sección es la **fuente de verdad** de los estilos del componente [UX-01]. `wwwroot/css/gantt.css` es su **traducción literal**: no se crean clases ad-hoc ni hex fuera de estos tokens.
+
+> **Sobre la skin de DHTMLX:** en `v10.0.3` los 8 temas visuales (terrace, dark, meadow, skyblue, broadway, material, contrast-white, contrast-black) vienen **integrados dentro de `codebase/dhtmlxgantt.css`** como temas basados en la variable CSS `--dhx-gantt-theme`, activables con el atributo `data-gantt-theme` en `:root`; el tema por defecto es **`terrace`**. **No existe ningún archivo de skin aparte** que haya que cargar, y por eso `_Layout.cshtml` enlaza **solo** `dhtmlxgantt.css` y `gantt.css`. La skin es **solo la base visual**: el color de las barras lo define **esta misma sección** mediante los tokens `--gantt-bar-*` de § 12.1, nunca la skin.
+
+### 12.1 Tokens
+
+| Token | Nombre | Valor | Apunta a | Uso |
+|-------|--------|-------|----------|-----|
+| `--gantt-bar-verde` | Barra Verde | `#34A853` | `--color-verde` | Acción `Terminado` |
+| `--gantt-bar-amarillo` | Barra Amarillo | `#F9AB00` | `--color-amarillo` | Acción `EnProgreso` |
+| `--gantt-bar-rojo` | Barra Rojo | `#EA4335` | `--color-rojo` | Acción `Atrasado` |
+| `--gantt-bar-gris` | Barra Gris | `#CBD5E1` | `--color-border-dark` | Acción `NoIniciado` · chip `.semaforo--gris` |
+| `--gantt-bar-cg` | Barra CG | `#0B2545` | `--color-navy` | Barra resumen del Objetivo CG (**neutro oscuro, NO un semáforo**) |
+| `--gantt-row-height` | Alto de fila | `34px` | — | Altura de fila de la grilla y de la barra |
+| `--gantt-scale-height` | Alto de escala | `60px` | — | Alto de la escala (dos filas: año + mes) |
+
+```css
+:root {
+    --gantt-bar-verde:      var(--color-verde);
+    --gantt-bar-amarillo:   var(--color-amarillo);
+    --gantt-bar-rojo:       var(--color-rojo);
+    --gantt-bar-gris:       var(--color-border-dark);   /* #CBD5E1 */
+    --gantt-bar-cg:         var(--color-navy);          /* #0B2545 */
+    --gantt-row-height:     34px;
+    --gantt-scale-height:   60px;
+}
+```
+
+> **Por qué `--color-border-dark` y no `--color-border` para el gris:** `#E2E8F0` es demasiado claro sobre la grilla blanca y la barra desaparecería. `#CBD5E1` mantiene el contraste sin competir con los tres colores de semáforo.
+
+> **Por qué `--gantt-bar-cg` NO es un semáforo:** la barra resumen del Objetivo CG no tiene `status` (es un `type:"project"`). Pintarla con el gris de «No iniciado» haría pensar que el CG está sin empezar; el color por status del CA #2 aplica **solo a las acciones**. De ahí un neutro oscuro primario.
+
+### 12.2 Mapeo status → clase de barra
+
+| `accion_plan.status` | Clase | Token |
+|---|---|---|
+| `Terminado` | `.gantt-bar--verde` | `--gantt-bar-verde` |
+| `EnProgreso` | `.gantt-bar--amarillo` | `--gantt-bar-amarillo` |
+| `Atrasado` | `.gantt-bar--rojo` | `--gantt-bar-rojo` |
+| `NoIniciado` | `.gantt-bar--gris` | `--gantt-bar-gris` |
+| *(sin status — resumen del CG)* | `.gantt-bar--cg` | `--gantt-bar-cg` |
+
+### 12.3 Contenedor
+
+```html
+<div class="card-pe">
+    <div class="gantt-legend">…</div>
+    <div id="gantt-pe" class="gantt-pe"></div>
+</div>
+```
+
+```css
+.gantt-pe {
+    width: 100%;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* Grilla izquierda alineada con el DS (el nombre de la tarea, fechas) */
+.gantt-pe .gantt_grid_scale,
+.gantt-pe .gantt_task_scale  { background: var(--color-bg-page); border-color: var(--color-border); }
+.gantt-pe .gantt_grid_head_cell,
+.gantt-pe .gantt_scale_cell    { color: var(--color-text-secondary); font: 600 11px 'Inter'; }
+.gantt-pe .gantt_row,
+.gantt-pe .gantt_task_row      { height: var(--gantt-row-height); background: var(--color-bg-card); }
+.gantt-pe .gantt_row.odd,
+.gantt-pe .gantt_task_row.odd  { background: var(--color-bg-card); }
+.gantt-pe .gantt_cell          { color: var(--color-text-primary); font: 400 13px 'Inter'; }
+.gantt-pe .gantt_scale         { height: var(--gantt-scale-height); }
+.gantt-pe .gantt_task_scale    { height: 28px; }
+.gantt-pe .gantt_task_cell     { border-top: 1px solid var(--color-border); }
+```
+
+### 12.4 Barras
+
+```css
+/* Clase base + variantes. El color SIEMPRE viene de un token. */
+.gantt-pe .gantt-bar          { border-radius: 4px; border: none; box-shadow: none; }
+.gantt-pe .gantt-bar--verde    { background: var(--gantt-bar-verde); }
+.gantt-pe .gantt-bar--amarillo { background: var(--gantt-bar-amarillo); }
+.gantt-pe .gantt-bar--rojo     { background: var(--gantt-bar-rojo); }
+.gantt-pe .gantt-bar--gris     { background: var(--gantt-bar-gris); }
+.gantt-pe .gantt-bar--cg       { background: var(--gantt-bar-cg); border-radius: 6px; height: 18px; margin-top: 8px; }
+```
+
+> El JavaScript **solo asigna la clase** (vía `gantt.templates.task_class`). **Nunca** escribe un color.
+
+### 12.5 Tooltip
+
+```html
+<div class="gantt-tooltip">
+    <div class="gantt-tooltip__title">GOL1.CG1.03 · Implementar nuevo sistema</div>
+    <div><strong>Inicio:</strong> 01/03/2026 · <strong>Vencimiento:</strong> 30/06/2026</div>
+    <div><strong>Progreso:</strong> 40%</div>
+    <div><strong>Responsable:</strong> Ana Pérez</div>
+</div>
+<div class="gantt-tooltip gantt-tooltip--cg">…</div>
+```
+
+```css
+.gantt-tooltip {
+    background: var(--color-text-primary);
+    color: #FFFFFF;
+    font: 400 12px 'Inter';
+    padding: 10px 12px;
+    border-radius: 6px;
+    box-shadow: var(--shadow-modal);
+    max-width: 320px;
+    line-height: 1.5;
+}
+.gantt-tooltip__title  { font: 600 12px 'Inter'; margin-bottom: 6px; }
+.gantt-tooltip__cg     { font: 600 12px 'DM Sans'; margin-bottom: 6px; }
+.gantt-tooltip strong  { font-weight: 600; color: rgba(255,255,255,0.75); }
+```
+
+> **El contenido del tooltip siempre se escapa en JS** (`& < > " '`) antes de inyectarse como HTML [SEC-05]. El estilo vive acá; el escape, en `gantt-plan.js`.
+
+### 12.6 Leyenda
+
+```html
+<div class="gantt-legend">
+    <span class="gantt-legend__title">Leyenda:</span>
+    <span class="gantt-legend__item"><i class="gantt-legend__swatch gantt-legend__swatch--verde"></i> Terminado · 7</span>
+    <span class="gantt-legend__item"><i class="gantt-legend__swatch gantt-legend__swatch--amarillo"></i> En progreso · 12</span>
+    <span class="gantt-legend__item"><i class="gantt-legend__swatch gantt-legend__swatch--rojo"></i> Atrasado · 3</span>
+    <span class="gantt-legend__item"><i class="gantt-legend__swatch gantt-legend__swatch--gris"></i> No iniciado · 4</span>
+    <span class="gantt-legend__item"><i class="gantt-legend__swatch gantt-legend__swatch--cg"></i> Objetivo CG (resumen)</span>
+</div>
+```
+
+```css
+.gantt-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    font: 400 12px 'Inter';
+    color: var(--color-text-secondary);
+}
+.gantt-legend__title    { font: 600 11px 'Inter'; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+.gantt-legend__item     { display: inline-flex; align-items: center; gap: 6px; }
+.gantt-legend__swatch   { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.gantt-legend__swatch--verde    { background: var(--gantt-bar-verde); }
+.gantt-legend__swatch--amarillo { background: var(--gantt-bar-amarillo); }
+.gantt-legend__swatch--rojo     { background: var(--gantt-bar-rojo); }
+.gantt-legend__swatch--gris     { background: var(--gantt-bar-gris); }
+.gantt-legend__swatch--cg       { background: var(--gantt-bar-cg); }
+```
+
+> **Variante con chips:** para el conteo por status, la leyenda puede usar directamente los chips de § 5.2 — `<span class="semaforo semaforo--verde">…</span>` — incluido el nuevo `.semaforo--gris`, que comparte token con `--gantt-bar-gris`. Ambas variantes son válidas; los colores nunca se escriben a mano en el HTML.
+
+### 12.7 Regla dura: cero hex en JavaScript
+
+> ⚠️ **`gantt-plan.js` no puede contener ningún color literal.** El JS **solo asigna clases** (`gantt.templates.task_class` devuelve `gantt-bar gantt-bar--verde|amarillo|rojo|gris|cg`). El color vive **exclusivamente** en `wwwroot/css/gantt.css`, que traduce los tokens de esta sección. [UX-01] + [UX-02].
+
+Verificación en Review: un grep de `#` (hex) sobre `gantt-plan.js` no debe encontrar literales de color. `MESES_ABREV` (etiquetas de mes) y los textos de la leyenda sí son literales de texto, no de color.
+
+### 12.8 Alcance de la librería — funciones PRO no utilizadas
+
+La librería vendorizada es la **Community Edition MIT** (`adrs/ADR-011.md`). Las siguientes funciones son **PRO** y **no están disponibles ni se usan**:
+
+gestión de recursos · auto-scheduling · ruta crítica · agrupamiento WBS (task grouping / `gantt.ext.groups`) · **carga dinámica (dynamic loading)** · elementos custom en la línea de tiempo · WBS codes · export a PDF/Excel sin marca de agua · el resto de módulos del pack PRO.
+
+Consecuencias de diseño que se derivan de esa limitación (ya reflejadas en `specs/sprint-04/HU-021.spec.md`):
+
+- La agrupación por Objetivo CG se hace con la **jerarquía nativa** (`type:"project"` + `parent`), no con el panel WBS.
+- El payload se trae **completo** y se parsea en cliente; no hay carga dinámica por nivel.
+- **No hay export a PDF/Excel en el Gantt** (queda para el módulo de Reportes / EP-11, que usará ClosedXML [STACK-08]).
+- El Gantt es de **solo lectura** (`drag_move`/`drag_resize`/`drag_progress`/`drag_links` en `false`, columnas sin `editor`); la edición de fechas se hace en el formulario de la acción.
+
+---
+
 *Documento generado el 13/09/2026 · Fase 2 — Design System.*
 *Alineado al estilo Freiroute TMS · Bootstrap 5.3 · Bootstrap Icons 1.11.*
+*§ 5.2 (`.semaforo--gris`) y § 12 (Gantt) agregados el 2026-09-27 — HU-021, flags F1/F2 · `adrs/ADR-011.md`.*
+*§ 12 nota de intro ampliada el 2026-09-27 (procedencia npm de la librería y temas integrados en `dhtmlxgantt.css`, sin archivo de skin aparte) — sin cambios en tokens, clases ni ejemplos.*

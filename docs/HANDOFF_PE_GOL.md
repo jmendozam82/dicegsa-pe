@@ -51,7 +51,9 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 
 ## 🗓️ Estado Actual del Proyecto
 
-### Fase completada: **Análisis + Diseño (Fases 0, 1 y 2)**
+> **Actualizado: 2026-09-27** (cierre de HU-021). Este bloque refleja el estado vigente; el historial detallado de cada sprint está en las secciones de cierre al final de este documento.
+
+### Fases completadas: **Análisis + Diseño (Fases 0, 1 y 2) + Sprint 1 + Sprint 2 + Sprint 3**
 
 | Entregable | Estado |
 |-----------|--------|
@@ -60,14 +62,102 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 | Backlog (45 HU · 243 pts · 9 Sprints) | ✅ Completo |
 | Arquitectura N-Tier | ✅ Completo |
 | Modelo de Dominio | ✅ Completo |
-| Modelo de Datos DDL + RLS | ✅ Completo |
-| Design System | ✅ Completo |
-| AGENTS.md (Constitución) | ✅ Completo |
+| Modelo de Datos DDL + RLS | ✅ Completo — 25 tablas · 3 vistas · RLS en todas las tablas de negocio · **migraciones V001–V005 aplicadas y verificadas en Supabase Cloud** |
+| Design System | ✅ Completo — incluye **§ 12 «Gantt (DHTMLX Gantt)»** (2026-09-27) |
+| AGENTS.md (Constitución) | ✅ Completo — **v1.23** (2026-09-27) |
 | 6 Agentes configurados | ✅ Completo |
-| **Specs Sprint 1** | ⏳ **Siguiente paso** |
-| Implementación | ⏳ Pendiente |
+| **Specs + implementación Sprint 1** | ✅ Completo — HU-001, HU-002, HU-003, HU-004, HU-006, HU-007, HU-008 (7/7) |
+| **Specs + implementación Sprint 2** | ✅ Completo — HU-005, HU-009..HU-015 (8/8) |
+| **Specs + implementación Sprint 3** | ✅ Completo — HU-016..HU-020 y HU-045 (6/6) |
+| **Specs + implementación Sprint 4** | ⏳ **En curso — 1/5 HU** · HU-021 ✅ Implementada (2026-09-27) · pendientes HU-022, HU-023, HU-024, HU-025 (8 de 28 pts) |
+| Implementación (código) | ✅ En curso — 22 de 45 HU Implementadas |
+| Auditoría post-Sprint 3 | ✅ Resuelta 100% (2026-09-21 — 3 críticos, 6 medios, 8 mejoras) |
 
-### Próxima fase: **Sprint 1 — Specs + Implementación**
+### Estado técnico verificado (2026-09-27)
+
+| Indicador | Valor |
+|-----------|-------|
+| Build | `dotnet build PE-GOL.sln` → **0 advertencias, 0 errores** |
+| Tests | `dotnet test PE-GOL.sln` → **584/584 en verde** (0 fallidas, 0 omitidas) — 556 previos + 28 de HU-021 |
+| Cobertura BLL | **89.02%** (3139/3526) ≥ 70% exigido |
+| Migraciones | **V001–V005 EJECUTADAS y verificadas** en Supabase Cloud (V001–V004 en HU-045; `V005__indice_accion_plan_gantt.sql` en HU-021 → `idx_accion_plan_ciclo_area ON public.accion_plan USING btree (tenant_id, ciclo_id, area_id)`) |
+| Frontend | Cimiento HU-045 + Gantt HU-021 · DHTMLX Gantt **Community MIT v10.0.3** vendorizada en `wwwroot/lib/dhtmlx-gantt/` (ADR-011) |
+| Swagger | **47 paths** documentados (ARCH-03) |
+
+### Decisiones de procedencia que siguen vigentes
+
+- **DHTMLX Gantt (ADR-011, F1, Jorge 2026-09-27):** Community Edition **MIT `v10.0.3`**, obtenida del **registro oficial de npm** con `dist.shasum` verificado **antes de extraer** y `LICENSE` MIT leído del propio tarball. Se descartó la Standard GPL v2 (copyleft incompatible con el SaaS propietario) y la licencia comercial. El release de GitHub `v10.0.3` es el repositorio de fuentes **sin bundle** y el CDN oficial devuelve 404 → quedan registrados como **canales no válidos** para el bundle. Sin npm/build en el pipeline, sin CDN en runtime.
+- **Índice del Gantt (ADR-012, F3, Jorge 2026-09-27):** `idx_accion_plan_ciclo_area ON accion_plan (tenant_id, ciclo_id, area_id)`.
+- **Pendiente de decisión de Jorge:** precisión de `STACK-07` (variante/versión exacta). La regla se dejó **sin tocar** a propósito.
+- **Salvedad de HU-021:** no hubo verificación visual autenticada del Gantt renderizado; se verificó la entrega de assets y el contrato, no el render.
+
+### Fase siguiente: **Sprint 4 — HU-022 (Gestión de Entregables Adjuntos)**
+
+`specs/sprint-04/HU-021.spec.md` en `Implementado` · siguiente en el loop: **HU-022** (STACK-08 ClosedXML + ARCH-06 Supabase Storage con URLs firmadas de 24 h), luego HU-023, HU-024 y HU-025.
+
+---
+
+## 🧾 Deuda técnica pendiente
+
+> Registro vivo (no histórico): se actualiza al cerrar cada HU. Fecha de la última revisión: **2026-09-27** (cierre de HU-021).
+
+### 1. Swagger sin XML comments — **prioridad baja**
+
+**Qué falta.** El fix de `IncludeXmlComments` en `AddSwaggerGen` (`PE-GOL.API/Program.cs`) — **2 líneas**, **0 riesgo funcional**.
+
+**Estado real verificado (2026-09-27).** `Program.cs` registra `AddSwaggerGen` **sin** `IncludeXmlComments` y `PE-GOL.API.csproj` **no** genera XML de documentación (sin `GenerateDocumentationFile`). Consecuencia: **0 de los 47 endpoints** exponen `summary` en `/swagger/v1/swagger.json` — afecta a **todos** los endpoints, no solo a los de HU-021 (también a los de HU-020 y anteriores). El archivo de documentación XML es un insumo compartido por los 47 endpoints, por lo que el fix es de 2 líneas pero su alcance es transversal.
+
+**Por qué no se hizo en el cierre de HU-021.** Decidido **no** tocarlo al cerrar HU-021 porque el cambio afecta a los **47 endpoints existentes**, es decir, sale del alcance de la HU y no debe mezclarse en sus commits atómicos.
+
+**Plan.** Cerrar al inicio del **Sprint 5** como tarea de mantenimiento de **1 pt** (alta de Jorge, 2026-09-27).
+
+*Observación adicional (constatada al revisar este ítem, 2026-09-27):* la `Description` de `SwaggerDoc` en `Program.cs` sigue diciendo «~40 endpoints» y «Sprints 1-3 completados», texto que quedó desactualizado frente a los **47 paths** reales. No se modifica aquí por ser código; se escala a Jorge.
+
+### 2. Auto-hospedar Inter y fuentes del Design System — **prioridad media antes de producción pública**
+
+**Qué falta.** Eliminar la dependencia en tiempo de ejecución de `fonts.gstatic.com`. **Requiere ADR propio.**
+
+**Estado real verificado (2026-09-27).**
+- `wwwroot/css/custom.css` (L6) importa Google Fonts: `@import url('https://fonts.googleapis.com/css2?family=Inter:...&family=DM+Sans:...')`. Ese `@import` es **preexistente a HU-021** (verificado contra el diff de la HU: la línea no forma parte de él) → **no es deuda nueva de esta HU**.
+- El bundle vendorizado `wwwroot/lib/dhtmlx-gantt/codebase/dhtmlxgantt.css` (L1) **añade** un `@font-face` de `Inter` que referencia `fonts.gstatic.com` (**6 referencias** en el bundle). Ese `@font-face` sí viene con la librería de HU-021, pero es el mismo problema de dependencia externa que ya existía.
+
+**Prioridad y motivo.** **Media**, a resolver **antes de producción pública**: la decisión de auto-hospedar tiene sentido cuando se approachen escenarios **air-gap** o requisitos de **privacidad GDPR** (fuera de la UE, minimization de terceros). Mientras el despliegue sea dentro de la UE con salida a Google Fonts asumida, es aceptable.
+
+---
+
+## 🔐 Verificación de credenciales y aislamiento multi-tenant — 2026-09-27
+
+> **Punto 6 — APROBADO por Jorge (2026-09-27).** Los hechos de la sesión sobre RLS y credenciales fueron **verificados por ejecución real contra Supabase Cloud**, no por lectura de documentación. Se registra aquí como **hecho verificado**.
+
+### 6.1 Credenciales: **ningún secreto en el repositorio** — verificado
+
+- Las credenciales reales viven en **`PE-GOL.API/appsettings.Supabase.json`**, que está **gitignored** (`.gitignore` L17) y **no versionada** (verificado: `git ls-files` la rechaza).
+- El `appsettings.json` **versionado** solo contiene **placeholders** (`Password=__SUPABASE_PASSWORD__`).
+- `Program.cs` (L19) fusiona ese archivo **después** de `appsettings.json` con `optional: true` (y `reloadOnChange: true`).
+- **Estado: verificado.** No hay ningún secreto en el repositorio.
+
+### 6.2 Cómo queda el aislamiento en la práctica — verificado (hecho, no violación)
+
+- La API conecta por **TCP directo** a Supabase con el rol **`postgres`**, que en este proyecto tiene **`rolbypassrls = true`**, y la sesión **no** lleva `request.jwt.claims` (comprobado: claims ausentes).
+- Por tanto **las políticas RLS no filtran las queries de la API**.
+- El aislamiento real lo aplican los **predicados del DAL**: `a.tenant_id = @TenantId` (SEC-06) y `(@AreaIdFiltro IS NULL OR a.area_id = @AreaIdFiltro)` (SEC-07), según **SEC-06/SEC-07** y la decisión **F11**.
+
+> **No es una violación de [ARCH-04]** y **no se modifica [ARCH-04]**: es una precisión sobre **cómo queda el aislamiento en la práctica**. Si Jorge quiere alinear la constitución con este hecho (p. ej. reflejando que la segunda capa es la del DAL y no la de RLS), requiere **su decisión** y, por tratarse de una regla inmutable, un **ADR**.
+
+### 6.3 Prueba funcional del DAL-G1 con datos reales — el fallo «0 filas silencioso» no ocurre
+
+Ejecutada con las **mismas versiones del DAL** que usa la API (**Npgsql 8.0.5 + Dapper 2.1.35**, confirmadas en `PE-GOL.DAL.csproj`):
+
+| Ruta | Parámetro | Resultado |
+|------|-----------|-----------|
+| **Gerente** | `AreaIdFiltro = null` | **3 filas**, sin excepción |
+| **JefeArea** | área real | **3 filas** |
+
+Es decir, **no** se reproduce el fallo de «0 filas silencioso» que se sospechaba.
+
+### 6.4 Nota de cobertura
+
+Los tests de HU-021 usan **Moq sobre el repositorio**, por lo que **no** ejercitan SQL real contra Postgres. **Esta verificación con Dapper real es la que cubre ese hueco** hasta que exista una batería de pruebas de integración contra la base de datos.
 
 ---
 
@@ -461,5 +551,20 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-21 (Sprint 3 completado — 6/6 HU · Auditoría post-Sprint 3 resuelta 100%) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Continuar con el Loop de HU-021 (@QA, TDD) — Sprint 4*
+## Cierre HU-021 — Sprint 4 en curso — 2026-09-27
+
+**Contexto:** HU-021 (Vista Gantt del Plan de Acción) se cerró el 2026-09-27 tras superar REVIEW. Con este cierre el **Sprint 4 queda en curso (1/5 HU, 8 de 28 pts)**; pendientes HU-022 (Entregables Adjuntos), HU-023 (Vista Consolidada del Plan), HU-024 (CRUD OKRs) y HU-025 (Gestión de KRs).
+
+1. **HU-021 Implementada (spec → `Implementado`):** endpoint de solo lectura `GET /api/v1/acciones/gantt` (multi-rol `JefeArea,Gerente`; respuestas 200/401/403/404/500 con `ApiResponse<GanttPlanResponse>`) + DTOs nuevos en `PE_GOL.DTO.Responses.PlanOperativo` + `ObtenerGanttAsync` (ciclo activo, escala de 12 meses desde `mes_inicio`, agrupación por Objetivo CG, `ConteoPorStatus`, filtro de área desde `TenantContext`) + `ListarParaGanttAsync` (1 query) + vista Razor `AccionPlan/Gantt` con `gantt-plan.js` y `gantt.css` + ítems de menú en «Mi Área» y «Contenido» + Design System § 12. Tests: **584/584 en verde** (build **0 advertencias / 0 errores**; 556 previos intactos + 28 nuevos = 23 de BLL + 5 de humo MVC). Cobertura BLL **89.02%** (3139/3526), sube desde 88.9%.
+2. **ADR-011 y ADR-012 aceptados; `V005` aplicada y verificada:** `db/migrations/V005__indice_accion_plan_gantt.sql` ejecutada en Supabase Cloud — `pg_indexes` devuelve `idx_accion_plan_ciclo_area ON public.accion_plan USING btree (tenant_id, ciclo_id, area_id)`, con el header de la migración actualizado a «EJECUTADA y verificada» (patrón HU-045).
+3. **Decisión de procedencia de DHTMLX (Opción A, Jorge, 2026-09-27):** Community Edition **MIT `v10.0.3`**, fijada en ADR-011 y obtenida del **registro oficial de npm** (`npm pack dhtmlx-gantt@10.0.3`, tarball de 1 568 933 B, `dist.shasum` `4c1c896b9d465892e72647cff335bf755d0ca910` **verificado con `Get-FileHash -Algorithm SHA1` antes de extraer**, `LICENSE` MIT leído del propio tarball). Se **corrige** la instrucción original del spec, que pedía obtener el bundle «desde el release de GitHub (nunca desde npm)»: el release de GitHub `v10.0.3` es el **repositorio de fuentes sin bundle** y el **CDN oficial devuelve 404**; además el paquete npm de `10.0.3` **es MIT**, no GPL-2.0 (esa etiqueta era de la rama `v9.1.4`). 4 archivos vendorizados **verbatim**, **sin npm ni build en el pipeline** y **sin CDN en runtime**; en `10.0.3` no existe `codebase/skins/` y los **8 temas** van integrados en `dhtmlxgantt.css` (`--dhx-gantt-theme`, `terrace` por defecto), por lo que `_Layout.cshtml` no enlaza ninguna skin.
+4. **Verificaciones en ejecución:** Swagger (`/swagger/v1/swagger.json`, 47 paths) con la ruta, el tag `AccionPlan`, el esquema y los 5 códigos de respuesta; assets estáticos servidos con HTTP 200 (`dhtmlxgantt.js` 631 897 B, `dhtmlxgantt.css` 142 729 B, `gantt.css`, `gantt-plan.js`). **Salvedad: no hubo verificación visual autenticada del Gantt renderizado** (el entorno no tiene credenciales de sesión) — se verificó la entrega de assets y el contrato, **no el render**.
+5. **Pendiente documental escalado:** el índice **no** se dio de alta en `06_MODELO_DATOS.md` § 7 (la § 7 sigue titulada «V001-V004»); ese archivo no estaba en el alcance del cierre de @Documenter. `STACK-07` en `AGENTS.md` § 1 se dejó **sin tocar**, por decisión de Jorge: la precisión de versión/variante se plantea aparte.
+6. **Nota de conteo de tests (trazabilidad):** las versiones anteriores de este HANDOFF y de `AGENTS.md` v1.22 declaraban **554**; el real verificado previo a HU-021 era **556** (el commit `ea14558` había añadido 2 tests). El dato correcto quedó registrado en `AGENTS.md` v1.23.
+
+**Artefactos del cierre:** `specs/sprint-04/HU-021.spec.md` (estado `Implementado` + registro de cierre) · `AGENTS.md` v1.23 · `docs/03_BACKLOG.md` (HU-021 Implementada, Sprint 6 → 4) · `adrs/ADR-011.md` · `adrs/ADR-012.md` · `db/migrations/V005__indice_accion_plan_gantt.sql` · `docs/07_DESIGN_SYSTEM.md` § 12 · `.gitignore` (DataProtection de Development).
+
+---
+
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-27 (Sprint 4 en curso — 1/5 HU, HU-021 cerrada · 584/584 tests · cobertura BLL 89.02%) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Loop de HU-022 (Entregables Adjuntos) — Sprint 4 · STACK-08 (ClosedXML) + ARCH-06 (Supabase Storage, URLs firmadas 24 h)*

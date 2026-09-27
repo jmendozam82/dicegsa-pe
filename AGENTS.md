@@ -1,7 +1,9 @@
 # AGENTS.md — Constitución del Proyecto PE-GOL SaaS
 > Este archivo es la fuente de verdad del proyecto. Todo agente, spec, ADR y plan debe leerlo antes de actuar.
-> Versión: 1.22 · Fecha: 2026-09-21 · Autor: Jorge (Dicegsa)
-> v1.22 (2026-09-21): auditoría post-Sprint 3 resuelta 100% (3 críticos, 6 medios, 8 mejoras — ver HANDOFF «Cierre de auditoría post-Sprint 3» y ADR-010). Tests: 554/554 en verde. Pre-Sprint 4, sin HU abiertas.
+> Versión: 1.24 · Fecha: 2026-09-27 · Autor: Jorge (Dicegsa)
+> v1.24 (2026-09-27): cierre documental previo a los commits de HU-021 — **`[STACK-07]` precisada** (dhtmlx-gantt 10.0.3, variante Community MIT, vendorizada con `npm pack` en `wwwroot/lib/dhtmlx-gantt/` y anclada por su sha1) y **HU-021 cerrada** (spec `Implementado`, **22/22 DoD**, 5 commits atómicos). Sprint 4 en curso (1/5 HU). **No cambia ninguna otra regla**: STACK-01..06 y STACK-08..11, ARCH, SEC, TEST, DB, UX y LOOP intactos.
+> v1.23 (2026-09-27): HU-021 (Vista Gantt del Plan de Acción) implementada — **Sprint 4 en curso (1/5 HU)**. Tests: **584/584** en verde (baseline real previo a HU-021: **556**, no 554 — ver nota de trazabilidad en el pie). Cobertura BLL **89.02%** (3139/3526) ≥ 70%. ADR-011 (DHTMLX Gantt Community MIT v10.0.3, vendorizado desde el registro oficial de npm) y ADR-012 + `V005` aplicados y verificados en Supabase.
+> v1.22 (2026-09-21): auditoría post-Sprint 3 resuelta 100% (3 críticos, 6 medios, 8 mejoras — ver HANDOFF «Cierre de auditoría post-Sprint 3» y ADR-010). Tests: 554/554 en verde *(conteo drift: el real verificado era 556/556 — corregido en v1.23)*. Pre-Sprint 4, sin HU abiertas.
 > v1.21 (2026-09-20): tabla de estado actualizada tras implementar HU-045 (UI de Gestión de Tenants — alcance ampliado) — Sprint 3 completado (6/6 HU).
 > v1.20 (2026-09-20): tabla de estado actualizada tras implementar HU-020 (Actualización de Progreso de Acciones) — Sprint 3 en curso.
 > v1.19 (2026-09-20): tabla de estado actualizada tras implementar HU-019 (CRUD Acciones del Plan) — Sprint 3 en curso.
@@ -71,7 +73,7 @@ dicegsa-pe/
 - **[STACK-04]** La validación de DTOs en la API **deberá** implementarse con **FluentValidation.AspNetCore**.
 - **[STACK-05]** El frontend **deberá** usar **Bootstrap 5.3** + **jQuery** + **Bootstrap Icons 1.11** tal como define el Design System (`07_DESIGN_SYSTEM.md`).
 - **[STACK-06]** Las gráficas **deberán** implementarse con **Chart.js**, siguiendo la configuración de paleta y estilos definida en `07_DESIGN_SYSTEM.md § 9`.
-- **[STACK-07]** El Gantt del Plan de Acción **deberá** implementarse con **DHTMLX Gantt** (versión Open Source).
+- **[STACK-07]** dhtmlx-gantt 10.0.3 (MIT, npm pack vendorizado en wwwroot/lib/dhtmlx-gantt/, sha1: 4c1c896b9d465892e72647cff335bf755d0ca910)
 - **[STACK-08]** La generación de archivos Excel **deberá** realizarse con **ClosedXML**.
 - **[STACK-09]** La generación de PDFs **deberá** realizarse con **DinkToPdf**.
 - **[STACK-10]** El envío de correos **deberá** realizarse con **MailKit** (SMTP / SendGrid).
@@ -222,6 +224,7 @@ dicegsa-pe/
 | Specs Sprint 1 | `specs/sprint-01/*.spec.md` | ✅ Completo — HU-001, HU-002, HU-003, HU-004, HU-006, HU-007 y HU-008 Implementadas (Sprint 1 sin pendientes) |
 | Specs Sprint 2 | `specs/sprint-02/*.spec.md` | ✅ Completo — HU-005, HU-009..HU-015 Implementadas (Sprint 2: 8/8 HU — Sprint 2 sin pendientes) |
 | Specs Sprint 3 | `specs/sprint-03/*.spec.md` | ✅ Completo — HU-016..HU-020 y HU-045 Implementadas (Sprint 3: 6/6 HU — Sprint 3 sin pendientes) |
+| Specs Sprint 4 | `specs/sprint-04/*.spec.md` | ⏳ En curso — **HU-021 cerrada** (spec `Implementado`, **22/22 DoD**, ADR-011 + ADR-012, `V005` aplicada y verificada, 5 commits atómicos); pendientes HU-022, HU-023, HU-024 y HU-025 (Sprint 4: 1/5 HU — 8 de 28 pts) |
 | Implementación | Código fuente | ⏳ Pendiente |
 
 ---
@@ -239,8 +242,10 @@ dicegsa-pe/
 
 ---
 
-*AGENTS.md — Constitución PE-GOL SaaS · Versión 1.22 · 2026-09-21*
-*v1.22 (2026-09-21): auditoría post-Sprint 3 resuelta 100% (3 críticos, 6 medios, 8 mejoras — ver HANDOFF y ADR-010). Tests: 554/554 en verde. Pre-Sprint 4, sin HU abiertas.*
+*AGENTS.md — Constitución PE-GOL SaaS · Versión 1.24 · 2026-09-27*
+*v1.24 (2026-09-27): cierre documental previo a los commits de HU-021 — **`[STACK-07]` precisada** (dhtmlx-gantt 10.0.3, variante Community MIT, vendorizada con `npm pack` en `wwwroot/lib/dhtmlx-gantt/` y anclada por el sha1 `4c1c896b9d465892e72647cff335bf755d0ca910`) y **HU-021 cerrada** (spec `Implementado`, **22/22 DoD**, tests 584/584, cobertura BLL 89.02%, 5 commits atómicos). Sprint 4 en curso (1/5 HU). **No cambia ninguna otra regla**: STACK-01..06 y STACK-08..11, ARCH, SEC, TEST, DB, UX y LOOP intactos.*
+*v1.23 (2026-09-27): HU-021 (Vista Gantt del Plan de Acción) Implementada — Sprint 4 en curso (1/5 HU). Tests 584/584 en verde (build 0 advertencias / 0 errores) · cobertura BLL 89.02% (3139/3526) · migración `V005__indice_accion_plan_gantt.sql` aplicada y verificada en Supabase Cloud · DHTMLX Gantt Community MIT v10.0.3 vendorizado desde el registro oficial de npm (ADR-011) · `STACK-07` sin cambios, pendiente de precisión de versión/variante por Jorge.*
+*v1.22 (2026-09-21): auditoría post-Sprint 3 resuelta 100% (3 críticos, 6 medios, 8 mejoras — ver HANDOFF y ADR-010). Tests: 554/554 en verde *(conteo drift: el real verificado era 556/556; corregido en v1.23)*. Pre-Sprint 4, sin HU abiertas.*
 *v1.21 (2026-09-20): tabla de estado actualizada tras implementar HU-045 (UI de Gestión de Tenants — alcance ampliado) — Sprint 3 completado (6/6 HU).*
 *v1.20 (2026-09-20): tabla de estado actualizada tras implementar HU-020 (Actualización de Progreso de Acciones) — Sprint 3 en curso.*
 *v1.19 (2026-09-20): tabla de estado actualizada tras implementar HU-019 (CRUD Acciones del Plan) — Sprint 3 en curso.*

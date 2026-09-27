@@ -7,6 +7,10 @@ coverage/
 *.suo
 .vs/
 
+# Claves del Data Protection generadas en Development (HU-021, ASP.NET Core).
+# Se regeneran solas en cada entorno: no se versionan.
+PE-GOL.Aplicacion/App_Data/keys-data-protection/
+
 # ── Secretos locales (NO versionar) ─────────────────────────────────────────
 # Archivo donde se completan las credenciales reales de Supabase
 # (password de BD, anon key, service_role key). Completar localmente y NUNCA commitear.
