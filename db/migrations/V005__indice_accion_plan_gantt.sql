@@ -1,0 +1,31 @@
+-- ============================================================
+-- V005__indice_accion_plan_gantt.sql
+-- ADR-012 (Aceptado 2026-09-27): índice compuesto que cubre el
+-- filtro real de la query del Gantt del Plan de Acción (HU-021,
+-- DAL-G1) — (tenant_id, ciclo_id) y, para el rol JefeArea,
+-- area_id (SEC-07) — y sostiene RNF-001 (< 2 s en p95) con
+-- multi-tenancy.
+-- Autor: Jorge (Dicegsa) / @Arquitecto · Fecha: 2026-09-27
+-- Migración versionada conforme a DB-02 · EJECUTADA y verificada en
+-- Supabase Cloud (2026-09-27, pg_indexes):
+--   idx_accion_plan_ciclo_area ON public.accion_plan
+--     USING btree (tenant_id, ciclo_id, area_id)
+-- ============================================================
+
+-- El DDL base (06_MODELO_DATOS.md L310-312, V000__schema_base.sql)
+-- solo declara idx_accion_plan_objetivo(objetivo_cg_id),
+-- idx_accion_plan_area(area_id) e idx_accion_plan_status(status):
+-- ninguno cubre tenant_id + ciclo_id, que es el filtro obligatorio
+-- de ListarParaGanttAsync. El DDL base NO se modifica — el índice
+-- vive únicamente en esta migración (mismo criterio que V001-V004).
+--
+-- Un único índice cubre los dos roles:
+--   Gerente    (RN-006): prefijo (tenant_id, ciclo_id)
+--   JefeArea   (SEC-07) : coincidencia total (tenant_id, ciclo_id, area_id)
+--
+-- CREATE INDEX sin CONCURRENTLY bloquea escrituras durante la
+-- creación: aceptable en ventana de mantenimiento (pre-deploy,
+-- tabla accion_plan vacía o casi vacía). Ver ADR-012, sección
+-- "Consecuencias".
+CREATE INDEX IF NOT EXISTS idx_accion_plan_ciclo_area
+    ON accion_plan (tenant_id, ciclo_id, area_id);
