@@ -1,3 +1,5 @@
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PE_GOL.Aplicacion.Exceptions;
@@ -6,6 +8,7 @@ using PE_GOL.Aplicacion.Services;
 using PE_GOL.DTO.Requests.Objetivos;
 using PE_GOL.DTO.Responses;
 using PE_GOL.DTO.Responses.Objetivos;
+using PE_GOL.DTO.Responses.PlanOperativo;
 using PE_GOL.Utility.Exceptions;
 
 namespace PE_GOL.Aplicacion.Controllers;
@@ -367,7 +370,66 @@ public class AccionPlanController : Controller
         }
     }
 
+    // ─── Gantt (GET /AccionPlan/Gantt) — JefeArea, Gerente (HU-021) ──────────
+
+    /// <summary>
+    /// Vista Gantt del plan de acción del ciclo activo (Spec HU-021 § UI). Doble capa de
+    /// autorización: la acción declara [Authorize(Roles = "JefeArea,Gerente")] porque la clase la
+    /// tiene pero `Index` la estrecha a JefeArea (RN-007 — el Gerente es el principal beneficiario
+    /// del Gantt multi-área, F7).
+    /// SEC-06: sin query params — ni tenant_id, ni ciclo_id, ni area_id; la API los deduce del JWT.
+    /// 404 de la API = "no hay ciclo activo" = estado de UI (no se pinta banner de error);
+    /// cualquier otro fallo de la API sí lo muestra y la vista se renderiza igual (no se rompe).
+    /// </summary>
+    [Authorize(Roles = "JefeArea,Gerente")]
+    public async Task<IActionResult> Gantt()
+    {
+        try
+        {
+            var gantt = await _apiClient.GetAsync<GanttPlanResponse>("/api/v1/acciones/gantt");
+
+            return View(new AccionPlanGanttViewModel
+            {
+                HayCicloActivo = true,
+                HayAcciones = gantt.Acciones.Count > 0,
+                CicloNombre = gantt.CicloNombre,
+                Escala = gantt.Escala,
+                ConteoPorStatus = gantt.ConteoPorStatus,
+                JsonPlan = SerializarGantt(gantt)
+            });
+        }
+        catch (ApiClientException ex) when (ex.StatusCode == 404)
+        {
+            // Sin ciclo activo: la vista se RENDERIZA con su empty state (UX-05) y sin
+            // TempData["Error"] — no es un fallo, es un estado esperado del dominio (RC-01).
+            _logger.LogInformation("Vista Gantt sin ciclo activo: {Mensaje}", ex.Message);
+            return View(new AccionPlanGanttViewModel { HayCicloActivo = false, HayAcciones = false });
+        }
+        catch (ApiClientException ex)
+        {
+            TempData["Error"] = ex.Message;
+            return View(new AccionPlanGanttViewModel());
+        }
+        catch (UnauthorizedException)
+        {
+            return RedirectToAction("Login", "Auth");
+        }
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Serializa el payload del Gantt para embeberlo en
+    /// &lt;script type="application/json" id="gantt-plan-data"&gt; (SEC-05: se usa
+    /// JavaScriptEncoder.Default, NUNCA UnsafeRelaxedJsonEscaping — con el encoder permisivo una
+    /// descripción que contenga "&lt;/script&gt;" inyectaría markup; con el default viaja escapada
+    /// y el navegador la lee como texto). camelCase para que el JS del front lo consuma directo.
+    /// </summary>
+    private static string SerializarGantt(GanttPlanResponse gantt)
+        => JsonSerializer.Serialize(gantt, new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            Encoder = JavaScriptEncoder.Default
+        });
 
     /// <summary>
     /// Detalle de un CG (GET /api/v1/objetivos-cg/{id} — JefeArea). Null si 404/403 (p. ej. rol

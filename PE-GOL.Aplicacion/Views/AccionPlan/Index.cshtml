@@ -40,6 +40,13 @@
     </p>
 </div>
 
+@* ── Enlace cruzado a la vista Gantt (F7) ── *@
+<div class="d-flex gap-2 mb-3">
+    <a class="btn-pe btn-pe--secondary" asp-action="Gantt">
+        <i class="bi bi-bar-chart-steps" aria-hidden="true"></i> Ver Gantt
+    </a>
+</div>
+
 @if (TempData["Success"] is string mensajeExito)
 {
     <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -127,6 +134,10 @@ else
         <div class="d-flex flex-wrap align-items-center gap-2">
             <span class="cell-codigo">@Model.ObjetivoCgCodigo</span>
             <span class="fw-semibold">@Model.ObjetivoCgDescripcion</span>
+            <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Gantt"
+               title="Ver el plan completo en Gantt">
+                <i class="bi bi-bar-chart-steps" aria-hidden="true"></i> Ver Gantt
+            </a>
             <span class="ms-auto body-sm">Progreso: @((Model.ObjetivoCgProgreso * 100).ToString("0"))%</span>
             <span class="semaforo @ClaseSemaforo(Model.ObjetivoCgSemaforo)">
                 <i class="bi bi-circle-fill" aria-hidden="true"></i> @Model.ObjetivoCgSemaforo

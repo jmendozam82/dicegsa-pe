@@ -461,6 +461,10 @@ body {
 .semaforo--verde    { background: var(--color-verde-bg);    color: #1E6B35; }
 .semaforo--amarillo { background: var(--color-amarillo-bg); color: #8A5E00; }
 .semaforo--rojo     { background: var(--color-rojo-bg);     color: #B71C1C; }
+/* .semaforo--gris — traducción de DS § 5.2 (agregada por el flag F2 de HU-021).
+   Usa el MISMO token que la barra gris del Gantt (--gantt-bar-gris → --color-border-dark)
+   y se emplea como chip de la leyenda de conteos del Gantt (CA #2 · UX-02). Ver DS § 12. */
+.semaforo--gris     { background: var(--color-border-dark); color: var(--color-text-primary); }
 
 /* ── Botones (DS § 5.5) ───────────────────────────────────── */
 .btn-pe {

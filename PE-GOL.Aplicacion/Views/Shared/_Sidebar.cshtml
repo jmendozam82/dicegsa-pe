@@ -1,8 +1,15 @@
 @{
     var controllerActual = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    var actionActual = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
 
-    string ClaseActiva(string controller) =>
-        string.Equals(controllerActual, controller, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    // action es opcional: sin él se comporta como antes (solo compara controller), de
+    // modo que el resaltado de los ítems existentes no cambia (F7 · HU-021). Con él, dos
+    // ítems del MISMO controller ("Plan de Acción" y "Gantt del Plan") nunca se
+    // resaltan a la vez.
+    string ClaseActiva(string controller, string? action = null) =>
+        string.Equals(controllerActual, controller, StringComparison.OrdinalIgnoreCase)
+        && (action is null || string.Equals(actionActual, action, StringComparison.OrdinalIgnoreCase))
+            ? "active" : "";
 }
 <aside class="sidebar" id="sidebar">
     <nav class="sidebar-nav" aria-label="Navegación principal">
@@ -71,6 +78,10 @@
                 <i class="bi bi-bullseye" aria-hidden="true"></i>
                 <span class="sidebar-nav-item__label">Objetivos CG</span>
             </a>
+            <a class="sidebar-nav-item @ClaseActiva("AccionPlan", "Gantt")" asp-controller="AccionPlan" asp-action="Gantt">
+                <i class="bi bi-bar-chart-steps" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Gantt del Plan</span>
+            </a>
         }
 
         @if (User.IsInRole("JefeArea"))
@@ -80,9 +91,13 @@
                 <i class="bi bi-bullseye" aria-hidden="true"></i>
                 <span class="sidebar-nav-item__label">Objetivos CG</span>
             </a>
-            <a class="sidebar-nav-item @ClaseActiva("AccionPlan")" asp-controller="AccionPlan" asp-action="Index">
+            <a class="sidebar-nav-item @ClaseActiva("AccionPlan", "Index")" asp-controller="AccionPlan" asp-action="Index">
                 <i class="bi bi-list-check" aria-hidden="true"></i>
                 <span class="sidebar-nav-item__label">Plan de Acción</span>
+            </a>
+            <a class="sidebar-nav-item @ClaseActiva("AccionPlan", "Gantt")" asp-controller="AccionPlan" asp-action="Gantt">
+                <i class="bi bi-bar-chart-steps" aria-hidden="true"></i>
+                <span class="sidebar-nav-item__label">Gantt del Plan</span>
             </a>
             <a class="sidebar-nav-item @ClaseActiva("Dashboard")" asp-controller="Dashboard" asp-action="JefeArea">
                 <i class="bi bi-speedometer2" aria-hidden="true"></i>

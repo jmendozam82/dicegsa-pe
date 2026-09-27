@@ -7,6 +7,10 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap-icons/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/custom.css" asp-append-version="true" />
+    @* DHTMLX Gantt (HU-021 · STACK-07 · ADR-011) + gantt.css, que es la ÚLTIMA hoja
+       para que sus reglas ganen por precedencia a las de la librería y a custom.css. *@
+    <link rel="stylesheet" href="~/lib/dhtmlx-gantt/codebase/dhtmlxgantt.css" />
+    <link rel="stylesheet" href="~/css/gantt.css" asp-append-version="true" />
 </head>
 <body>
     @if (User.Identity?.IsAuthenticated == true)
@@ -31,6 +35,9 @@
     <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
     <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    @* DHTMLX Gantt (HU-021). Es autocontenido (no depende de jQuery ni de Bootstrap)
+       y va al final del body para no bloquear el render. *@
+    <script src="~/lib/dhtmlx-gantt/codebase/dhtmlxgantt.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

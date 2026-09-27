@@ -1,0 +1,42 @@
+DHTMLX Gantt - Community Edition
+================================
+
+version: 10.0.3
+sha1:    4c1c896b9d465892e72647cff335bf755d0ca910
+fuente:  npm pack dhtmlx-gantt@10.0.3
+registry: https://registry.npmjs.org/dhtmlx-gantt/10.0.3
+vendorizado: 2026-09-27
+licencia: MIT (Copyright (c) 2026 XB Software) - ver LICENSE
+
+Nota de procedencia
+-------------------
+El tarball se obtuvo del registro oficial de npm (`npm pack dhtmlx-gantt@10.0.3`),
+NO del release de GitHub `v10.0.3`: ese release es el repositorio de fuentes y no
+contiene el bundle precompilado `codebase/dhtmlxgantt.js` + `codebase/dhtmlxgantt.css`.
+
+El SHA1 indicado arriba es el `dist.shasum` del tarball publicado por npm
+(`dhtmlx-gantt-10.0.3.tgz`, 1568933 bytes) y fue verificado con
+`Get-FileHash -Algorithm SHA1` sobre el archivo descargado, ANTES de extraerlo.
+El `LICENSE.md` contenido en ese mismo tarball se leyio y confirmo MIT antes de
+copiar ningun archivo.
+
+Archivos vendorizados (copiados verbatim, sin minificar ni parchear)
+--------------------------------------------------------------------
+codebase/dhtmlxgantt.js    631897 bytes  sha1 c5fa7356cb8df3c97896d2f3cb195c607632c66c
+codebase/dhtmlxgantt.css   142729 bytes  sha1 bd9fc68a0599dd959b60fbe1ac068877b3779ae1
+LICENSE                    1099 bytes  sha1 0a5cab17e4ce1fe8a727ee904953474dcc00db9d
+
+Nota sobre la skin
+------------------
+En la version 10.0.3 NO existe el directorio `codebase/skins/` ni el archivo
+`gantt_skin_default.css`: las 8 skins (terrace, dark, meadow, skyblue, broadway,
+material, contrast-white, contrast-black) estan integradas dentro de
+`codebase/dhtmlxgantt.css` como temas basados en la variable CSS
+`--dhx-gantt-theme`, que se activa con el atributo `data-gantt-theme` en `:root`.
+El tema por defecto es `terrace`, declarado en el propio `:root` de
+`dhtmlxgantt.css`. Por tanto no se agrega ningun `<link>` de skin en
+`_Layout.cshtml`.
+
+El tema `terrace` es solo la base visual: el color de las barras lo imponen
+exclusivamente los tokens `--gantt-bar-*` de `wwwroot/css/gantt.css`
+(Design System Seccion 12), nunca la skin.
