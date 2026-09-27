@@ -7,6 +7,7 @@ using PE_GOL.BLL.Interfaces;
 using PE_GOL.DAL.Interfaces;
 using PE_GOL.DTO.Requests.Objetivos;
 using PE_GOL.DTO.Responses.Objetivos;
+using PE_GOL.DTO.Responses.PlanOperativo;
 using PE_GOL.Entity.PlanOperativo;
 using PE_GOL.Utility.Exceptions;
 using PE_GOL.Utility.Helpers;
@@ -16,6 +17,13 @@ namespace PE_GOL.BLL.Services;
 
 public class AccionPlanService : IAccionPlanService
 {
+    /// <summary>
+    /// Abreviaturas de mes en español (01_AS-IS_PE_GOL.md L125) para la escala de 12 meses del
+    /// Gantt (HU-021, CA #1). El índice del array es mes - 1.
+    /// </summary>
+    private static readonly string[] AbreviaturasMeses =
+        ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+
     private readonly IAccionPlanRepository _repository;
     private readonly ICicloRepository _cicloRepository;
     private readonly IObjetivoCgRepository _objetivoCgRepository;
@@ -315,6 +323,145 @@ public class AccionPlanService : IAccionPlanService
             return Enumerable.Empty<HistorialProgresoResponse>();
 
         return await _historialRepository.ListarPorAccionAsync(accionId, _tenantContext.TenantId!.Value, ct);
+    }
+
+    // ─── HU-021 — Vista Gantt del Plan de Acción ─────────────────────────────
+
+    /// <summary>
+    /// Spec HU-021 § Lógica BLL, pasos 1-11. Endpoint de SOLO LECTURA: sin escrituras, sin
+    /// auditoría (estructural — este servicio no depende de ILogAuditoriaRepository) y sin
+    /// transacción. Devuelve el DTO plano; el wrapper ApiResponse&lt;T&gt; lo arma el controller
+    /// de la API (ADR-010 Decisión 1).
+    /// </summary>
+    public async Task<GanttPlanResponse> ObtenerGanttAsync(CancellationToken ct = default)
+    {
+        // 1 · Tenant (SEC-06): del TenantContext (claims del JWT), nunca del request.
+        var tenantId = ObtenerTenantIdOThrow();
+
+        // 2 · Rol (RN-007/RN-006, doble capa): el atributo [Authorize(Roles="JefeArea,Gerente")]
+        // ya lo bloquea en la API; la re-validación protege la invocación desde otra capa (D12 de HU-015).
+        if (_tenantContext.Rol is not ("JefeArea" or "Gerente"))
+            throw new AccesoDenegadoException("Solo el Jefe de Área y el Gerente pueden ver el Gantt del plan de acción.");
+
+        // 3 · Filtro de área (SEC-07): JefeArea → su área; Gerente → null (RN-006, todas).
+        // Un JefeArea sin area_id en el JWT es ACCESO DENEGADO, nunca "todas las áreas".
+        Guid? areaIdFiltro = null;
+        if (_tenantContext.Rol == "JefeArea")
+        {
+            if (_tenantContext.AreaId is null)
+                throw new AccesoDenegadoException("No tiene permisos para ver el Gantt del plan de acción: el token no tiene área asignada.");
+
+            areaIdFiltro = _tenantContext.AreaId.Value;
+        }
+
+        // 4 · Ciclo activo (RC-01): DAL-D1 de HU-015, reutilizado sin cambios.
+        var ciclo = await _cicloRepository.ObtenerCicloActivoAsync(tenantId, ct)
+            ?? throw new NotFoundException("No hay un ciclo activo para el tenant");
+
+        // 5 · Datos: UNA sola query (DAL-G1). Sin paginación y sin filtros del cliente.
+        // F11: el aislamiento por área vive SOLO en la DAL — la BLL devuelve exactamente lo
+        // que recibe, sin un Where(...) en memoria que enmascararía un fallo del DAL.
+        var filas = (await _repository.ListarParaGanttAsync(tenantId, ciclo.Id, areaIdFiltro, ct)).ToList();
+
+        // 10 · Rango del ciclo (CicloFechaHelper.ObtenerRango devuelve DateOnly; conversión
+        // explícita con TimeOnly.MinValue porque las fechas viajan a gantt.config.min/max_date).
+        var (inicio, fin) = CicloFechaHelper.ObtenerRango(ciclo.AñoFiscal, ciclo.MesInicio);
+
+        // 9 · Escala de exactamente 12 meses desde (año_fiscal, mes_inicio), cruzando de año
+        // cuando mes_inicio ≠ 1 (por eso la etiqueta siempre lleva el año).
+        var baseEscala = new DateTime(ciclo.AñoFiscal, ciclo.MesInicio, 1);
+        var escala = new List<GanttMesResponse>(12);
+        for (var i = 0; i < 12; i++)
+        {
+            var mes = baseEscala.AddMonths(i);
+            escala.Add(new GanttMesResponse
+            {
+                Anio = mes.Year,
+                Mes = mes.Month,
+                Etiqueta = $"{AbreviaturasMeses[mes.Month - 1]} {mes.Year}"
+            });
+        }
+
+        // 6-8 · Sin acciones NO es un error (D-C): 200 con Grupos/Acciones vacíos, la escala de
+        // 12 meses y los 4 conteos en 0 — la vista decide el .empty-state (UX-05).
+        var grupos = new List<GanttGrupoResponse>();
+        var totalPorCg = new Dictionary<Guid, int>();
+        var conteoPorStatus = new Dictionary<string, int>
+        {
+            ["NoIniciado"] = 0,
+            ["EnProgreso"] = 0,
+            ["Terminado"] = 0,
+            ["Atrasado"] = 0
+        };
+
+        foreach (var fila in filas)
+        {
+            // 7 · Agrupación por Objetivo CG (CA #3), en el ORDEN que entrega DAL-G1
+            // (oc.orden, oc.codigo): el primero que aparece de cada CG abre su grupo.
+            if (!totalPorCg.TryGetValue(fila.ObjetivoCgId, out var accionesDelCg))
+            {
+                grupos.Add(new GanttGrupoResponse
+                {
+                    ObjetivoCgId = fila.ObjetivoCgId,
+                    Codigo = fila.ObjetivoCodigo,
+                    Descripcion = fila.ObjetivoDescripcion,
+                    AreaId = fila.AreaId,
+                    AreaCodigo = fila.AreaCodigo,
+                    AreaNombre = fila.AreaNombre,
+                    // Progreso y Semáforo del CG se LEEN tal cual (DB-04): no se recalculan.
+                    Progreso = fila.ObjetivoProgreso,
+                    Semaforo = fila.ObjetivoSemaforo,
+                    TotalAcciones = 0
+                });
+                accionesDelCg = 0;
+            }
+
+            accionesDelCg++;
+            totalPorCg[fila.ObjetivoCgId] = accionesDelCg;
+
+            // 8 · Conteo por status (RF-031 parcial) sobre las filas ya cargadas (DB-04).
+            conteoPorStatus[fila.Status] = conteoPorStatus.TryGetValue(fila.Status, out var previo)
+                ? previo + 1
+                : 1;
+        }
+
+        // D-K · TotalAcciones se cuenta en BLL (no hay COUNT en SQL: una sola query).
+        foreach (var grupo in grupos)
+            grupo.TotalAcciones = totalPorCg[grupo.ObjetivoCgId];
+
+        // 11 · Mapeo 1:1 de la fila de DAL-G1. Status, Progreso y Peso se copian TAL CUAL
+        // (D-M/F5: el Gantt NO reimplementa RN-017; el color es el mismo del listado de HU-019).
+        var acciones = filas.Select(fila => new GanttAccionResponse
+        {
+            Id = fila.Id,
+            ObjetivoCgId = fila.ObjetivoCgId,
+            AreaId = fila.AreaId,
+            Codigo = fila.Codigo,
+            Descripcion = fila.Descripcion,
+            FechaInicio = fila.FechaInicio,
+            FechaVencimiento = fila.FechaVencimiento,
+            Progreso = fila.Progreso,
+            Status = fila.Status,
+            Clasificacion = fila.Clasificacion,
+            TipoPresupuesto = fila.TipoPresupuesto,
+            Peso = fila.Peso,
+            ResponsableNombre = fila.ResponsableNombre,
+            Orden = fila.Orden
+        }).ToList();
+
+        return new GanttPlanResponse
+        {
+            CicloId = ciclo.Id,
+            CicloNombre = ciclo.Nombre,
+            AñoFiscal = ciclo.AñoFiscal,
+            MesInicio = ciclo.MesInicio,
+            FechaInicioCiclo = inicio.ToDateTime(TimeOnly.MinValue),
+            FechaFinCiclo = fin.ToDateTime(TimeOnly.MinValue),
+            Escala = escala,
+            Grupos = grupos,
+            Acciones = acciones,
+            ConteoPorStatus = conteoPorStatus
+        };
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────
