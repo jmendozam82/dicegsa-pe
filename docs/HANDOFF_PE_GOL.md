@@ -583,7 +583,10 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 **Deriva documental detectada y corregida.** `wwwroot/css/gantt.css` había divergido de este Design System: los tokens `--gantt-altura` y `--gantt-tooltip-ancho` **ya estaban en el archivo** pero **no en el DS** (§ 12.1), y § 12.5 documentaba un `max-width: 320px` literal que el archivo ya no tenía. Como el DS es la fuente de verdad de estilos ([UX-01]) y `gantt.css` es su traducción literal, la **deriva estaba en el DS**: se sincronizó § 12.1 (2 tokens + la tabla de contraste «lo lee el JS / solo lo lee el CSS»), § 12.3 (altura acotada como requisito funcional) y § 12.5 (ancho por token + las 2 razones de por qué las reglas del tooltip no van prefijadas con `.gantt-pe`). **Sin cambios en clases ni tokens de color.**
 
-**Artefactos:** `docs/07_DESIGN_SYSTEM.md` § 12.1 / § 12.3 / § 12.5 (sincronizados con `gantt.css`) · `specs/sprint-04/HU-021.spec.md` (§ «Validación visual», sin tocar los 22/22 DoD) · `AGENTS.md` v1.25 · `PE-GOL.Aplicacion/wwwroot/js/gantt-plan.js` + `wwwroot/css/gantt.css` (los 6 fixes, **sin commitear** — los hace Jorge).
+**Artefactos:** `docs/07_DESIGN_SYSTEM.md` § 12.1 / § 12.3 / § 12.5 (sincronizados con `gantt.css`) · `specs/sprint-04/HU-021.spec.md` (§ «Validación visual», sin tocar los 22/22 DoD) · `AGENTS.md` v1.25 · `PE-GOL.Aplicacion/wwwroot/js/gantt-plan.js` + `wwwroot/css/gantt.css` (los 6 fixes, **commiteados por Jorge** (`dbbe423` + `53c70cb`)).
+
+**Mejora futura acordada (no implementada, no bloquea nada).** Multiselección del filtro de status del Gantt (seleccionar varios status a la vez). Decisión de interfaz **abierta**: A — `<select multiple>` nativo reutilizando `.form-pe-select` (0 CSS nuevo, sin ADR, UX más pobre) o B — chips de filtro con los tokens del semáforo (mejor UX, exige documentar el componente en `07_DESIGN_SYSTEM.md`; no reutilizar `.semaforo--*`, reservado al semáforo por [UX-02]). **Jorge decidió dejarla como mejora futura.** El filtro de un solo valor ya funciona (fue el defecto 5 de la sección «Validación visual»).
+
 
 ---
 
