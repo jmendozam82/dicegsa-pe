@@ -868,8 +868,10 @@ Esta sección es la **fuente de verdad** de los estilos del componente [UX-01]. 
 | `--gantt-bar-rojo` | Barra Rojo | `#EA4335` | `--color-rojo` | Acción `Atrasado` |
 | `--gantt-bar-gris` | Barra Gris | `#CBD5E1` | `--color-border-dark` | Acción `NoIniciado` · chip `.semaforo--gris` |
 | `--gantt-bar-cg` | Barra CG | `#0B2545` | `--color-navy` | Barra resumen del Objetivo CG (**neutro oscuro, NO un semáforo**) |
-| `--gantt-row-height` | Alto de fila | `34px` | — | Altura de fila de la grilla y de la barra |
-| `--gantt-scale-height` | Alto de escala | `60px` | — | Alto de la escala (dos filas: año + mes) |
+| `--gantt-row-height` | Alto de fila | `34px` | — | Altura de fila de la grilla y de la barra · **lo lee el JS** (`tokenPx`) |
+| `--gantt-scale-height` | Alto de escala | `60px` | — | Alto de la escala (dos filas: año + mes) · **lo lee el JS** (`tokenPx`) |
+| `--gantt-tooltip-ancho` | Ancho del tooltip | `360px` | — | Ancho máximo de la caja del tooltip (§ 12.5) · **solo lo lee el CSS** |
+| `--gantt-altura` | Alto del contenedor | `clamp(420px, 68vh, 760px)` | — | Alto **acotado** de `#gantt-pe` (§ 12.3) · **solo lo lee el CSS** |
 
 ```css
 :root {
@@ -880,8 +882,23 @@ Esta sección es la **fuente de verdad** de los estilos del componente [UX-01]. 
     --gantt-bar-cg:         var(--color-navy);          /* #0B2545 */
     --gantt-row-height:     34px;
     --gantt-scale-height:   60px;
+    --gantt-tooltip-ancho:  360px;
+    --gantt-altura:         clamp(420px, 68vh, 760px);
 }
 ```
+
+> ⚠️ **Los dos tokens añadidos el 2026-09-27 no documentaban ninguna restricción, y esa omisión ya causó un bug.** Antes de usarlos, leer el bloque siguiente.
+
+> ⚠️ **Contraste obligatorio: dos tokens se leen desde el JS y dos no.** La anotación «lo lee el JS / solo lo lee el CSS» de la tabla no es decorativa: separa dos grupos de tokens que **no admiten el mismo formato** y que, por tanto, **no son intercambiables**.
+>
+> | Grupo | Tokens | Consumidor | Formato admitido |
+> |---|---|---|---|
+> | **Leídos por el JS** | `--gantt-row-height` · `--gantt-scale-height` | `tokenPx()` en `gantt-plan.js` (L63-67), que los aplica a `gantt.config.row_height` (L474) y `gantt.config.scale_height` (L475) | **Solo `px` planos.** El parseo es `parseInt(valorToken, 10)`, que devuelve `NaN` ante `rem`, `vh`, `%` o `clamp()`, y el `isNaN` de la función **cae en silencio al valor por defecto** (`34` y `60`): sin error en consola ni en red, la fila o la escala se dimensionan al valor por defecto y el token deja de mandar |
+> | **Leídos solo por el CSS** | `--gantt-altura` · `--gantt-tooltip-ancho` | Únicamente `gantt.css` | **Cualquier longitud CSS válida**, incluidas las relativas y `clamp()` |
+>
+> Regla operativa: al añadir o modificar un token `--gantt-*`, comprobar **primero** si `gantt-plan.js` lo lee; si lo lee, **no** convertirlo a `rem` / `vh` / `%` / `clamp()`. Convertirlos rompe el componente de forma silenciosa — es exactamente el modo de fallo detectado en la validación visual del 2026-09-27.
+
+> **Por qué `--gantt-altura` tiene que estar acotada:** DHTMLX Gantt **mide su contenedor** para dimensionar el chart. Sin un techo, con `height: auto` las filas hacen crecer el contenedor, el chart se vuelve a medir más alto y el resultado es un **loop de retroalimentación de altura** que la grilla «baja infinitamente». El `clamp(420px, 68vh, 760px)` da un mínimo usable en pantallas bajas, sigue la altura de la ventana y pone el techo que corta el loop; cumple la regla de funcionalidad ≥ 768px **sin necesidad de breakpoint** ([UX-06]). Detalle y sintoma en § 12.3.
 
 > **Por qué `--color-border-dark` y no `--color-border` para el gris:** `#E2E8F0` es demasiado claro sobre la grilla blanca y la barra desaparecería. `#CBD5E1` mantiene el contraste sin competir con los tres colores de semáforo.
 
@@ -909,6 +926,7 @@ Esta sección es la **fuente de verdad** de los estilos del componente [UX-01]. 
 ```css
 .gantt-pe {
     width: 100%;
+    height: var(--gantt-altura);   /* REQUISITO, no decoración — ver nota abajo */
     background: var(--color-bg-card);
     border: 1px solid var(--color-border);
     border-radius: 10px;
@@ -929,6 +947,10 @@ Esta sección es la **fuente de verdad** de los estilos del componente [UX-01]. 
 .gantt-pe .gantt_task_scale    { height: 28px; }
 .gantt-pe .gantt_task_cell     { border-top: 1px solid var(--color-border); }
 ```
+
+> ⚠️ **`height` en `.gantt-pe` es un REQUISITO FUNCIONAL, no una decoración.** El `height: var(--gantt-altura)` (token añadido el 2026-09-27) **no se puede quitar ni dejar en `auto`**. Motivo, medido sobre el bundle `10.0.3`: DHTMLX **dimensiona el chart midiendo su contenedor**; con `height: auto`, cada fila renderizada hace crecer el contenedor, DHTMLX lo vuelve a medir **más alto**, y el ciclo se realimenta: la grilla «bajaba infinitamente». Con `--gantt-altura: clamp(420px, 68vh, 760px)` el alto tiene suelo y techo, así que la realimentación se corta y el overflow interno lo gestiona el propio chart.
+>
+> El síntoma se agravaba por un segundo defecto ya corregido (el filtro de § 12 no eliminaba las tareas filtradas y hacía crecer el dataset en cada cambio, ver `docs/HANDOFF_PE_GOL.md` § «Validación visual de HU-021»); la causa raíz del crecimiento, aun así, era la altura sin acotar. **No borrar la línea** — reintroducirla no produce ningún error visible, solo el scroll infinito de vuelta.
 
 ### 12.4 Barras
 
@@ -964,8 +986,10 @@ Esta sección es la **fuente de verdad** de los estilos del componente [UX-01]. 
     padding: 10px 12px;
     border-radius: 6px;
     box-shadow: var(--shadow-modal);
-    max-width: 320px;
+    max-width: var(--gantt-tooltip-ancho);   /* token añadido el 2026-09-27; antes, literal en la regla */
     line-height: 1.5;
+    white-space: normal;      /* anula el `nowrap` heredado → el max-width entra en juego */
+    overflow-wrap: anywhere;  /* parte textos largos (descripcion es TEXT) sin desbordar */
 }
 .gantt-tooltip__title  { font: 600 12px 'Inter'; margin-bottom: 6px; }
 .gantt-tooltip__cg     { font: 600 12px 'DM Sans'; margin-bottom: 6px; }
@@ -973,6 +997,13 @@ Esta sección es la **fuente de verdad** de los estilos del componente [UX-01]. 
 ```
 
 > **El contenido del tooltip siempre se escapa en JS** (`& < > " '`) antes de inyectarse como HTML [SEC-05]. El estilo vive acá; el escape, en `gantt-plan.js`.
+
+> ⚠️ **Estas reglas NO pueden ir prefijadas con `.gantt-pe`, a diferencia de las de § 12.3 y § 12.4.** Es la única excepción del bloque, y hay dos razones independientes:
+>
+> 1. **El nodo vive fuera de `#gantt-pe`.** El `.gantt_tooltip` lo inserta la librería en **`document.body`** (`r = document.body; … r.appendChild(s)`, bundle `10.0.3`, clase del tooltip), o sea que **no es descendiente de `.gantt-pe`**: un selector `.gantt-pe .gantt_tooltip` no casaría nunca y la regla se aplicaría por cero elementos, sin avisar.
+> 2. **`white-space` es una propiedad HEREDADA** y la librería la declara `nowrap` en ese nodo externo. El div interior la heredaba, así que **`max-width` no limitaba nada**: sin envuelto, la caja crecía al ancho de la línea y el tooltip se salía de su caja. Basta con **anularla en `.gantt-tooltip`**: una declaración directa **siempre** gana a un valor heredado, y todo el texto vive dentro de ese div (la librería hace `node.innerHTML = <nuestro html>`, no queda texto suelto en el contenedor externo). `overflow-wrap: anywhere` cubre el caso restante — un `descripcion` de tipo `TEXT` sin espacios.
+>
+> Corolario: si alguna vez se cambia el nombre de la clase interna del tooltip, hay que **repetir la declaración de `white-space: normal`**, porque el `nowrap` heredado vuelve a ganar por omisión.
 
 ### 12.6 Leyenda
 
@@ -1034,3 +1065,4 @@ Consecuencias de diseño que se derivan de esa limitación (ya reflejadas en `sp
 *Alineado al estilo Freiroute TMS · Bootstrap 5.3 · Bootstrap Icons 1.11.*
 *§ 5.2 (`.semaforo--gris`) y § 12 (Gantt) agregados el 2026-09-27 — HU-021, flags F1/F2 · `adrs/ADR-011.md`.*
 *§ 12 nota de intro ampliada el 2026-09-27 (procedencia npm de la librería y temas integrados en `dhtmlxgantt.css`, sin archivo de skin aparte) — sin cambios en tokens, clases ni ejemplos.*
+*§ 12 sincronizado con `gantt.css` el 2026-09-27 tras la validación visual de HU-021: añadidos los tokens **`--gantt-tooltip-ancho: 360px`** (§ 12.1, § 12.5) y **`--gantt-altura: clamp(420px, 68vh, 760px)`** (§ 12.1, § 12.3), documentado el **contraste obligatorio** entre los tokens que lee `tokenPx()` y los que solo lee el CSS, y marcada la altura acotada del contenedor como **requisito funcional**. Sin cambios en las clases ni en los tokens de color.*
