@@ -25,11 +25,17 @@
     --gantt-bar-cg:         var(--color-navy);          /* #0B2545 */
     --gantt-row-height:     34px;
     --gantt-scale-height:   60px;
+    --gantt-tooltip-ancho:  360px;
+    --gantt-altura:         clamp(420px, 68vh, 760px);
 }
 
 /* ── 12.3 Contenedor + grilla izquierda ────────────────────── */
+/* La altura DEBE estar acotada: DHTMLX mide su contenedor para dimensionar
+   el chart y, con `height: auto`, las filas hacen crecer el contenedor, que
+   vuelve a medirse más alto → loop de crecimiento (scroll infinito). NO borrar. */
 .gantt-pe {
     width: 100%;
+    height: var(--gantt-altura);
     background: var(--color-bg-card);
     border: 1px solid var(--color-border);
     border-radius: 10px;
@@ -61,7 +67,21 @@
 
 /* ── 12.5 Tooltip ──────────────────────────────────────────── */
 /* El contenido lo inyecta gantt.templates.tooltip_text y SIEMPRE llega
-   escapado (esc() en gantt-plan.js) — SEC-05. */
+   escapado (esc() en gantt-plan.js) — SEC-05.
+
+   OJO — estas reglas NO pueden ir prefijadas con `.gantt-pe` (como las de
+   § 12.3/§ 12.4): el `.gantt_tooltip` de la librería se inserta con
+   `r.appendChild(s)` donde `r = document.body` (bundle 10.0.3, clase del
+   tooltip), o sea vive FUERA de `#gantt-pe`. Un `.gantt-pe .gantt_tooltip`
+   no casaría nunca.
+
+   `white-space` ES UNA PROPIEDAD HEREDADA y el `.gantt_tooltip` de la
+   librería la declara como `nowrap`; nuestro div la heredaba, así que el
+   `max-width` de abajo no limitaba nada: con `nowrap` el texto no envuelve y
+   la caja crece al ancho de la línea. Basta con anularla AQUÍ: una
+   declaración directa SIEMPRE gana a un valor heredado, y además todo el
+   texto vive dentro de este div (la librería hace `node.innerHTML = <nuestro
+   html>`, no hay texto suelto en el contenedor externo). */
 .gantt-tooltip {
     background: var(--color-text-primary);
     color: #FFFFFF;
@@ -69,8 +89,10 @@
     padding: 10px 12px;
     border-radius: 6px;
     box-shadow: var(--shadow-modal);
-    max-width: 320px;
+    max-width: var(--gantt-tooltip-ancho);
     line-height: 1.5;
+    white-space: normal;      /* anula el `nowrap` heredado → el max-width entra en juego */
+    overflow-wrap: anywhere;  /* parte textos/URLs largos sin desbordar (descripcion es TEXT) */
 }
 .gantt-tooltip__title  { font: 600 12px 'Inter'; margin-bottom: 6px; }
 .gantt-tooltip__cg     { font: 600 12px 'DM Sans'; margin-bottom: 6px; }

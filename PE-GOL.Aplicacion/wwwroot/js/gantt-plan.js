@@ -61,18 +61,42 @@
     // Lee una longitud del Design System (px) para no duplicar el valor en JS.
     // Los tokens --gantt-row-height / --gantt-scale-height son la única fuente.
     function tokenPx(nombre, porDefecto) {
-        var declarado = window.getComputedStyle(document.documentElement).getPropertyValue(nombre);
-        var px = parseInt(declared, 10);
+        var valorToken = window.getComputedStyle(document.documentElement).getPropertyValue(nombre);
+        var px = parseInt(valorToken, 10);
         return isNaN(px) ? porDefecto : px;
     }
 
+    // Convierte una fecha del payload a Date, o null si no es utilizable.
+    // El payload llega en ISO 8601 CON hora ("2026-03-01T00:00:00"); la forma de solo
+    // fecha ("2026-03-01") se ancla a medianoche LOCAL, porque new Date("2026-03-01")
+    // la interpreta como UTC y en huso negativo la desplazaría un día atrás.
+    function aFecha(valor) {
+        if (valor === null || valor === undefined || valor === '') {
+            return null;
+        }
+        if (valor instanceof Date) {
+            return isNaN(valor.getTime()) ? null : valor;
+        }
+        if (typeof valor === 'string') {
+            var soloFecha = /^(\d{4})-(\d{2})-(\d{2})$/.exec(valor);
+            if (soloFecha) {
+                return new Date(Number(soloFecha[1]), Number(soloFecha[2]) - 1, Number(soloFecha[3]));
+            }
+        }
+        var d = new Date(valor);
+        return isNaN(d.getTime()) ? null : d;
+    }
+
     function fecha(d) {
-        if (!(d instanceof Date) || isNaN(d.getTime())) {
+        // DHTMLX entrega Date tras el parseo; se acepta también el string crudo por
+        // si el tooltip llegara con el valor sin parsear del payload.
+        var v = aFecha(d);
+        if (v === null) {
             return '—';
         }
-        var dia = ('0' + d.getDate()).slice(-2);
-        var mes = ('0' + (d.getMonth() + 1)).slice(-2);
-        return dia + '/' + mes + '/' + d.getFullYear();
+        var dia = ('0' + v.getDate()).slice(-2);
+        var mes = ('0' + (v.getMonth() + 1)).slice(-2);
+        return dia + '/' + mes + '/' + v.getFullYear();
     }
 
     // OJO — dos escalas distintas de progreso en el dominio (hallazgo 16 del spec):
@@ -113,7 +137,9 @@
                 continue;
             }
 
-            var delGrupo = [];
+            // 1) Hijas que sobreviven al filtro. Se calculan ANTES de emitir el padre
+            //    porque el resumen del CG necesita el min(inicio)/max(vencimiento) de ellas.
+            var hijas = [];
             for (var j = 0; j < acciones.length; j++) {
                 var a = acciones[j];
                 if (a.objetivoCgId !== g.objetivoCgId) {
@@ -128,39 +154,73 @@
                 if (filtros.areaId && a.areaId !== filtros.areaId) {
                     continue;
                 }
-                delGrupo.push({
-                    // id con prefijo en el padre para no colisionar con el GUID de la acción.
-                    id: 'cg-' + g.objetivoCgId,
-                    text: g.codigo + ' · ' + g.descripcion,
-                    type: 'project',
-                    parent: 0,
-                    open: true,
-                    progresoCg: g.progreso,
-                    semaforoCg: g.semaforo,
-                    areaCodigo: g.areaCodigo
-                });
-                delGrupo.push({
-                    id: a.id,
-                    parent: 'cg-' + g.objetivoCgId,
-                    text: a.codigo + ' · ' + a.descripcion,
-                    // DHTMLX espera fecha fin INCLUSIVA: 01/03 → 30/06 se representa
-                    // con start_date 2026-03-01 y end_date 2026-06-30 (no 01/07).
-                    start_date: a.fechaInicio,
-                    end_date: a.fechaVencimiento,
-                    tipo: 'task',
-                    progreso: a.progreso,
-                    status: a.status,
-                    clasificacion: a.clasificacion,
-                    tipoPresupuesto: a.tipoPresupuesto,
-                    responsable: a.responsableNombre,
-                    peso: a.peso,
-                    areaId: a.areaId
-                });
+                hijas.push(a);
             }
 
             // Padre sin hijas que sobrevivan → no se dibuja (evita grupos vacíos).
-            for (var k = 0; k < delGrupo.length; k++) {
-                tareas.push(delGrupo[k]);
+            if (hijas.length === 0) {
+                continue;
+            }
+
+            // 2) Fechas del padre = unión (min inicio / max vencimiento) de sus hijas.
+            //    Un type:"project" SIN start_date válido hace que DHTMLX 10 lance en
+            //    gantt.parse() "Invalid start_date argument for calculateEndDate method":
+            //    su rollup interno deriva el fin de un inicio inexistente. Si alguna
+            //    fecha viniera inválida se cae al rango del ciclo para no dejar al padre
+            //    sin fecha (el MVC solo renderiza esta vista con ciclo activo).
+            var inicio = null;
+            var fin = null;
+            for (var h = 0; h < hijas.length; h++) {
+                var fInicio = aFecha(hijas[h].fechaInicio);
+                var fFin = aFecha(hijas[h].fechaVencimiento);
+                if (fInicio && (inicio === null || fInicio < inicio)) {
+                    inicio = fInicio;
+                }
+                if (fFin && (fin === null || fFin > fin)) {
+                    fin = fFin;
+                }
+            }
+            if (inicio === null || fin === null || fin < inicio) {
+                inicio = aFecha(datos.fechaInicioCiclo) || inicio;
+                fin = aFecha(datos.fechaFinCiclo) || fin;
+            }
+
+            // 3) UN solo padre por CG — id con prefijo para no colisionar con el GUID de
+            //    la acción — seguido de sus hijas.
+            tareas.push({
+                id: 'cg-' + g.objetivoCgId,
+                text: g.codigo + ' · ' + g.descripcion,
+                type: 'project',
+                parent: 0,
+                open: true,
+                start_date: inicio,
+                end_date: fin,
+                progresoCg: g.progreso,
+                semaforoCg: g.semaforo,
+                areaCodigo: g.areaCodigo
+            });
+
+            for (var k = 0; k < hijas.length; k++) {
+                var accion = hijas[k];
+                tareas.push({
+                    id: accion.id,
+                    parent: 'cg-' + g.objetivoCgId,
+                    text: accion.codigo + ' · ' + accion.descripcion,
+                    // DHTMLX espera fecha fin INCLUSIVA: 01/03 → 30/06 se representa
+                    // con start_date 2026-03-01 y end_date 2026-06-30 (no 01/07).
+                    // Se pasa el payload tal cual: llega en ISO 8601 con hora
+                    // ("2026-03-01T00:00:00") y DHTMLX >= 9.1.3 lo parsea solo.
+                    start_date: accion.fechaInicio,
+                    end_date: accion.fechaVencimiento,
+                    tipo: 'task',
+                    progreso: accion.progreso,
+                    status: accion.status,
+                    clasificacion: accion.clasificacion,
+                    tipoPresupuesto: accion.tipoPresupuesto,
+                    responsable: accion.responsableNombre,
+                    peso: accion.peso,
+                    areaId: accion.areaId
+                });
             }
         }
 
@@ -271,7 +331,28 @@
         contenedor.classList.remove('d-none');
 
         // links SIEMPRE vacío: accion_plan no tiene columna de dependencia (fuera de alcance).
-        gantt.parse({ data: tareas, links: [] });
+        //
+        // clearAll() ANTES de parse() — no es cosmético, es lo que hace que el filtro
+        // FILTRE. En 10.0.3 ninguno de los dos parse resetea el store: el de gantt es
+        //   parse:function(e){ … var t=this._parseInner(e); this._buildTree(t); this.filter(); … }
+        // y el de datapull termina en _parseInner con
+        //   this.pull.hasOwnProperty(t.id) || this.fullOrder.push(t.id), … this.pull[t.id]=t
+        // es decir FUSIONA por id. Nuestros ids son estables (GUID de la acción y
+        // 'cg-'+objetivoCgId), así que las acciones que el filtro deja fuera nunca se
+        // borraban de `pull` y seguían dibujadas: el dataset solo CRECÍA en cada
+        // cambio de filtro. Efecto secundario cubierto por este fix: cada parse
+        // re-empujaba ids a `fullOrder`, que también inflaba la grilla — el "bajaba
+        // infinitamente" que se reportó era en parte ESTE bug, no solo el `height:auto`
+        // del contenedor (ya acotado por --gantt-altura).
+        //
+        // gantt.silent() (que sí existe en 10.0.3) envuelve el clearAll+parse para no
+        // despachar los eventos ni los refresh intermedios. NO evita el `render()` final
+        // de gantt.clearAll() — ese no consulta _skip_refresh — pero como ambas llamadas
+        // son síncronas en el mismo task, el navegador no pinta el estado vacío en medio.
+        gantt.silent(function () {
+            gantt.clearAll();
+            gantt.parse({ data: tareas, links: [] });
+        });
     }
 
     // ── Templates (CA #2, CA #4) ─────────────────────────────
@@ -352,7 +433,16 @@
         gantt.plugins({ tooltip: true });
 
         gantt.config.date_format = '%d/%m/%Y';
-        gantt.config.read_date_format = '%Y-%m-%d';
+        // El payload llega en ISO 8601 CON hora ("2026-03-01T00:00:00") y DHTMLX >= 9.1.3
+        // lo detecta y parsea solo (docs: "Loading dates in ISO format"), así que no hace
+        // falta ninguna config de lectura. Lo anterior (`read_date_format`) se eliminó de
+        // la librería en la v8 y en 10.0.3 no existe: 0 referencias en el bundle, inerte.
+        // Descartadas también las dos alternativas que parecen equivalentes pero NO lo son
+        // (medido contra el bundle 10.0.3): `gantt.config.xml_date` está marcada como
+        // REEMPLAZADA por `date_format` en el changelog, y tanto su forma de objeto
+        // {parse_date, format_date} como su forma-cadena se IGNORAN en silencio ante una
+        // fecha ISO (el parseo va por la autodetección, no por ese config). Para imponer un
+        // parse propio la API vigente es gantt.templates.parse_date / format_date.
 
         // CA #1 — escala de exactamente 12 meses, desde ciclo.mes_inicio.
         // Con mes_inicio ≠ 1 la escala cruza de año (fila superior: 2026, 2027).
@@ -360,8 +450,27 @@
             { unit: 'year', step: 1, format: function (d) { return d.getFullYear(); } },
             { unit: 'month', step: 1, format: function (d) { return MESES_ABREV[d.getMonth()]; } }
         ];
-        gantt.config.min_date = new Date(datos.fechaInicioCiclo);
-        gantt.config.max_date = new Date(datos.fechaFinCiclo);
+
+        // Rango de la escala = ciclo activo. OJO: las claves son start_date / end_date,
+        // NO min_date / max_date — esas pertenecen al estado interno de la librería y no
+        // existen en su config (0 referencias en los defaults de 10.0.3), por lo que antes
+        // no tenían efecto. Ambas deben fijarse juntas o DHTMLX las ignora, y su valor es
+        // un Date (docs de gantt.config.start_date). DHTMLX las alinea a la unidad de la
+        // escala, así que el rango cubre los 12 meses exactos del ciclo.
+        var inicioCiclo = aFecha(datos.fechaInicioCiclo);
+        var finCiclo = aFecha(datos.fechaFinCiclo);
+        if (inicioCiclo && finCiclo) {
+            gantt.config.start_date = inicioCiclo;
+            gantt.config.end_date = finCiclo;
+        }
+
+        // El default de DHTMLX 10.0.3 para show_tasks_outside_timescale es FALSE y su filtro
+        // interno descarta las tareas fuera de la escala; y AccionPlanCreateRequestValidator solo
+        // valida NotEmpty en las fechas (una acción puede salirse del rango de su ciclo), por eso
+        // se activa: que la acción se vea antes que ocultarla, con la escala anclada a los 12 meses
+        // del ciclo (CA #1). Debe fijarse antes de gantt.init(): el filtro corre en el 1er render.
+        gantt.config.show_tasks_outside_timescale = true;
+
         gantt.config.row_height = tokenPx('--gantt-row-height', 34);
         gantt.config.scale_height = tokenPx('--gantt-scale-height', 60);
 
