@@ -6,6 +6,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 
+// HU-022: límites multipart/Kestrel para 5 × 20 MB = 100 MB + 6 MB overhead = 106 MB
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = 106_000_000;
+});
+builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 106_000_000);
+
 // ── Data protection: persiste las llaves en disco (App_Data/ bajo ContentRoot). La llave
 //    por defecto es efímera por proceso → reiniciar invalidaba el cookie de sesión del
 //    usuario (warn "Error unprotecting the session cookie" y bounce a Login). Con

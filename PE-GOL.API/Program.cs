@@ -25,6 +25,13 @@ builder.Host.UseSerilog((ctx, lc) => lc
 
 builder.Services.AddControllers();
 
+// HU-022: límites multipart/Kestrel para 5 × 20 MB = 100 MB + 6 MB overhead = 106 MB
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = 106_000_000;
+});
+builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 106_000_000);
+
 // Validación de forma del request (FluentValidation 11+): auto-validation + registro de validators.
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
