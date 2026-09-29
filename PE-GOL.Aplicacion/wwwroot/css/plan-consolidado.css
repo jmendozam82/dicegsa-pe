@@ -1,0 +1,80 @@
+/* ============================================================
+   PE-GOL SaaS — Vista Consolidada del Plan (HU-023)
+   plan-consolidado.css · estilos específicos de la vista
+   ============================================================ */
+
+/* ── Paginación (DS § 5.4 — controles de paginación) ─────── */
+.pagination-pe {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 4px;
+}
+
+.pagination-pe .page-item {
+    display: inline-flex;
+}
+
+.pagination-pe .page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border-dark);
+    border-radius: 6px;
+    background: var(--color-bg-card);
+    color: var(--color-text-primary);
+    font: 500 13px var(--font-body);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.pagination-pe .page-link:hover {
+    background: #F8FAFC;
+    border-color: var(--color-action);
+    color: var(--color-action);
+}
+
+.pagination-pe .page-item.active .page-link {
+    background: var(--color-action);
+    border-color: var(--color-action);
+    color: #FFFFFF;
+}
+
+.pagination-pe .page-item.disabled .page-link {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* ── Resumen en cabecera ─────────────────────────────────── */
+.resumen-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ── Tabla consolidada ───────────────────────────────────── */
+#tablaConsolidado .cell-truncate {
+    max-width: 200px;
+}
+
+/* ── Loading states ──────────────────────────────────────── */
+.btn-pe:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* ── Responsive (DS § 11) ────────────────────────────────── */
+@media (max-width: 767px) {
+    .pagination-pe .page-link {
+        min-width: 32px;
+        height: 32px;
+        padding: 0 8px;
+        font-size: 12px;
+    }
+}

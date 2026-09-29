@@ -11,6 +11,7 @@
        para que sus reglas ganen por precedencia a las de la librería y a custom.css. *@
     <link rel="stylesheet" href="~/lib/dhtmlx-gantt/codebase/dhtmlxgantt.css" />
     <link rel="stylesheet" href="~/css/gantt.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
     @if (User.Identity?.IsAuthenticated == true)

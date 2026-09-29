@@ -1,0 +1,254 @@
+@model PlanConsolidadoViewModel
+@{
+    ViewData["Title"] = "Plan Consolidado";
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Contenido</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Plan Consolidado</span>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-3">
+        <div>
+            <h1 class="page-header__title">Plan Consolidado</h1>
+            <p class="page-header__subtitle">
+                @if (Model.HayCicloActivo)
+                {
+                    <text>Vista consolidada de todas las áreas del ciclo <strong>@Model.CicloNombre</strong>.</text>
+                }
+                else
+                {
+                    <text>Vista consolidada de todas las áreas del ciclo activo.</text>
+                }
+            </p>
+        </div>
+        <div class="ms-auto">
+            <button type="button" class="btn-pe btn-pe--primary" id="btnExportarExcel" disabled>
+                <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Exportar Excel
+            </button>
+        </div>
+    </div>
+</div>
+
+@if (TempData["Error"] is string mensajeError)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @mensajeError
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@if (!Model.HayCicloActivo)
+{
+    @* ── Estado vacío 1: sin ciclo activo (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-calendar-range empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">No hay un ciclo activo</h3>
+            <p class="empty-state__message">El plan consolidado se construye sobre el ciclo activo del tenant. Activa un ciclo desde Configuración → Ciclos.</p>
+            <a class="btn-pe btn-pe--secondary" asp-controller="Ciclo" asp-action="Index">
+                <i class="bi bi-calendar-range" aria-hidden="true"></i> Ver ciclos
+            </a>
+        </div>
+    </div>
+}
+else if (!Model.HayAcciones)
+{
+    @* ── Estado vacío 2: ciclo activo sin acciones (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-list-check empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">No hay acciones en el plan</h3>
+            <p class="empty-state__message">El ciclo @Model.CicloNombre todavía no tiene acciones en el plan. Desglose los objetivos CG en acciones con fechas y responsables.</p>
+        </div>
+    </div>
+}
+else
+{
+    @* ── Resumen en cabecera (CA #3) ── *@
+    <div class="card-pe mb-4">
+        <div class="d-flex flex-wrap align-items-center gap-3">
+            <span class="h-subsection">Resumen:</span>
+            <span class="semaforo semaforo--gris">
+                <i class="bi bi-circle-fill" aria-hidden="true"></i> No iniciado · <span id="resumenNoIniciado">@(Model.Resumen?.NoIniciado ?? 0)</span>
+            </span>
+            <span class="semaforo semaforo--amarillo">
+                <i class="bi bi-circle-fill" aria-hidden="true"></i> En progreso · <span id="resumenEnProgreso">@(Model.Resumen?.EnProgreso ?? 0)</span>
+            </span>
+            <span class="semaforo semaforo--verde">
+                <i class="bi bi-circle-fill" aria-hidden="true"></i> Terminado · <span id="resumenTerminado">@(Model.Resumen?.Terminado ?? 0)</span>
+            </span>
+            <span class="semaforo semaforo--rojo">
+                <i class="bi bi-circle-fill" aria-hidden="true"></i> Atrasado · <span id="resumenAtrasado">@(Model.Resumen?.Atrasado ?? 0)</span>
+            </span>
+            <span class="ms-auto body-sm">
+                Total: <strong id="resumenTotal">@(Model.Resumen?.Total ?? 0)</strong> acciones
+            </span>
+        </div>
+    </div>
+
+    @* ── Filtros (CA #2) ── *@
+    <div class="card-pe mb-4">
+        <form id="formFiltros" class="row g-3 align-items-end">
+            <div class="col-md-4 col-lg-2">
+                <label class="form-pe-label" for="filtroArea">Área</label>
+                <select class="form-pe-select" id="filtroArea" name="areaId">
+                    <option value="">Todas las áreas</option>
+                    @foreach (var area in Model.Areas)
+                    {
+                        <option value="@area.Id">@area.Codigo — @area.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label class="form-pe-label" for="filtroCg">Objetivo CG</label>
+                <select class="form-pe-select" id="filtroCg" name="cgId">
+                    <option value="">Todos los CG</option>
+                    @foreach (var cg in Model.ObjetivosCg)
+                    {
+                        <option value="@cg.Id">@cg.Codigo — @cg.Descripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label class="form-pe-label" for="filtroStatus">Status</label>
+                <select class="form-pe-select" id="filtroStatus" name="status">
+                    <option value="">Todos los status</option>
+                    <option value="NoIniciado">No iniciado</option>
+                    <option value="EnProgreso">En progreso</option>
+                    <option value="Terminado">Terminado</option>
+                    <option value="Atrasado">Atrasado</option>
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label class="form-pe-label" for="filtroClasificacion">Clasificación</label>
+                <select class="form-pe-select" id="filtroClasificacion" name="clasificacion">
+                    <option value="">Todas las clasificaciones</option>
+                    <option value="Proyecto">Proyecto</option>
+                    <option value="Iniciativa">Iniciativa</option>
+                    <option value="Operativa">Operativa</option>
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label class="form-pe-label" for="filtroTipo">Tipo</label>
+                <select class="form-pe-select" id="filtroTipo" name="tipo">
+                    <option value="">Todos los tipos</option>
+                    <option value="OPEX">OPEX</option>
+                    <option value="CAPEX">CAPEX</option>
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label class="form-pe-label" for="filtroFechaDesde">Fecha desde</label>
+                <input type="date" class="form-pe-input" id="filtroFechaDesde" name="fechaDesde" />
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label class="form-pe-label" for="filtroFechaHasta">Fecha hasta</label>
+                <input type="date" class="form-pe-input" id="filtroFechaHasta" name="fechaHasta" />
+            </div>
+            <div class="col-12 d-flex flex-wrap gap-2">
+                <button type="submit" class="btn-pe btn-pe--primary" id="btnFiltrar">
+                    <i class="bi bi-funnel" aria-hidden="true"></i> Filtrar
+                </button>
+                <button type="button" class="btn-pe btn-pe--secondary" id="btnLimpiar">
+                    <i class="bi bi-x-circle" aria-hidden="true"></i> Limpiar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    @* ── Tabla consolidada (UX-03) ── *@
+    <div class="card-pe p-0">
+        <div class="table-responsive">
+            <table class="tabla-pe mb-0" id="tablaConsolidado">
+                <thead>
+                    <tr>
+                        <th>Área</th>
+                        <th>CG</th>
+                        <th>Acción</th>
+                        <th>Status</th>
+                        <th>Clasificación</th>
+                        <th>Tipo</th>
+                        <th>Fechas</th>
+                        <th>Responsable</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyConsolidado">
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>
+                                <span class="cell-codigo">@item.AreaCodigo</span>
+                                <span class="d-block body-sm">@item.AreaNombre</span>
+                            </td>
+                            <td>
+                                <span class="cell-codigo">@item.ObjetivoCodigo</span>
+                                <span class="d-block body-sm">@item.ObjetivoDescripcion</span>
+                            </td>
+                            <td>
+                                <span class="cell-codigo">@item.AccionCodigo</span>
+                                <span class="d-block cell-truncate" title="@item.AccionDescripcion">@item.AccionDescripcion</span>
+                            </td>
+                            <td>
+                                <span class="semaforo @ClaseStatus(item.Status)">
+                                    <i class="bi bi-circle-fill" aria-hidden="true"></i> @item.Status
+                                </span>
+                            </td>
+                            <td>@item.Clasificacion</td>
+                            <td>@item.TipoPresupuesto</td>
+                            <td>
+                                <span class="body-sm d-block">@item.FechaInicio.ToString("dd/MM/yyyy")</span>
+                                <span class="body-sm d-block">→ @item.FechaVencimiento.ToString("dd/MM/yyyy")</span>
+                            </td>
+                            <td>
+                                @(string.IsNullOrWhiteSpace(item.ResponsableNombre) ? "—" : item.ResponsableNombre)
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @* ── Estado vacío 3: filtros sin coincidencias (UX-05) ── *@
+        <div class="d-none" id="sinCoincidencias">
+            <div class="empty-state">
+                <i class="bi bi-funnel empty-state__icon" aria-hidden="true"></i>
+                <h3 class="empty-state__title">Ninguna acción coincide con los filtros</h3>
+                <p class="empty-state__message">Ajuste o quite los filtros para volver a ver el plan completo del ciclo.</p>
+                <button type="button" class="btn-pe btn-pe--secondary" id="btnLimpiarSinCoincidencias">
+                    <i class="bi bi-x-circle" aria-hidden="true"></i> Limpiar filtros
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @* ── Paginación ── *@
+    <div class="d-flex justify-content-center mt-4" id="paginacionContenedor">
+        <nav aria-label="Paginación">
+            <ul class="pagination-pe" id="paginationPe">
+                @* El JS renderizará los botones de paginación *@
+            </ul>
+        </nav>
+    </div>
+}
+
+@functions {
+    string ClaseStatus(string status) => status switch
+    {
+        "Terminado" => "semaforo--verde",
+        "EnProgreso" => "semaforo--amarillo",
+        "Atrasado" => "semaforo--rojo",
+        _ => "semaforo--gris"
+    };
+}
+
+@* Token JWT para llamadas fetch desde el frontend (se inyecta desde el servidor) *@
+<input type="hidden" id="accessToken" value="@Model.AccessToken" />
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/plan-consolidado.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script src="~/js/plan-consolidado.js" asp-append-version="true"></script>
+}
