@@ -1,11 +1,12 @@
 namespace PE_GOL.Utility.Storage;
 
 /// <summary>
-/// Opciones de configuración de StorageHelper (ADR-005, HU-006) — enlazadas desde la
+/// Opciones de configuración del Storage (ADR-005 HU-006 + ADR-013 HU-022) — enlazadas desde la
 /// sección "Supabase" de appsettings en el IOC (Singleton).
 /// El paquete `Supabase` expone `SupabaseOptions` (auth/realtime/storage del client) pero NO
-/// tiene propiedad para el bucket del logo → wrapper propio con las 3 claves que StorageHelper
-/// necesita: Url, ServiceKey (service_role, server-side) y LogoBucket (`logos-tenant`).
+/// tiene propiedad para los buckets → wrapper propio con las 4 claves que Storage necesita:
+/// Url, ServiceKey (service_role, server-side), LogoBucket (`logos-tenant`) y
+/// EntregablesBucket (`entregables`).
 /// </summary>
 public class SupabaseStorageOptions
 {
@@ -17,4 +18,12 @@ public class SupabaseStorageOptions
 
     /// <summary>Supabase:LogoBucket — bucket privado del logo de empresa (`logos-tenant`), NUNCA StorageBucket.</summary>
     public string LogoBucket { get; set; } = "logos-tenant";
+
+    /// <summary>
+    /// Supabase:EntregablesBucket — bucket privado de entregables (`entregables`, ARCH-06).
+    /// Default idéntico en patrón al <see cref="LogoBucket"/> de ADR-005: el código funciona sin
+    /// configuración y, si la clave está, la configuración gana. Es la clave CANÓNICA del bucket
+    /// de adjuntos; `Supabase:StorageBucket` queda obsoleta (ADR-013, por documentar al cerrar HU-022).
+    /// </summary>
+    public string EntregablesBucket { get; set; } = "entregables";
 }
