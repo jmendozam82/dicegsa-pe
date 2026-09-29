@@ -8,7 +8,6 @@ using PE_GOL.Aplicacion.Controllers;
 using PE_GOL.Aplicacion.Exceptions;
 using PE_GOL.Aplicacion.Models;
 using PE_GOL.Aplicacion.Services;
-using PE_GOL.Tests.Helpers;
 using PE_GOL.DTO.Responses;
 using PE_GOL.DTO.Responses.Objetivos;
 using PE_GOL.DTO.Responses.PlanOperativo;
