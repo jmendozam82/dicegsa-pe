@@ -44,6 +44,7 @@ public static class DependencyContainer
         services.AddScoped<IAccionPlanRepository, AccionPlanRepository>(); // HU-019: acciones de plan
         services.AddScoped<IHistorialProgresoRepository, HistorialProgresoRepository>(); // HU-020: historial de progreso
         services.AddScoped<ILogAuditoriaRepository, LogAuditoriaRepository>(); // HU-005: log de auditoría (D4, tabla global fuera de RLS)
+        services.AddScoped<IEntregableAdjuntoRepository, EntregableAdjuntoRepository>(); // HU-022: entregable_adjunto (bucket privado + auditoría en la misma tx)
 
         // Servicios de negocio (Scoped: estado por request).
         services.AddScoped<ITenantService, TenantService>();
@@ -61,11 +62,24 @@ public static class DependencyContainer
         services.AddScoped<IDashboardService, DashboardService>(); // HU-015: tablero de inicio del Jefe de Área (D-J)
         services.AddScoped<IEmailService, EmailService>(); // HU-010: correo de activación (STACK-10, D-C)
         services.AddScoped<ILogAuditoriaService, LogAuditoriaService>(); // HU-005: consulta del log de auditoría (solo lectura, CA #3)
+        services.AddScoped<IEntregableService, EntregableAdjuntoService>(); // HU-022: entregables adjuntos de una acción
 
         // PlanLimitValidator es STATELESS (lógica pura, D4): Singleton.
         // TenantService (nueva dependencia, HU-002 §9.1) y PlanService lo consumen vía
         // IPlanService/PlanService — la inyección se resuelve automáticamente por el DI.
         services.AddSingleton<PlanLimitValidator>();
+
+        // ── HU-022 · Reloj inyectado (spec § DoD) ────────────────────────────────────────────────
+        // TimeProvider.System en lugar de DateTime.Now: los campos derivados que dependen del
+        // instante (ExpiraEn de la URL firmada de 24 h, caducidades) salen de aquí, y los tests
+        // fijan el reloj con Mock<TimeProvider> en lugar de esperar. Aditivo: ningún paquete nuevo
+        // (es BCL de .NET 8) y ningún servicio existente cambia de comportamiento.
+        services.AddSingleton(TimeProvider.System);
+
+        // EntregableAdjuntoReglasNegocio es PURO y sin estado (mismo criterio que PlanLimitValidator,
+        // D-N): solo envuelve el TimeProvider y las allowlists, sin BD, sin Storage y sin
+        // FluentValidation (corrección 5 → PE-GOL.BLL.csproj sin modificar).
+        services.AddSingleton<EntregableAdjuntoReglasNegocio>();
 
         // ── Infraestructura de autenticación (HU-004) ──────────────────────────────
         // JwtOptions: Singleton enlazado desde la sección "Jwt" de appsettings
