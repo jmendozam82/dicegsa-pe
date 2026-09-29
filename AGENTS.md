@@ -225,7 +225,7 @@ dicegsa-pe/
 | Specs Sprint 1 | `specs/sprint-01/*.spec.md` | ✅ Completo — HU-001, HU-002, HU-003, HU-004, HU-006, HU-007 y HU-008 Implementadas (Sprint 1 sin pendientes) |
 | Specs Sprint 2 | `specs/sprint-02/*.spec.md` | ✅ Completo — HU-005, HU-009..HU-015 Implementadas (Sprint 2: 8/8 HU — Sprint 2 sin pendientes) |
 | Specs Sprint 3 | `specs/sprint-03/*.spec.md` | ✅ Completo — HU-016..HU-020 y HU-045 Implementadas (Sprint 3: 6/6 HU — Sprint 3 sin pendientes) |
-| Specs Sprint 4 | `specs/sprint-04/*.spec.md` | ⏳ En curso — **HU-021 cerrada** (spec `Implementado`, **22/22 DoD**, ADR-011 + ADR-012, `V005` aplicada y verificada, 5 commits atómicos) y **validada visualmente en navegador** el 2026-09-27 (4 defectos de runtime + 2 de UX corregidos; ver `docs/HANDOFF_PE_GOL.md`); pendientes HU-022, HU-023, HU-024 y HU-025 (Sprint 4: 1/5 HU — 8 de 28 pts) |
+| Specs Sprint 4 | `specs/sprint-04/*.spec.md` | ⏳ En curso — **HU-021 cerrada** (spec `Implementado`, **22/22 DoD**, ADR-011 + ADR-012, `V005` aplicada y verificada, 5 commits atómicos) y **validada visualmente en navegador** el 2026-09-27 (4 defectos de runtime + 2 de UX corregidos; ver `docs/HANDOFF_PE_GOL.md`); **HU-022 cerrada** (spec `Implementado`, **46/46 DoD**, ADR-013, 9 commits atómicos, 692/692 tests, cobertura BLL 89,4 %); pendientes HU-023, HU-024 y HU-025 (Sprint 4: 2/5 HU — 13 de 28 pts) |
 | Implementación | Código fuente | ⏳ Pendiente |
 
 ---
