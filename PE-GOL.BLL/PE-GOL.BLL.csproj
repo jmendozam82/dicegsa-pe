@@ -13,6 +13,8 @@
          Backward-compatible con ASP.NET Core 8.0.10 (dependencia >= 8.0.0). -->
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
     <PackageReference Include="Npgsql" Version="8.0.5" />
+    <!-- HU-023 (ADR-014): ClosedXML en PE-GOL.BLL para exportación Excel del consolidado. -->
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
   </ItemGroup>
 
   <PropertyGroup>
