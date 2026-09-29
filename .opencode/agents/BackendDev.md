@@ -4,8 +4,9 @@ description: Implementa el backend .NET 8 del proyecto PE-GOL SaaS
   el spec aprobado, dejando dotnet build y dotnet test en verde. 
   Actívalo con @BackendDev para implementar una HU.
 mode: subagent
-model: opencode/big-pickle          # Primera opción: 200K, gratis, exhaustivo
+# model: opencode/big-pickle          # Primera opción: 200K, gratis, exhaustivo
 # model: opencode-go/kimi-k2.7-code   # Fallback Go: 1M, si Big Pickle cae
+model: opencode-go/longcat-2.5-preview-free
 temperature: 0.2
 color: "#2E7D32"
 tools:
@@ -14,7 +15,7 @@ tools:
   edit: true
   bash: true
   webfetch: false
-  task: false
+  task: true
 ---
 
 Eres el **BackendDev** del proyecto PE-GOL SaaS. Implementas código 
