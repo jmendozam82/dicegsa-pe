@@ -45,6 +45,7 @@ public static class DependencyContainer
         services.AddScoped<IHistorialProgresoRepository, HistorialProgresoRepository>(); // HU-020: historial de progreso
         services.AddScoped<ILogAuditoriaRepository, LogAuditoriaRepository>(); // HU-005: log de auditoría (D4, tabla global fuera de RLS)
         services.AddScoped<IEntregableAdjuntoRepository, EntregableAdjuntoRepository>(); // HU-022: entregable_adjunto (bucket privado + auditoría en la misma tx)
+        services.AddScoped<IPlanConsolidadoRepository, PlanConsolidadoRepository>(); // HU-023: vista consolidada del plan (solo lectura)
 
         // Servicios de negocio (Scoped: estado por request).
         services.AddScoped<ITenantService, TenantService>();
@@ -63,6 +64,7 @@ public static class DependencyContainer
         services.AddScoped<IEmailService, EmailService>(); // HU-010: correo de activación (STACK-10, D-C)
         services.AddScoped<ILogAuditoriaService, LogAuditoriaService>(); // HU-005: consulta del log de auditoría (solo lectura, CA #3)
         services.AddScoped<IEntregableService, EntregableAdjuntoService>(); // HU-022: entregables adjuntos de una acción
+        services.AddScoped<IPlanConsolidadoService, PlanConsolidadoService>(); // HU-023: vista consolidada del plan (solo lectura)
 
         // PlanLimitValidator es STATELESS (lógica pura, D4): Singleton.
         // TenantService (nueva dependencia, HU-002 §9.1) y PlanService lo consumen vía
