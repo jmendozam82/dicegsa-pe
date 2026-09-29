@@ -51,7 +51,7 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 
 ## 🗓️ Estado Actual del Proyecto
 
-> **Actualizado: 2026-09-27** (cierre de HU-021). Este bloque refleja el estado vigente; el historial detallado de cada sprint está en las secciones de cierre al final de este documento.
+> **Actualizado: 2026-09-29** (cierre de HU-023). Este bloque refleja el estado vigente; el historial detallado de cada sprint está en las secciones de cierre al final de este documento.
 
 ### Fases completadas: **Análisis + Diseño (Fases 0, 1 y 2) + Sprint 1 + Sprint 2 + Sprint 3**
 
@@ -69,20 +69,20 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 | **Specs + implementación Sprint 1** | ✅ Completo — HU-001, HU-002, HU-003, HU-004, HU-006, HU-007, HU-008 (7/7) |
 | **Specs + implementación Sprint 2** | ✅ Completo — HU-005, HU-009..HU-015 (8/8) |
 | **Specs + implementación Sprint 3** | ✅ Completo — HU-016..HU-020 y HU-045 (6/6) |
-| **Specs + implementación Sprint 4** | ⏳ **En curso — 1/5 HU** · HU-021 ✅ Implementada (2026-09-27) · pendientes HU-022, HU-023, HU-024, HU-025 (8 de 28 pts) |
-| Implementación (código) | ✅ En curso — 22 de 45 HU Implementadas |
+| **Specs + implementación Sprint 4** | ⏳ **En curso — 3/5 HU** · HU-021 ✅, HU-022 ✅, HU-023 ✅ Implementadas · pendientes HU-024, HU-025 (18 de 28 pts) |
+| Implementación (código) | ✅ En curso — 23 de 45 HU Implementadas |
 | Auditoría post-Sprint 3 | ✅ Resuelta 100% (2026-09-21 — 3 críticos, 6 medios, 8 mejoras) |
 
-### Estado técnico verificado (2026-09-27)
+### Estado técnico verificado (2026-09-29)
 
 | Indicador | Valor |
 |-----------|-------|
 | Build | `dotnet build PE-GOL.sln` → **0 advertencias, 0 errores** |
-| Tests | `dotnet test PE-GOL.sln` → **584/584 en verde** (0 fallidas, 0 omitidas) — 556 previos + 28 de HU-021 |
-| Cobertura BLL | **89.02%** (3139/3526) ≥ 70% exigido |
+| Tests | `dotnet test PE-GOL.sln` → **735/735 en verde** (0 fallidas, 0 omitidas) — 692 previos + 43 de HU-023 |
+| Cobertura BLL | **≥ 70%** (TEST-02) |
 | Migraciones | **V001–V005 EJECUTADAS y verificadas** en Supabase Cloud (V001–V004 en HU-045; `V005__indice_accion_plan_gantt.sql` en HU-021 → `idx_accion_plan_ciclo_area ON public.accion_plan USING btree (tenant_id, ciclo_id, area_id)`) |
-| Frontend | Cimiento HU-045 + Gantt HU-021 · DHTMLX Gantt **Community MIT v10.0.3** vendorizada en `wwwroot/lib/dhtmlx-gantt/` (ADR-011) |
-| Swagger | **47 paths** documentados (ARCH-03) |
+| Frontend | Cimiento HU-045 + Gantt HU-021 + Consolidado HU-023 · DHTMLX Gantt **Community MIT v10.0.3** vendorizada en `wwwroot/lib/dhtmlx-gantt/` (ADR-011) |
+| Swagger | **49 paths** documentados (ARCH-03) |
 
 ### Decisiones de procedencia que siguen vigentes
 
@@ -91,9 +91,9 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 - **Pendiente de decisión de Jorge:** precisión de `STACK-07` (variante/versión exacta). La regla se dejó **sin tocar** a propósito.
 - **Salvedad de HU-021:** no hubo verificación visual autenticada del Gantt renderizado; se verificó la entrega de assets y el contrato, no el render.
 
-### Fase siguiente: **Sprint 4 — HU-022 (Gestión de Entregables Adjuntos)**
+### Fase siguiente: **Sprint 4 — HU-024 (CRUD de OKRs)**
 
-`specs/sprint-04/HU-021.spec.md` en `Implementado` · siguiente en el loop: **HU-022** (STACK-08 ClosedXML + ARCH-06 Supabase Storage con URLs firmadas de 24 h), luego HU-023, HU-024 y HU-025.
+`specs/sprint-04/HU-023.spec.md` en `Implementado` · siguiente en el loop: **HU-024** (CRUD de OKRs), luego HU-025 (Gestión de Key Results).
 
 ---
 
@@ -590,5 +590,17 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-27 (Sprint 4 en curso — 1/5 HU, HU-021 cerrada **y validada visualmente en navegador** (4 defectos de runtime + 2 de UX corregidos) · 584/584 tests · cobertura BLL 89.02%) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Loop de HU-022 (Entregables Adjuntos) — Sprint 4 · STACK-08 (ClosedXML) + ARCH-06 (Supabase Storage, URLs firmadas 24 h)*
+## Cierre HU-023 — Sprint 4 en curso — 2026-09-29
+
+**Contexto:** HU-023 (Vista Consolidada del Plan) se cerró el 2026-09-29 tras superar REVIEW. Con este cierre el **Sprint 4 queda en curso (3/5 HU, 18 de 28 pts)**; pendientes HU-024 (CRUD OKRs) y HU-025 (Gestión de KRs).
+
+1. **HU-023 Implementada (spec → `Implementado`):** 2 endpoints de solo lectura en `PlanController` (`GET /api/v1/planes/consolidado` y `GET /api/v1/planes/consolidado/exportar`) + `PlanConsolidadoService`/`IPlanConsolidadoService` (BLL) + `PlanConsolidadoRepository`/`IPlanConsolidadoRepository` (DAL) + DTOs (`FiltrosConsolidadoRequest`, `ConsolidadoResponse`) + vista Razor `Plan/Consolidado.cshtml` + `plan-consolidado.js` + ítem de menú en `_Sidebar.cshtml`. Tests: **735/735 en verde** (build **0 advertencias / 0 errores**; 692 previos intactos + 43 nuevos = 25 BLL + 7 exportación + 4 MVC + 7 repositorio). Cobertura BLL **≥ 70%** (TEST-02).
+2. **ADR-014 aceptado:** ClosedXML en `PE-GOL.BLL` para exportación Excel. El controller solo envuelve `byte[]` en `FileContentResult`.
+3. **Verificaciones en ejecución:** Swagger (`/swagger/v1/swagger.json`, 49 paths) con las rutas, el tag `Plan`, los esquemas y los códigos de respuesta. Build y tests verificados por @Documenter en el cierre.
+
+**Artefactos del cierre:** `specs/sprint-04/HU-023.spec.md` (estado `Implementado` + registro de cierre) · `AGENTS.md` v1.26 · `docs/ESTADO_HUS.md` (HU-023 ✅) · `adrs/ADR-014.md`.
+
+---
+
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-29 (Sprint 4 en curso — 3/5 HU, HU-021 + HU-022 + HU-023 cerradas · 735/735 tests · cobertura BLL ≥ 70%) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Loop de HU-024 (CRUD OKRs) — Sprint 4*
