@@ -26,10 +26,12 @@ public class AccionPlanController : Controller
 {
     private readonly IApiClient _apiClient;
     private readonly ILogger<AccionPlanController> _logger;
+    private readonly SesionService _sesionService;
 
-    public AccionPlanController(IApiClient apiClient, ILogger<AccionPlanController> logger)
+    public AccionPlanController(IApiClient apiClient, SesionService sesionService, ILogger<AccionPlanController> logger)
     {
         _apiClient = apiClient;
+        _sesionService = sesionService;
         _logger = logger;
     }
 
@@ -409,6 +411,55 @@ public class AccionPlanController : Controller
         {
             TempData["Error"] = ex.Message;
             return View(new AccionPlanGanttViewModel());
+        }
+        catch (UnauthorizedException)
+        {
+            return RedirectToAction("Login", "Auth");
+        }
+    }
+
+    // ─── Entregables Adjuntos (HU-022) ─────────────────────────────────────────
+
+    /// <summary>
+    /// Vista de entregables adjuntos de una acción (HU-022).
+    /// GET /AccionPlan/Entregables/{id}
+    /// Muestra la lista de adjuntos y permite subir nuevos, descargar y eliminar.
+    /// </summary>
+    [Authorize(Roles = "JefeArea,Gerente")]
+    public async Task<IActionResult> Entregables(Guid id)
+    {
+        try
+        {
+            var accion = await ObtenerAccionAsync(id);
+            if (accion is null)
+            {
+                return NotFound();
+            }
+
+            var adjuntos = await _apiClient.GetAsync<List<EntregableAdjuntoResponse>>(
+                $"/api/v1/acciones/{id}/entregables");
+
+            // Verificar si el ciclo está activo (para habilitar/deshabilitar subida)
+            // RC-01: solo hay un ciclo activo por tenant
+            var ciclos = await _apiClient.GetAsync<List<CicloResponse>>("/api/v1/ciclos");
+            var cicloActivo = ciclos.Any(c => c.Estado == "Activo");
+
+            // Obtener el token JWT para inyectar en la vista (el frontend lo usa con fetch)
+            var token = _sesionService.ObtenerAccessToken();
+
+            return View(new EntregablesViewModel
+            {
+                AccionId = id,
+                AccionCodigo = accion.Codigo,
+                AccionNombre = accion.Descripcion,
+                Adjuntos = adjuntos ?? new List<EntregableAdjuntoResponse>(),
+                CicloActivo = cicloActivo,
+                AccessToken = token ?? string.Empty
+            });
+        }
+        catch (ApiClientException ex) when (ex.StatusCode == 404)
+        {
+            return NotFound();
         }
         catch (UnauthorizedException)
         {

@@ -8,6 +8,7 @@ using PE_GOL.Aplicacion.Controllers;
 using PE_GOL.Aplicacion.Exceptions;
 using PE_GOL.Aplicacion.Models;
 using PE_GOL.Aplicacion.Services;
+using PE_GOL.Tests.Helpers;
 using PE_GOL.DTO.Responses;
 using PE_GOL.DTO.Responses.Objetivos;
 using PE_GOL.DTO.Responses.PlanOperativo;
@@ -49,7 +50,8 @@ public class AccionPlanControllerTests
     private static (AccionPlanController controller, Mock<IApiClient> apiClient) CrearController()
     {
         var apiClient = new Mock<IApiClient>();
-        var controller = new AccionPlanController(apiClient.Object, NullLogger<AccionPlanController>.Instance);
+        var sesionService = new SesionService(new HttpContextAccessor { HttpContext = new DefaultHttpContext { Session = new FakeSession() } });
+        var controller = new AccionPlanController(apiClient.Object, sesionService, NullLogger<AccionPlanController>.Instance);
 
         var httpContext = new DefaultHttpContext();
         var tempDataProvider = new Mock<ITempDataProvider>();

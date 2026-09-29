@@ -1,0 +1,198 @@
+@model EntregablesViewModel
+@{
+    ViewData["Title"] = $"Entregables — {Model.AccionCodigo}";
+}
+
+@* Token JWT para llamadas fetch desde el frontend (HU-022) *@
+<meta name="access-token" content="@Model.AccessToken" />
+
+@* Estilos específicos de Entregables (HU-022) *@
+<link rel="stylesheet" href="~/css/entregables.css" asp-append-version="true" />
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Plan de Acción</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Entregables</span>
+    </div>
+    <h1 class="page-header__title">Entregables — @Model.AccionCodigo</h1>
+    <p class="page-header__subtitle">@Model.AccionNombre</p>
+</div>
+
+<div class="d-flex gap-2 mb-3">
+    <a class="btn-pe btn-pe--secondary" asp-action="Index">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al Plan
+    </a>
+</div>
+
+@if (TempData["Success"] is string mensajeExito)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle" aria-hidden="true"></i> @mensajeExito
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+@if (TempData["Error"] is string mensajeError)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @mensajeError
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@* ── Panel de subida (HU-022) ── *@
+<div class="card-pe mb-4">
+    <div class="card-body">
+        <h2 class="h-section mb-3">Subir adjuntos</h2>
+
+        @if (!Model.CicloActivo)
+        {
+            <div class="alert alert-warning" role="alert">
+                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                El ciclo está cerrado. No se pueden subir nuevos entregables.
+            </div>
+        }
+
+        <form id="form-entregables" enctype="multipart/form-data" data-accion-id="@Model.AccionId">
+            <div class="dropzone-pe mb-3" id="dropzone">
+                <div class="dropzone-pe__content">
+                    <i class="bi bi-cloud-arrow-up dropzone-pe__icon" aria-hidden="true"></i>
+                    <p class="dropzone-pe__text">Arrastra archivos aquí o haz clic para seleccionar</p>
+                    <p class="dropzone-pe__hint">
+                        Hasta <strong>5</strong> archivos · máximo <strong>20 MB</strong> por archivo ·
+                        PDF, DOCX, XLSX, PNG o JPG
+                    </p>
+                </div>
+                <input type="file" id="input-archivos" name="archivos" multiple
+                       accept=".pdf,.docx,.xlsx,.png,.jpg" class="d-none" />
+            </div>
+
+            <ul id="lista-seleccionados" class="list-unstyled mb-3"></ul>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn-pe btn-pe--primary" id="btn-subir" disabled>
+                    <i class="bi bi-upload" aria-hidden="true"></i> Subir adjuntos
+                </button>
+                <button type="button" class="btn-pe btn-pe--secondary" id="btn-limpiar" disabled>
+                    <i class="bi bi-x-lg" aria-hidden="true"></i> Limpiar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ── Tabla de adjuntos (UX-03) ── *@
+<div class="card-pe p-0">
+    @if (Model.Adjuntos.Count == 0)
+    {
+        @* ── Estado vacío (UX-05) ── *@
+        <div class="empty-state">
+            <i class="bi bi-paperclip empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">Aún no hay entregables adjuntos</h3>
+            <p class="empty-state__message">Sube el primer documento que evidencie el avance de esta acción.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="tabla-pe mb-0">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Tamaño</th>
+                        <th>Tipo</th>
+                        <th>Subido por</th>
+                        <th>Fecha</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-adjuntos">
+                    @foreach (var adjunto in Model.Adjuntos)
+                    {
+                        <tr data-adjunto-id="@adjunto.Id">
+                            <td>
+                                <i class="bi bi-paperclip me-1 text-secondary" aria-hidden="true"></i>
+                                <span class="cell-truncate d-inline-block" title="@adjunto.NombreArchivo">@adjunto.NombreArchivo</span>
+                            </td>
+                            <td>@adjunto.TamanoLegible</td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    <i class="bi @IconoTipo(adjunto.Extension) me-1" aria-hidden="true"></i>
+                                    @adjunto.Extension.ToUpperInvariant()
+                                </span>
+                            </td>
+                            <td>
+                                @(string.IsNullOrWhiteSpace(adjunto.SubidoPorNombre) ? "—" : adjunto.SubidoPorNombre)
+                            </td>
+                            <td>@adjunto.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td class="text-end">
+                                <div class="d-inline-flex gap-1">
+                                    <button type="button" class="btn-pe btn-pe--secondary btn-pe--sm btn-descargar"
+                                            data-adjunto-id="@adjunto.Id"
+                                            data-adjunto-nombre="@adjunto.NombreArchivo"
+                                            title="Descargar">
+                                        <i class="bi bi-download" aria-hidden="true"></i>
+                                    </button>
+                                    @if (adjunto.PuedeEliminar)
+                                    {
+                                        <button type="button" class="btn-pe btn-pe--danger btn-pe--sm btn-eliminar"
+                                                data-adjunto-id="@adjunto.Id"
+                                                data-adjunto-nombre="@adjunto.NombreArchivo"
+                                                data-bs-toggle="modal" data-bs-target="#modalEliminarAdjunto"
+                                                title="Eliminar">
+                                            <i class="bi bi-trash" aria-hidden="true"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@* ── Modal de confirmación eliminar (DS § 5.7) ── *@
+<div class="modal fade modal-pe" id="modalEliminarAdjunto" tabindex="-1" aria-labelledby="modalEliminarAdjuntoTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEliminarAdjuntoTitulo">Eliminar adjunto</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="body-md mb-0" id="modalEliminarAdjuntoTexto"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-pe btn-pe--secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn-pe btn-pe--danger" id="btn-confirmar-eliminar">Sí, eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Toast de notificaciones ── *@
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+    <div id="toast-notificacion" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toast-mensaje"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+        </div>
+    </div>
+</div>
+
+@functions {
+    string IconoTipo(string extension) => extension.ToLowerInvariant() switch
+    {
+        "pdf" => "bi-file-earmark-pdf",
+        "docx" => "bi-file-earmark-word",
+        "xlsx" => "bi-file-earmark-excel",
+        "png" or "jpg" => "bi-file-earmark-image",
+        _ => "bi-file-earmark"
+    };
+}
+
+@section Scripts {
+    <script src="~/js/entregables.js" asp-append-version="true"></script>
+}

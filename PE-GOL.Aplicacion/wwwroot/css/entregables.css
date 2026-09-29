@@ -1,0 +1,94 @@
+/* PE-GOL SaaS — Entregables Adjuntos (HU-022)
+   Estilos específicos para la zona de subida (dropzone) y elementos de la vista.
+   Colores y tipografía según Design System 07_DESIGN_SYSTEM.md */
+
+/* ── Dropzone ─────────────────────────────────────────────────────────────── */
+.dropzone-pe {
+    border: 2px dashed var(--color-border-dark);
+    border-radius: 10px;
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--color-bg-card);
+}
+
+.dropzone-pe:hover {
+    border-color: var(--color-action);
+    background: #F8FAFC;
+}
+
+.dropzone-pe--active {
+    border-color: var(--color-action);
+    background: #EEF4FF;
+    border-style: solid;
+}
+
+.dropzone-pe--error {
+    border-color: var(--color-rojo);
+    background: var(--color-rojo-bg);
+}
+
+.dropzone-pe--disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: var(--color-bg-page);
+}
+
+.dropzone-pe--disabled:hover {
+    border-color: var(--color-border-dark);
+    background: var(--color-bg-page);
+}
+
+.dropzone-pe__icon {
+    font-size: 48px;
+    color: var(--color-text-disabled);
+    margin-bottom: 12px;
+    display: block;
+}
+
+.dropzone-pe__text {
+    font: 500 14px 'Inter', sans-serif;
+    color: var(--color-text-primary);
+    margin-bottom: 8px;
+}
+
+.dropzone-pe__hint {
+    font: 400 12px 'Inter', sans-serif;
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+/* ── Lista de archivos seleccionados ──────────────────────────────────────── */
+#lista-seleccionados li {
+    background: var(--color-bg-card);
+    border-color: var(--color-border);
+}
+
+/* ── Toast personalizado ──────────────────────────────────────────────────── */
+.toast-container {
+    z-index: 1080;
+}
+
+.toast {
+    min-width: 300px;
+}
+
+/* ── Responsive (UX-06) ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .dropzone-pe {
+        padding: 24px 16px;
+    }
+
+    .dropzone-pe__icon {
+        font-size: 36px;
+    }
+
+    .dropzone-pe__text {
+        font-size: 13px;
+    }
+
+    .dropzone-pe__hint {
+        font-size: 11px;
+    }
+}
