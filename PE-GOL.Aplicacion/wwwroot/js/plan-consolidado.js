@@ -1,18 +1,18 @@
 // PE-GOL SaaS — Vista Consolidada del Plan (HU-023)
 // ─────────────────────────────────────────────────────────────────────────────
 // Módulo que gestiona la tabla consolidada del plan con filtros server-side,
-// paginación y exportación a Excel. Consume la API interna /api/v1/planes/consolidado.
+// paginación y exportación a Excel. Consume las acciones proxy del MVC
+// (/Plan/ConsolidadoDatos y /Plan/ConsolidadoExportar), que a su vez llaman a la
+// API interna con IApiClient (JWT en sesión server-side — ADR-016).
 //
 // Reglas duras:
+//   · ADR-016 — el navegador NUNCA consume la API interna directamente.
 //   · SEC-05 — todo dato interpolado en HTML pasa por esc() antes de inyectarse.
 //   · SEC-06 — nunca se envía tenant_id ni ciclo_id en query string.
 //   · UX-01 — solo clases del Design System; sin estilos inline ni clases custom.
-//   · La validación del servidor (FluentValidation) es siempre la fuente de verdad.
+//   · La validación del servidor (FluentValidation) es siempre la fuente de la verdad.
 (function () {
     'use strict';
-
-    var API_BASE = '/api/v1/planes/consolidado';
-    var TOKEN = '';
 
     // Selectores
     var ID_FORM_FILTROS = 'formFiltros';
@@ -88,11 +88,11 @@
             }
         });
 
-        var url = API_BASE + '?' + params.toString();
+        // ADR-016: ruta relativa al MVC (proxy), no a la API. El JWT viaja server-side.
+        var url = '/Plan/ConsolidadoDatos?' + params.toString();
         var response = await fetch(url, {
             method: 'GET',
             headers: {
-                'Authorization': 'Bearer ' + TOKEN,
                 'Accept': 'application/json'
             }
         });
@@ -122,13 +122,13 @@
             }
         });
 
-        var url = API_BASE + '/exportar' + (params.toString() ? '?' + params.toString() : '');
+        // ADR-016: ruta relativa al MVC (proxy), no a la API. El JWT viaja server-side.
+        var url = '/Plan/ConsolidadoExportar' + (params.toString() ? '?' + params.toString() : '');
 
         // Descargar el archivo
         var response = await fetch(url, {
             method: 'GET',
             headers: {
-                'Authorization': 'Bearer ' + TOKEN,
                 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             }
         });
@@ -324,17 +324,8 @@
     // ── Inicialización ────────────────────────────────────────
 
     function iniciar() {
-        // Obtener el token del modelo (se inyecta desde el servidor)
-        var tokenEl = document.getElementById('accessToken');
-        if (tokenEl) {
-            TOKEN = tokenEl.value;
-        }
-
-        // Si no hay token, no podemos hacer llamadas
-        if (!TOKEN) {
-            console.warn('No hay token JWT disponible');
-            return;
-        }
+        // ADR-016: no se lee token JWT en el navegador. La autenticación es por cookie de sesión
+        // del MVC y el proxy usa IApiClient server-side para adjuntar el Bearer a la API.
 
         // Evento: submit del formulario de filtros
         var form = document.getElementById(ID_FORM_FILTROS);

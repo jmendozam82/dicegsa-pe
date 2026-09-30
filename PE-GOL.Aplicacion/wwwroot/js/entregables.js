@@ -221,6 +221,8 @@ $(function () {
                 formData.append('archivos', file, file.name);
             });
 
+            // TODO [hotfix-HU-022] fetch a /api/v1/... resuelve contra el origen del MVC (Defecto E, ADR-016).
+            // Fix previsto: proxy /AccionPlan/EntregablesDatos con ApiClient (JWT en sesión).
             const token = obtenerToken();
             const response = await fetch(`/api/v1/acciones/${accionId}/entregables`, {
                 method: 'POST',
@@ -368,6 +370,8 @@ $(function () {
     }
 
     async function eliminarAdjunto(adjuntoId) {
+        // TODO [hotfix-HU-022] fetch a /api/v1/... resuelve contra el origen del MVC (Defecto E, ADR-016).
+        // Fix previsto: proxy /AccionPlan/EntregablesDatos con ApiClient (JWT en sesión).
         const token = obtenerToken();
         const response = await fetch(`/api/v1/acciones/${accionId}/entregables/${adjuntoId}`, {
             method: 'DELETE',
@@ -397,6 +401,8 @@ $(function () {
 
     async function descargarAdjunto(adjuntoId) {
         try {
+            // TODO [hotfix-HU-022] fetch a /api/v1/... resuelve contra el origen del MVC (Defecto E, ADR-016).
+            // Fix previsto: proxy /AccionPlan/EntregablesDatos con ApiClient (JWT en sesión).
             const token = obtenerToken();
             const response = await fetch(`/api/v1/acciones/${accionId}/entregables/${adjuntoId}/descarga`, {
                 method: 'GET',

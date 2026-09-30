@@ -14,6 +14,10 @@ public interface IApiClient
     /// <summary>GET con query params opcionales. Desenvuelve ApiResponse&lt;T&gt;.Data.</summary>
     Task<T> GetAsync<T>(string path, IDictionary<string, string?>? query = null, CancellationToken ct = default);
 
+    /// <summary>GET binario sin deserialización JSON. Lee el stream de bytes en crudo.
+    /// Usado para exportación Excel (spec HU-023 Revisión v3 / ADR-016).</summary>
+    Task<byte[]> GetBytesAsync(string path, IDictionary<string, string?>? query = null, CancellationToken ct = default);
+
     /// <summary>POST con body JSON. Desenvuelve ApiResponse&lt;TRes&gt;.Data.</summary>
     Task<TRes> PostAsync<TReq, TRes>(string path, TReq body, CancellationToken ct = default);
 

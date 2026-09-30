@@ -49,6 +49,23 @@ public class ApiClient : IApiClient
     public Task<T> GetAsync<T>(string path, IDictionary<string, string?>? query = null, CancellationToken ct = default)
         => EnviarAsync<T>(HttpMethod.Get, path, query, body: null, ct);
 
+    public async Task<byte[]> GetBytesAsync(string path, IDictionary<string, string?>? query = null, CancellationToken ct = default)
+    {
+        var response = await EnviarConTokenAsync(HttpMethod.Get, path, query, body: null, ct);
+
+        // SEC-01: 401 → refresh con rotación → reintento ÚNICO del request original.
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            var renovado = await IntentarRefreshAsync(ct);
+            if (!renovado)
+                throw new UnauthorizedException("La sesión expiró. Vuelva a iniciar sesión.");
+
+            response = await EnviarConTokenAsync(HttpMethod.Get, path, query, body: null, ct);
+        }
+
+        return await ProcesarRespuestaBytesAsync(response, ct);
+    }
+
     public Task<TRes> PostAsync<TReq, TRes>(string path, TReq body, CancellationToken ct = default)
         => EnviarAsync<TRes>(HttpMethod.Post, path, query: null, body, ct);
 
@@ -253,6 +270,43 @@ public class ApiClient : IApiClient
             throw new UnauthorizedException("La sesión expiró. Vuelva a iniciar sesión.");
 
         ApiResponse<object>? errorWrapper;
+        try
+        {
+            errorWrapper = JsonSerializer.Deserialize<ApiResponse<object>>(content, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            errorWrapper = null;
+        }
+
+        var message = errorWrapper?.Message ?? $"Error {statusCode}";
+        var errors = errorWrapper?.Errors;
+        throw new ApiClientException(statusCode, message, errors);
+    }
+
+    /// <summary>
+    /// Procesa una respuesta binaria (exportación Excel). En éxito devuelve los bytes crudos;
+    /// en error, lee el wrapper ApiResponse para propagar el código HTTP y un mensaje genérico.
+    /// </summary>
+    private async Task<byte[]> ProcesarRespuestaBytesAsync(HttpResponseMessage response, CancellationToken ct)
+    {
+        var statusCode = (int)response.StatusCode;
+
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadAsByteArrayAsync(ct);
+        }
+
+        // 500 → mensaje genérico sin filtrar detalles internos del servidor.
+        if (statusCode == 500)
+            throw new ApiClientException(500, "Error interno del servidor");
+
+        // 401 tras el reintento → sesión no válida → redirigir a login.
+        if (statusCode == 401)
+            throw new UnauthorizedException("La sesión expiró. Vuelva a iniciar sesión.");
+
+        ApiResponse<object>? errorWrapper;
+        var content = await response.Content.ReadAsStringAsync(ct);
         try
         {
             errorWrapper = JsonSerializer.Deserialize<ApiResponse<object>>(content, JsonOptions);
