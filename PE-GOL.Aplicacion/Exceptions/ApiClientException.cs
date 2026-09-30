@@ -18,4 +18,9 @@ public class ApiClientException : Exception
         StatusCode = statusCode;
         Errors = errors ?? [];
     }
+
+    public ApiClientException(string message, int statusCode, IReadOnlyList<string>? errors = null)
+        : this(statusCode, message, errors)
+    {
+    }
 }

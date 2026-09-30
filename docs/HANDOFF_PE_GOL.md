@@ -51,7 +51,7 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 
 ## 🗓️ Estado Actual del Proyecto
 
-> **Actualizado: 2026-09-29** (cierre de HU-023). Este bloque refleja el estado vigente; el historial detallado de cada sprint está en las secciones de cierre al final de este documento.
+> **Actualizado: 2026-09-30** (cierre de HU-024). Este bloque refleja el estado vigente; el historial detallado de cada sprint está en las secciones de cierre al final de este documento.
 
 ### Fases completadas: **Análisis + Diseño (Fases 0, 1 y 2) + Sprint 1 + Sprint 2 + Sprint 3**
 
@@ -69,20 +69,20 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 | **Specs + implementación Sprint 1** | ✅ Completo — HU-001, HU-002, HU-003, HU-004, HU-006, HU-007, HU-008 (7/7) |
 | **Specs + implementación Sprint 2** | ✅ Completo — HU-005, HU-009..HU-015 (8/8) |
 | **Specs + implementación Sprint 3** | ✅ Completo — HU-016..HU-020 y HU-045 (6/6) |
-| **Specs + implementación Sprint 4** | ⏳ **En curso — 3/5 HU** · HU-021 ✅, HU-022 ✅, HU-023 ✅ Implementadas · pendientes HU-024, HU-025 (18 de 28 pts) |
-| Implementación (código) | ✅ En curso — 23 de 45 HU Implementadas |
+| **Specs + implementación Sprint 4** | ⏳ **En curso — 4/5 HU** · HU-021 ✅, HU-022 ✅, HU-023 ✅, HU-024 ✅ Implementadas · pendiente HU-025 (23 de 28 pts) |
+| Implementación (código) | ✅ En curso — 24 de 45 HU Implementadas |
 | Auditoría post-Sprint 3 | ✅ Resuelta 100% (2026-09-21 — 3 críticos, 6 medios, 8 mejoras) |
 
-### Estado técnico verificado (2026-09-29)
+### Estado técnico verificado (2026-09-30)
 
 | Indicador | Valor |
 |-----------|-------|
 | Build | `dotnet build PE-GOL.sln` → **0 advertencias, 0 errores** |
-| Tests | `dotnet test PE-GOL.sln` → **735/735 en verde** (0 fallidas, 0 omitidas) — 692 previos + 43 de HU-023 |
+| Tests | `dotnet test PE-GOL.sln` → **797/797 en verde** (0 fallidas, 0 omitidas) — 735 previos + 62 de HU-024 |
 | Cobertura BLL | **≥ 70%** (TEST-02) |
 | Migraciones | **V001–V005 EJECUTADAS y verificadas** en Supabase Cloud (V001–V004 en HU-045; `V005__indice_accion_plan_gantt.sql` en HU-021 → `idx_accion_plan_ciclo_area ON public.accion_plan USING btree (tenant_id, ciclo_id, area_id)`) |
 | Frontend | Cimiento HU-045 + Gantt HU-021 + Consolidado HU-023 · DHTMLX Gantt **Community MIT v10.0.3** vendorizada en `wwwroot/lib/dhtmlx-gantt/` (ADR-011) |
-| Swagger | **49 paths** documentados (ARCH-03) |
+| Swagger | **54 paths** documentados (49 previos + 5 de `OkrController` — ARCH-03) |
 
 ### Decisiones de procedencia que siguen vigentes
 
@@ -91,9 +91,9 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 - **Pendiente de decisión de Jorge:** precisión de `STACK-07` (variante/versión exacta). La regla se dejó **sin tocar** a propósito.
 - **Salvedad de HU-021:** no hubo verificación visual autenticada del Gantt renderizado; se verificó la entrega de assets y el contrato, no el render.
 
-### Fase siguiente: **Sprint 4 — HU-024 (CRUD de OKRs)**
+### Fase siguiente: **Sprint 4 — HU-025 (Gestión de Key Results)**
 
-`specs/sprint-04/HU-023.spec.md` en `Implementado` · siguiente en el loop: **HU-024** (CRUD de OKRs), luego HU-025 (Gestión de Key Results).
+`specs/sprint-04/HU-024.spec.md` en `Implementado` · siguiente en el loop: **HU-025** (Gestión de Key Results) — última HU pendiente del Sprint 4.
 
 ---
 
@@ -602,5 +602,17 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-29 (Sprint 4 en curso — 3/5 HU, HU-021 + HU-022 + HU-023 cerradas · 735/735 tests · cobertura BLL ≥ 70%) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Loop de HU-024 (CRUD OKRs) — Sprint 4*
+## Cierre HU-024 — Sprint 4 en curso — 2026-09-30
+
+**Contexto:** HU-024 (CRUD de OKRs) se cerró el 2026-09-30 tras superar REVIEW y la validación visual en navegador por Jorge (login real `JefeArea`, `/Okr`). Con este cierre el **Sprint 4 queda en curso (4/5 HU, 23 de 28 pts)**; pendiente HU-025 (Gestión de KRs).
+
+1. **HU-024 Implementada (spec → `Implementado`):** 5 endpoints en `OkrController` (API, `api/v1/okrs`, JEF-only) + `OkrService`/`IOkrService` (BLL) + `OkrRepository`/`IOkrRepository` (DAL) + DTOs (`OkrCreateRequest`, `OkrUpdateRequest`, `OkrResponse`, `SiguienteSecuenciaOkrDto`) + 2 validators (`OkrCreateRequestValidator`, `OkrUpdateRequestValidator`) + vistas Razor `Okr/Index|Crear|Editar` + ViewModels + `okrs.js` + ítem de menú «OKRs» en `_Sidebar.cshtml`. Tests: **797/797 en verde** (build **0 advertencias / 0 errores**; 735 previos intactos + 62 nuevos = 39 casos BLL + 18 DAL + 5 MVC). Cobertura BLL **≥ 70%** (TEST-02).
+2. **Sin ADR nuevo:** la tabla `okr`, su `UNIQUE (area_id, codigo)`, `idx_okr_area` y su RLS `okr_policy` ya existían en el DDL base (sin migración); la auditoría sigue ADR-003 (`Entidad = "Okr"`); el repositorio dedicado sigue el precedente HU-017.
+3. **Verificaciones en ejecución:** `OkrController` con las 5 rutas, `[Authorize(Roles = "JefeArea")]`, `[ProducesResponseType]` y wrapper `ApiResponse<T>` verificados por @Documenter en el cierre; IOC (`IOkrRepository` + `IOkrService`) registrado en `DependencyContainer.cs`.
+
+**Artefactos del cierre:** `specs/sprint-04/HU-024.spec.md` (estado `Implementado` + registro de cierre) · `AGENTS.md` v1.27 · `docs/ESTADO_HUS.md` (HU-024 ✅) · `specs/sprint-04/README.md` (HU-024 ✅).
+
+---
+
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-30 (Sprint 4 en curso — 4/5 HU, HU-021 + HU-022 + HU-023 + HU-024 cerradas · 797/797 tests · cobertura BLL ≥ 70%) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Loop de HU-025 (Gestión de KRs) — Sprint 4*

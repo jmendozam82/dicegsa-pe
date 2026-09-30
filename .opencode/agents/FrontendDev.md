@@ -6,8 +6,8 @@ description: Implementa el frontend del proyecto PE-GOL SaaS (vistas
   vistas o UI de una HU.
 mode: subagent
 # model: opencode/big-pickle          # Primera opción: 200K, gratis, exhaustivo
-# model: opencode-go/minimax-m3    # Fallback Go: 1M, si Big Pickle cae
-model: opencode-go/longcat-2.5-preview-free
+model: opencode-go/minimax-m3    # Fallback Go: 1M, si Big Pickle cae
+# model: opencode-go/longcat-2.5-preview-free
 temperature: 0.2
 color: "#E65100"
 tools:

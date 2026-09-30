@@ -1,0 +1,67 @@
+@model OkrFormViewModel
+@{
+    ViewData["Title"] = "Nuevo OKR";
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Mi Área</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>OKRs</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Nuevo OKR</span>
+    </div>
+    <h1 class="page-header__title">Nuevo OKR</h1>
+    <p class="page-header__subtitle">El código OKR.N se genera automáticamente (OKR.1, OKR.2, ...). El OKR queda vinculado a su área (SEC-07).</p>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <strong>No se pudo crear el OKR:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="card-pe">
+    <form asp-action="Crear" method="post" id="formOkr" novalidate>
+        <div class="row g-3">
+            <div class="col-md-7">
+                <label class="form-pe-label" for="pilarId">Pilar estratégico *</label>
+                <select class="form-pe-select" id="pilarId" name="pilarId">
+                    <option value="">Seleccione un pilar</option>
+                    @foreach (var pilar in Model.Pilares)
+                    {
+                        <option value="@pilar.Id" selected="@(Model.PilarId == pilar.Id)">
+                            @pilar.Codigo — @pilar.Nombre
+                        </option>
+                    }
+                </select>
+                @* RF-017 — el select de pilares como referencia de navegación en el módulo OKRs *@
+            </div>
+            <div class="col-12">
+                <label class="form-pe-label" for="descripcion">Descripción del objetivo *</label>
+                <textarea class="form-pe-input" id="descripcion" name="descripcion" rows="4"
+                          maxlength="500" placeholder="Describa el compromiso del área (1-500 caracteres)">@Model.Descripcion</textarea>
+                <span class="body-sm">Máx 500 caracteres.</span>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+            </button>
+            <a class="btn-pe btn-pe--secondary" asp-action="Index">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="~/js/okr-form.js" asp-append-version="true"></script>
+}

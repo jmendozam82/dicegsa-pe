@@ -5,8 +5,8 @@ description: Implementa el backend .NET 8 del proyecto PE-GOL SaaS
   Actívalo con @BackendDev para implementar una HU.
 mode: subagent
 # model: opencode/big-pickle          # Primera opción: 200K, gratis, exhaustivo
-# model: opencode-go/kimi-k2.7-code   # Fallback Go: 1M, si Big Pickle cae
-model: opencode-go/longcat-2.5-preview-free
+model: opencode-go/kimi-k2.7-code   # Fallback Go: 1M, si Big Pickle cae
+# model: opencode-go/longcat-2.5-preview-free
 temperature: 0.2
 color: "#2E7D32"
 tools:

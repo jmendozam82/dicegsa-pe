@@ -1,7 +1,7 @@
 # Estado de Historias de Usuario — PE-GOL SaaS
 
 > Tabla de estado por HU. Se actualiza al cierre de cada HU (LOOP-05). Fuente de verdad del progreso del backlog.
-> Última actualización: 2026-09-29 (cierre de HU-023).
+> Última actualización: 2026-09-30 (cierre de HU-024).
 
 | HU | Título | Sprint | Spec | Tests | Impl. | Done |
 |----|--------|--------|------|-------|-------|------|
@@ -28,7 +28,7 @@
 | HU-021 | Vista Gantt del Plan de Acción | 4 | ✅ | ✅ | ✅ | ✅ |
 | HU-022 | Gestión de Entregables Adjuntos | 4 | ✅ | ✅ | ✅ | ✅ |
 | HU-023 | Vista Consolidada del Plan (Gerente) | 4 | ✅ | ✅ | ✅ | ✅ |
-| HU-024 | CRUD de OKRs | 4 | ⏳ | ⏳ | ⏳ | ⏳ |
+| HU-024 | CRUD de OKRs | 4 | ✅ | ✅ | ✅ | ✅ |
 | HU-025 | Gestión de Key Results (KRs) | 4 | ⏳ | ⏳ | ⏳ | ⏳ |
 | HU-026 | Registro Mensual de Valores Reales de KRs | 5 | ⏳ | ⏳ | ⏳ | ⏳ |
 | HU-027 | Visualización Consolidada de OKRs (Gerente) | 5 | ⏳ | ⏳ | ⏳ | ⏳ |
@@ -53,4 +53,4 @@
 
 ---
 
-**Resumen:** 45 HU · 243 pts · 9 Sprints · **23 Implementadas** (Sprints 1-3 completos + HU-021, HU-022 y HU-023 del Sprint 4) · Sprint 4 en curso (3/5 HU — 18 de 28 pts).
+**Resumen:** 45 HU · 243 pts · 9 Sprints · **24 Implementadas** (Sprints 1-3 completos + HU-021, HU-022, HU-023 y HU-024 del Sprint 4) · Sprint 4 en curso (4/5 HU — 23 de 28 pts).
