@@ -34,12 +34,12 @@ public class PlanConsolidadoViewModel
     /// <summary>Información de paginación.</summary>
     public PaginacionInfo? Paginacion { get; set; }
 
-    /// <summary>Token JWT para llamadas fetch desde el frontend.</summary>
-    public string AccessToken { get; set; } = string.Empty;
-
     /// <summary>Lista de áreas para el filtro (Gerente ve todas).</summary>
     public List<AreaResponse> Areas { get; set; } = new();
 
-    /// <summary>Lista de objetivos CG para el filtro.</summary>
-    public List<ObjetivoCgResponse> ObjetivosCg { get; set; } = new();
+    /// <summary>Lista de objetivos CG para el filtro (origen: GET /api/v1/objetivos-cg/consolidado).</summary>
+    public List<ObjetivoCgConsolidadoResponse> ObjetivosCg { get; set; } = new();
+
+    /// <summary>true si ocurrió un error de carga de catálogos o datos (spec v2 § UI § 7).</summary>
+    public bool ErrorCarga { get; set; }
 }

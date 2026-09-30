@@ -39,7 +39,11 @@
     </div>
 }
 
-@if (!Model.HayCicloActivo)
+@if (Model.ErrorCarga)
+{
+    @* ── Error de carga: solo el banner, sin empty states ni tabla (spec v2 § UI § 7) ── *@
+}
+else if (!Model.HayCicloActivo)
 {
     @* ── Estado vacío 1: sin ciclo activo (UX-05) ── *@
     <div class="card-pe">
@@ -242,8 +246,8 @@ else
     };
 }
 
-@* Token JWT para llamadas fetch desde el frontend (se inyecta desde el servidor) *@
-<input type="hidden" id="accessToken" value="@Model.AccessToken" />
+@* ADR-016: sin token JWT en el DOM — la autenticación va por cookie de sesión y el proxy
+   MVC (/Plan/ConsolidadoDatos, /Plan/ConsolidadoExportar) adjunta el Bearer server-side. *@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/plan-consolidado.css" asp-append-version="true" />
