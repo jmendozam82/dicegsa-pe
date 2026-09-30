@@ -51,7 +51,7 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 
 ## 🗓️ Estado Actual del Proyecto
 
-> **Actualizado: 2026-09-30** (cierre de HU-024). Este bloque refleja el estado vigente; el historial detallado de cada sprint está en las secciones de cierre al final de este documento.
+> **Actualizado: 2026-09-30** (cierre de HU-024 + hotfix de HU-023 aplicado y validado). Este bloque refleja el estado vigente; el historial detallado de cada sprint está en las secciones de cierre al final de este documento.
 
 ### Fases completadas: **Análisis + Diseño (Fases 0, 1 y 2) + Sprint 1 + Sprint 2 + Sprint 3**
 
@@ -64,7 +64,7 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 | Modelo de Dominio | ✅ Completo |
 | Modelo de Datos DDL + RLS | ✅ Completo — 25 tablas · 3 vistas · RLS en todas las tablas de negocio · **migraciones V001–V005 aplicadas y verificadas en Supabase Cloud** |
 | Design System | ✅ Completo — incluye **§ 12 «Gantt (DHTMLX Gantt)»** (2026-09-27) |
-| AGENTS.md (Constitución) | ✅ Completo — **v1.23** (2026-09-27) |
+| AGENTS.md (Constitución) | ✅ Completo — **v1.28** (2026-09-30) |
 | 6 Agentes configurados | ✅ Completo |
 | **Specs + implementación Sprint 1** | ✅ Completo — HU-001, HU-002, HU-003, HU-004, HU-006, HU-007, HU-008 (7/7) |
 | **Specs + implementación Sprint 2** | ✅ Completo — HU-005, HU-009..HU-015 (8/8) |
@@ -78,28 +78,30 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 | Indicador | Valor |
 |-----------|-------|
 | Build | `dotnet build PE-GOL.sln` → **0 advertencias, 0 errores** |
-| Tests | `dotnet test PE-GOL.sln` → **797/797 en verde** (0 fallidas, 0 omitidas) — 735 previos + 62 de HU-024 |
-| Cobertura BLL | **≥ 70%** (TEST-02) |
+| Tests | `dotnet test PE-GOL.sln` → **813/813 en verde** (0 fallidas, 0 omitidas) — 797 previos + 16 del hotfix de HU-023 (8 v2 + 7 v3 + 1 de regresión arquitectónica `JsApiBaseUrlRegressionTests`) |
+| Cobertura BLL | **89,96%** (línea) ≥ 70% (TEST-02) |
 | Migraciones | **V001–V005 EJECUTADAS y verificadas** en Supabase Cloud (V001–V004 en HU-045; `V005__indice_accion_plan_gantt.sql` en HU-021 → `idx_accion_plan_ciclo_area ON public.accion_plan USING btree (tenant_id, ciclo_id, area_id)`) |
-| Frontend | Cimiento HU-045 + Gantt HU-021 + Consolidado HU-023 · DHTMLX Gantt **Community MIT v10.0.3** vendorizada en `wwwroot/lib/dhtmlx-gantt/` (ADR-011) |
-| Swagger | **54 paths** documentados (49 previos + 5 de `OkrController` — ARCH-03) |
+| Frontend | Cimiento HU-045 + Gantt HU-021 + Consolidado HU-023 (con **proxy MVC** — ADR-016) · DHTMLX Gantt **Community MIT v10.0.3** vendorizada en `wwwroot/lib/dhtmlx-gantt/` (ADR-011) |
+| Swagger | **54 paths** documentados (49 previos + 5 de `OkrController` — ARCH-03; el hotfix de HU-023 añadió acciones MVC, no endpoints de API) |
 
 ### Decisiones de procedencia que siguen vigentes
 
 - **DHTMLX Gantt (ADR-011, F1, Jorge 2026-09-27):** Community Edition **MIT `v10.0.3`**, obtenida del **registro oficial de npm** con `dist.shasum` verificado **antes de extraer** y `LICENSE` MIT leído del propio tarball. Se descartó la Standard GPL v2 (copyleft incompatible con el SaaS propietario) y la licencia comercial. El release de GitHub `v10.0.3` es el repositorio de fuentes **sin bundle** y el CDN oficial devuelve 404 → quedan registrados como **canales no válidos** para el bundle. Sin npm/build en el pipeline, sin CDN en runtime.
 - **Índice del Gantt (ADR-012, F3, Jorge 2026-09-27):** `idx_accion_plan_ciclo_area ON accion_plan (tenant_id, ciclo_id, area_id)`.
+- **Tipado de parámetros de fecha en Dapper (ADR-015, 2026-09-30):** `DynamicParameters` con `DbType.Date` explícito — obligatorio para cualquier parámetro de fecha en el patrón `IS NULL OR` sobre columnas `DATE` (Defecto C de HU-023, `PostgresException 42P08`). Los repositorios existentes con `DateTimeOffset?`/uuid/text/enum quedaron **sin cambios** (verificados en vivo).
+- **Proxy MVC para el JS (ADR-016, 2026-09-30):** el navegador **nunca** consume la API interna; el MVC hace de proxy con `IApiClient` (JWT en sesión). Un `fetch('/api/v1/...')` en `wwwroot/js/` es un **defecto** — blindado por el test de regresión arquitectónica `JsApiBaseUrlRegressionTests`.
 - **Pendiente de decisión de Jorge:** precisión de `STACK-07` (variante/versión exacta). La regla se dejó **sin tocar** a propósito.
 - **Salvedad de HU-021:** no hubo verificación visual autenticada del Gantt renderizado; se verificó la entrega de assets y el contrato, no el render.
 
-### Fase siguiente: **Sprint 4 — HU-025 (Gestión de Key Results)**
+### Fase siguiente: **hotfix de HU-022 (3 problemas de UI) → Sprint 4 — HU-025 (Gestión de Key Results)**
 
-`specs/sprint-04/HU-024.spec.md` en `Implementado` · siguiente en el loop: **HU-025** (Gestión de Key Results) — última HU pendiente del Sprint 4.
+`specs/sprint-04/HU-023.spec.md` en `Implementado` (hotfix aplicado y validado) · siguiente paso acordado con Jorge: **hotfix de HU-022** (3 problemas de UI — ver «Deuda técnica pendiente», ítem 4) · luego en el loop: **HU-025** (Gestión de Key Results) — última HU pendiente del Sprint 4.
 
 ---
 
 ## 🧾 Deuda técnica pendiente
 
-> Registro vivo (no histórico): se actualiza al cerrar cada HU. Fecha de la última revisión: **2026-09-27** (cierre de HU-021).
+> Registro vivo (no histórico): se actualiza al cerrar cada HU. Fecha de la última revisión: **2026-09-30** (cierre del hotfix de HU-023 + registro del hotfix pendiente de HU-022, ítems 3-4).
 
 ### 1. Swagger sin XML comments — **prioridad baja**
 
@@ -122,6 +124,24 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 - El bundle vendorizado `wwwroot/lib/dhtmlx-gantt/codebase/dhtmlxgantt.css` (L1) **añade** un `@font-face` de `Inter` que referencia `fonts.gstatic.com` (**6 referencias** en el bundle). Ese `@font-face` sí viene con la librería de HU-021, pero es el mismo problema de dependencia externa que ya existía.
 
 **Prioridad y motivo.** **Media**, a resolver **antes de producción pública**: la decisión de auto-hospedar tiene sentido cuando se approachen escenarios **air-gap** o requisitos de **privacidad GDPR** (fuera de la UE, minimization de terceros). Mientras el despliegue sea dentro de la UE con salida a Google Fonts asumida, es aceptable.
+
+### 3. `entregables.js` — 3 fetch en ruta relativa contra el MVC — **hotfix propio de HU-022**
+
+**Qué falta.** `PE-GOL.Aplicacion/wwwroot/js/entregables.js` (HU-022) tiene **3 fetch en ruta relativa** contra el origen del MVC (`:7200`) en **L225, L372 y L401** → **404** (el MVC no tiene rutas `/api/v1` ni proxy alguno). Es el **mismo defecto E de HU-023**, detectado en la validación en navegador del 2026-09-30: la tabla inicial se renderiza server-side, pero las interacciones que dependen de esos fetch fallan.
+
+**Fix.** Proxy MVC `/AccionPlan/EntregablesDatos` con `ApiClient` — el patrón de **ADR-016** («el navegador nunca consume la API interna; el MVC hace de proxy con `IApiClient`»).
+
+**Por qué no se incluye en el hotfix de HU-023.** Es deuda de **HU-022**: se cierra en su **propio hotfix**, sin mezclarse en los commits atómicos de HU-023 (mismo criterio de alcance que los ítems 1 y 2).
+
+### 4. Hotfix pendiente de HU-022 — 3 problemas de UI — siguiente paso acordado con Jorge
+
+**Qué falta.** La revisión de navegación tras el hotfix de HU-023 (2026-09-30, Jorge) destapó **3 problemas de UI en HU-022 (Gestión de Entregables Adjuntos)** que quedan para un **hotfix propio y separado** — **NO se mezclaron con el hotfix de HU-023** (mismo criterio de alcance que los ítems 1-3) y son el **siguiente paso acordado con Jorge**:
+
+1. **Vista inalcanzable.** `GET /AccionPlan/Entregables/{id}` existe pero **nada la enlaza** — no está en `_Sidebar`, ni en la lista de acciones, ni en el Gantt: solo se llega escribiendo la URL con un GUID a mano.
+2. **Defecto E en `entregables.js`** — el **ítem 3** de esta misma sección: 3 `fetch` en ruta relativa (L225/L372/L401) → 404, con sus 3 comentarios `TODO [hotfix-HU-022]` (L224/L373/L404). Fix ya registrado: proxy MVC `/AccionPlan/EntregablesDatos` con `ApiClient` (patrón ADR-016).
+3. **Dropzone visible para rol sin permiso.** La vista muestra el formulario de subida a cualquier rol que entre, pero la API solo permite subir a `JefeArea` (`AccionPlanController.cs:174`, `[Authorize(Roles = "JefeArea")]`) — un `Gerente` ve el dropzone y recibe **403** al intentar usarlo.
+
+**Plan.** Hotfix propio de HU-022, **spec primero** (LOOP-01): el punto 2 ya tiene fix registrado (ítem 3); los puntos 1 y 3 se definen en el spec del hotfix. Al cerrarlo, quitar `entregables.js` de `ExcepcionesConocidas` en `JsApiBaseUrlRegressionTests` (la lista debe quedar vacía — el propio test lo documenta en su Assert 2).
 
 ---
 
@@ -614,5 +634,22 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-30 (Sprint 4 en curso — 4/5 HU, HU-021 + HU-022 + HU-023 + HU-024 cerradas · 797/797 tests · cobertura BLL ≥ 70%) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Loop de HU-025 (Gestión de KRs) — Sprint 4*
+## Cierre del hotfix de HU-023 — 2026-09-30
+
+**Contexto:** la validación visual en navegador de HU-023 (Jorge, login real `Gerente`, `/Plan/Consolidado`, 2026-09-30) destapó **4 defectos de runtime** que los 797 tests automatizados no podían detectar (misma clase de defecto que la validación visual de HU-021 del 2026-09-27). El hotfix se aplicó **spec primero** (LOOP-01): Revisión v2 del spec (Defectos A/B/C) y Revisión v3 (Defecto E — proxy MVC), ambas aprobadas por Jorge el 2026-09-30. El spec pasó de `Aprobado (Revisión v3)` a `Implementado` (LOOP-05). El Sprint 4 sigue en curso (4/5 HU, 23 de 28 pts).
+
+1. **Defecto A — «sin ciclo activo» falso.** `PlanController` llamaba `GET /api/v1/areas` (ruta inexistente en la API) y el `catch (ApiClientException ex) when (ex.StatusCode == 404)` etiquetaba el 404 de **cualquier** llamada como «sin ciclo activo» aunque el ciclo `PE 2026` existiera y estuviera `Activo`. Fix: las 4 llamadas reales del contrato — `GET /api/v1/ciclos` → `FirstOrDefault(c => c.Estado == "Activo")` es el **único** determinante de `HayCicloActivo`, luego `/ciclos/{id}/areas`, `/objetivos-cg/consolidado` y `/planes/consolidado`; el `when (ex.StatusCode == 404)` desapareció («sin ciclo activo» pasa a ser condición de datos, no código HTTP).
+2. **Defecto B — 403 para el Gerente.** El MVC llamaba `GET /api/v1/objetivos-cg`, que es `[Authorize(Roles = "JefeArea")]`. Fix: `GET /api/v1/objetivos-cg/consolidado` (rol `Gerente`); `PlanConsolidadoViewModel.ObjetivosCg` pasó a `List<ObjetivoCgConsolidadoResponse>`.
+3. **Defecto C — HTTP 500 `PostgresException 42P08`.** `DateTime?` en null viajaba sin tipo declarado contra columna `DATE` → el operador `>=` con múltiples candidatos (`date`/`timestamp`/`timestamptz`). Fix: `DynamicParameters` con `DbType.Date` explícito en las 3 queries — **ADR-015** (el cast SQL `@P::date` se probó contra la BD real y sigue fallando; `LogAuditoriaRepository` y los demás repositorios con `IS NULL OR` **no se tocan** — Defecto D descartado como falso positivo).
+4. **Defecto E — `fetch` relativo al MVC → 404.** `plan-consolidado.js` hacía `fetch('/api/v1/planes/consolidado')` relativo al origen del MVC (`:7200`), pero la API vive en otro origen (`:7269`). Fix: **proxy MVC** `GET /Plan/ConsolidadoDatos` + `GET /Plan/ConsolidadoExportar` con `IApiClient` — **ADR-016**: «el navegador nunca consume la API interna; el MVC hace de proxy». Descartadas por Jorge: inyectar `Api:BaseUrl` al JS (abría CORS y exponía el JWT cross-origin) y renderizar todo server-side (reescritura grande).
+5. **Seguridad reforzada (SEC-01/SEC-05):** se eliminaron el `<input type="hidden" id="accessToken">` del DOM y la propiedad `PlanConsolidadoViewModel.AccessToken` — el JWT ya **no** viaja al navegador; el proxy lo adjunta server-side desde la sesión.
+6. **Gates verificados:** `dotnet build` **0 errores / 0 advertencias** · `dotnet test` **813/813 en verde, 0 omitidos** (797 previos + 16 nuevos: 8 del hotfix v2 + 7 del v3 + 1 de regresión arquitectónica `JsApiBaseUrlRegressionTests`, que blinda ADR-016 escaneando `wwwroot/js/*.js` — la Revisión v3 del spec estimaba 812) · cobertura BLL **89,96%** (línea) ≥ 70% (TEST-02) · validación contra la API real: los 4 endpoints del contrato → 200 y 5 escenarios de filtros de fecha (null, solo desde, solo hasta, rango, rango+área+status) → 200.
+7. **Validación visual en navegador por Jorge** (login real `Gerente`, 2026-09-30): **«Revisado desde UI todo funcional hasta ahora»** — filtros, paginación y exportación end-to-end.
+8. **Hotfix pendiente de HU-022 (NO mezclado con este):** la misma revisión de navegación destapó 3 problemas de UI en HU-022 — ver «Deuda técnica pendiente», ítem 4. Es el siguiente paso acordado con Jorge.
+
+**Artefactos del cierre:** `specs/sprint-04/HU-023.spec.md` (estado `Implementado` + DoD v2/v3 en verde + registro de cierre del hotfix) · `AGENTS.md` v1.28 · `adrs/ADR-015.md` · `adrs/ADR-016.md` · `PE-GOL.Tests/Architecture/JsApiBaseUrlRegressionTests.cs` · `docs/HANDOFF_PE_GOL.md` (esta sección + «Deuda técnica pendiente» ítem 4).
+
+---
+
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-30 (Sprint 4 en curso — 4/5 HU, HU-021 + HU-022 + HU-023 + HU-024 cerradas · hotfix de HU-023 aplicado y validado · 813/813 tests · cobertura BLL 89,96%) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: hotfix de HU-022 (3 problemas de UI) → Loop de HU-025 (Gestión de KRs) — Sprint 4*
