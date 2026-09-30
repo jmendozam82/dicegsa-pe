@@ -93,20 +93,12 @@ public class PlanConsolidadoRepository : IPlanConsolidadoRepository, IDisposable
             sql += " OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
         }
 
-        var parametros = new
-        {
-            TenantId = tenantId,
-            CicloId = cicloId,
-            AreaId = filtros.AreaId,
-            CgId = filtros.CgId,
-            Status = filtros.Status,
-            Clasificacion = filtros.Clasificacion,
-            Tipo = filtros.Tipo,
-            FechaDesde = filtros.FechaDesde,
-            FechaHasta = filtros.FechaHasta,
-            Offset = (filtros.Page - 1) * filtros.PageSize,
-            PageSize = filtros.PageSize
-        };
+        // ADR-015: DynamicParameters con DbType explícito. Los parámetros de fecha sobre
+        // columnas DATE deben viajar como DbType.Date para evitar PostgresException 42P08
+        // («could not determine data type of parameter») cuando son null en el patrón IS NULL OR.
+        var parametros = ConstruirParametrosBase(tenantId, cicloId, filtros);
+        parametros.Add("Offset", (filtros.Page - 1) * filtros.PageSize, DbType.Int32);
+        parametros.Add("PageSize", filtros.PageSize, DbType.Int32);
 
         var result = await GetConnection().QueryAsync<ConsolidadoItemResponse>(sql, parametros);
         return result.AsList();
@@ -132,18 +124,9 @@ public class PlanConsolidadoRepository : IPlanConsolidadoRepository, IDisposable
               AND (@FechaDesde   IS NULL OR a.fecha_inicio >= @FechaDesde)
               AND (@FechaHasta   IS NULL OR a.fecha_inicio <= @FechaHasta)";
 
-        var parametros = new
-        {
-            TenantId = tenantId,
-            CicloId = cicloId,
-            AreaId = filtros.AreaId,
-            CgId = filtros.CgId,
-            Status = filtros.Status,
-            Clasificacion = filtros.Clasificacion,
-            Tipo = filtros.Tipo,
-            FechaDesde = filtros.FechaDesde,
-            FechaHasta = filtros.FechaHasta
-        };
+        // ADR-015: DynamicParameters con DbType explícito para todos los parámetros,
+        // especialmente DbType.Date en los filtros de fecha sobre columnas DATE.
+        var parametros = ConstruirParametrosBase(tenantId, cicloId, filtros);
 
         return await GetConnection().ExecuteScalarAsync<int>(sql, parametros);
     }
@@ -173,21 +156,32 @@ public class PlanConsolidadoRepository : IPlanConsolidadoRepository, IDisposable
               AND (@FechaDesde   IS NULL OR a.fecha_inicio >= @FechaDesde)
               AND (@FechaHasta   IS NULL OR a.fecha_inicio <= @FechaHasta)";
 
-        var parametros = new
-        {
-            TenantId = tenantId,
-            CicloId = cicloId,
-            AreaId = filtros.AreaId,
-            CgId = filtros.CgId,
-            Status = filtros.Status,
-            Clasificacion = filtros.Clasificacion,
-            Tipo = filtros.Tipo,
-            FechaDesde = filtros.FechaDesde,
-            FechaHasta = filtros.FechaHasta
-        };
+        // ADR-015: DynamicParameters con DbType explícito para todos los parámetros,
+        // especialmente DbType.Date en los filtros de fecha sobre columnas DATE.
+        var parametros = ConstruirParametrosBase(tenantId, cicloId, filtros);
 
         var resumen = await GetConnection().QueryFirstOrDefaultAsync<ResumenConsolidado>(sql, parametros);
         return resumen ?? new ResumenConsolidado();
+    }
+
+    /// <summary>
+    /// Construye los 9 parámetros comunes a las 3 queries (ADR-015).
+    /// Query 1 añade Offset/PageSize sobre este conjunto.
+    /// </summary>
+    private static DynamicParameters ConstruirParametrosBase(
+        Guid tenantId, Guid cicloId, FiltrosConsolidadoRequest filtros)
+    {
+        var parametros = new DynamicParameters();
+        parametros.Add("TenantId", tenantId, DbType.Guid);
+        parametros.Add("CicloId", cicloId, DbType.Guid);
+        parametros.Add("AreaId", filtros.AreaId, DbType.Guid);
+        parametros.Add("CgId", filtros.CgId, DbType.Guid);
+        parametros.Add("Status", filtros.Status, DbType.String);
+        parametros.Add("Clasificacion", filtros.Clasificacion, DbType.String);
+        parametros.Add("Tipo", filtros.Tipo, DbType.String);
+        parametros.Add("FechaDesde", filtros.FechaDesde, DbType.Date);
+        parametros.Add("FechaHasta", filtros.FechaHasta, DbType.Date);
+        return parametros;
     }
 
     public void Dispose()
