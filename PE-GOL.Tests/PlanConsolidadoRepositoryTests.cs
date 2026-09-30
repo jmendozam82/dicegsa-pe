@@ -16,11 +16,15 @@ namespace PE_GOL.Tests;
 
 /// <summary>
 /// Tests TDD (FASE ROJA) de HU-023 — Vista Consolidada del Plan (Gerente).
-/// Spec HU-023 § "Tests requeridos" (casos DAL 1-7).
+/// Spec HU-023 § "Tests requeridos" (casos DAL 1-7) + Revisión v2 (casos R8 y R9).
 /// Escritos ANTES de la implementación (TEST-01): PlanConsolidadoRepository NO existe todavía
 /// → el rojo legítimo es el FALLO DE COMPILACIÓN del proyecto de tests.
 ///
 /// Dobles de System.Data.Common escritos a mano (mismo patrón que EntregableAdjuntoRepositoryTests).
+/// Revisión v2 (ADR-015): `ParametroColeccion.Capturar()` extendido para capturar también `p.DbType`,
+/// porque con objeto anónimo Dapper no declara el tipo de los parámetros de fecha y Postgres lanza
+/// 42P08 al resolver `date >= $n` con múltiples candidatos. Los 7 casos v1 (R1-R7) siguen verdes sin
+/// cambiar sus assertions — solo se añade `CapturarTipos()` y `TiposDb` a `ConsultaSql`.
 /// </summary>
 public class PlanConsolidadoRepositoryTests
 {
@@ -180,6 +184,74 @@ public class PlanConsolidadoRepositoryTests
         Assert.All(_conexion.Consultas, c => Assert.Contains("tenant_id = @TenantId", c.Sql));
     }
 
+    // ══════════════════════════════ CASOS R8-R9 (nuevos v2 — fase roja, ADR-015) ══════════════════════════════
+
+    // ─── R8 (nuevo v2 — falla hoy: C). Los 11 parámetros de ListarConsolidadoAsync con su DbType declarado ──
+    //
+    // NOTA DEL SPEC: el comentario del spec v2 dice "9 parámetros" pero en realidad son 11:
+    //   Guid (TenantId, CicloId, AreaId, CgId) → 4
+    //   String (Status, Clasificacion, Tipo)    → 3
+    //   Date (FechaDesde, FechaHasta)           → 2
+    //   Int32 (Offset, PageSize) [solo Query 1] → 2
+    // Total: 11 parámetros en ListarConsolidadoAsync (Query 1 paginada). Count y Resumen tienen 9.
+    // Documentado para que @Documenter actualice el spec si corresponde.
+    [Fact]
+    public async Task ConsultarAsync_Parametros_TiposDbDeclaradosLosNueve()
+    {
+        // Arrange
+        CrearRepositorio();
+        var filtros = CrearFiltros();
+
+        // Act
+        await _sut.ListarConsolidadoAsync(TenantId, CicloId, filtros, false, CancellationToken.None);
+
+        // Assert: los 11 parámetros capturados con su DbType declarado (ADR-015).
+        // Falla hoy: con objeto anónimo, Dapper NO setea DbType → ParametroCapturador.DbType
+        // queda en el default `DbType.String` (definido en el doble). Por lo tanto los Guid y Date
+        // esperados fallan (son String en el doble).
+        var tipos = _conexion.Consultas.Single().TiposDb;
+
+        Assert.Equal(DbType.Guid, tipos["TenantId"]);
+        Assert.Equal(DbType.Guid, tipos["CicloId"]);
+        Assert.Equal(DbType.Guid, tipos["AreaId"]);
+        Assert.Equal(DbType.Guid, tipos["CgId"]);
+
+        Assert.Equal(DbType.String, tipos["Status"]);
+        Assert.Equal(DbType.String, tipos["Clasificacion"]);
+        Assert.Equal(DbType.String, tipos["Tipo"]);
+
+        // ADR-015: OBLIGATORIO DbType.Date para los parámetros de fecha sobre columnas DATE.
+        // Sin esto, Postgres lanza 42P08 ("could not determine data type of parameter").
+        Assert.Equal(DbType.Date, tipos["FechaDesde"]);   // Falla hoy: es String (default)
+        Assert.Equal(DbType.Date, tipos["FechaHasta"]);   // Falla hoy: es String (default)
+
+        Assert.Equal(DbType.Int32, tipos["Offset"]);
+        Assert.Equal(DbType.Int32, tipos["PageSize"]);
+    }
+
+    // ─── R9 (nuevo v2 — falla hoy: C). FechaDesde/FechaHasta con DbType.Date en las 3 queries ──
+
+    [Fact]
+    public async Task ConsultarAsync_Fechas_DbTypeDateEnLasTresQueries()
+    {
+        // Arrange
+        CrearRepositorio();
+        var filtros = CrearFiltros();
+
+        // Act: ejecutar las 3 queries (Listar + Count + ObtenerResumen)
+        await _sut.ListarConsolidadoAsync(TenantId, CicloId, filtros, false, CancellationToken.None);
+        await _sut.CountConsolidadoAsync(TenantId, CicloId, filtros, CancellationToken.None);
+        await _sut.ObtenerResumenAsync(TenantId, CicloId, filtros, CancellationToken.None);
+
+        // Assert: en CADA query, FechaDesde y FechaHasta deben viajar con DbType.Date explícito.
+        // Falla hoy en las 3: el objeto anónimo Dapper no setea DbType → default String en el doble.
+        Assert.All(_conexion.Consultas, c =>
+        {
+            Assert.Equal(DbType.Date, c.TiposDb["FechaDesde"]);
+            Assert.Equal(DbType.Date, c.TiposDb["FechaHasta"]);
+        });
+    }
+
     // ══════════════════════════════ DOBLES DE System.Data.Common ══════════════════════════════
 
     internal sealed class ConexionCapturadora : DbConnection
@@ -279,7 +351,7 @@ public class PlanConsolidadoRepositoryTests
         }
 
         private void Registrar() => _conexion.Consultas.Add(
-            new ConsultaSql(CommandText, _parametros.Capturar(), DbTransaction));
+            new ConsultaSql(CommandText, _parametros.Capturar(), _parametros.CapturarTipos(), DbTransaction));
     }
 
     internal sealed class TransaccionFalsa : DbTransaction
@@ -329,6 +401,23 @@ public class PlanConsolidadoRepositoryTests
             {
                 if (item is IDbDataParameter p)
                     mapa[p.ParameterName ?? string.Empty] = p.Value;
+            }
+            return mapa;
+        }
+
+        /// <summary>
+        /// Revisión v2 (ADR-015): captura también el `DbType` declarado de cada parámetro.
+        /// Necesario para R8/R9: el doble debe poder afirmar que los parámetros de fecha viajan
+        /// con `DbType.Date` explícito (no el default `String`). Sin esta extensión, los 42P08
+        /// de Postgres son invisibles para xUnit.
+        /// </summary>
+        public IReadOnlyDictionary<string, DbType> CapturarTipos()
+        {
+            var mapa = new Dictionary<string, DbType>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in _items)
+            {
+                if (item is IDbDataParameter p)
+                    mapa[p.ParameterName ?? string.Empty] = p.DbType;
             }
             return mapa;
         }
@@ -395,15 +484,27 @@ public class PlanConsolidadoRepositoryTests
 
     internal sealed class ConsultaSql
     {
-        public ConsultaSql(string sql, IReadOnlyDictionary<string, object?> parametros, IDbTransaction? transaccion)
+        public ConsultaSql(
+            string sql,
+            IReadOnlyDictionary<string, object?> parametros,
+            IReadOnlyDictionary<string, DbType> tiposDb,
+            IDbTransaction? transaccion)
         {
             Sql = sql;
             Parametros = parametros;
+            TiposDb = tiposDb;
             Transaccion = transaccion;
         }
 
         public string Sql { get; }
         public IReadOnlyDictionary<string, object?> Parametros { get; }
+
+        /// <summary>
+        /// Revisión v2 (ADR-015): DbType declarado de cada parámetro por nombre.
+        /// Necesario para R8/R9. Los casos R1-R7 no usan este campo.
+        /// </summary>
+        public IReadOnlyDictionary<string, DbType> TiposDb { get; }
+
         public IDbTransaction? Transaccion { get; }
     }
 }
