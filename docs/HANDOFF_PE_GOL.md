@@ -51,7 +51,7 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 
 ## 🗓️ Estado Actual del Proyecto
 
-> **Actualizado: 2026-09-30** (cierre de HU-024 + hotfix de HU-023 aplicado y validado). Este bloque refleja el estado vigente; el historial detallado de cada sprint está en las secciones de cierre al final de este documento.
+> **Actualizado: 2026-10-01** (cierre del hotfix de HU-022 aplicado y validado). Este bloque refleja el estado vigente; el historial detallado de cada sprint está en las secciones de cierre al final de este documento.
 
 ### Fases completadas: **Análisis + Diseño (Fases 0, 1 y 2) + Sprint 1 + Sprint 2 + Sprint 3**
 
@@ -69,16 +69,16 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 | **Specs + implementación Sprint 1** | ✅ Completo — HU-001, HU-002, HU-003, HU-004, HU-006, HU-007, HU-008 (7/7) |
 | **Specs + implementación Sprint 2** | ✅ Completo — HU-005, HU-009..HU-015 (8/8) |
 | **Specs + implementación Sprint 3** | ✅ Completo — HU-016..HU-020 y HU-045 (6/6) |
-| **Specs + implementación Sprint 4** | ⏳ **En curso — 4/5 HU** · HU-021 ✅, HU-022 ✅, HU-023 ✅, HU-024 ✅ Implementadas · pendiente HU-025 (23 de 28 pts) |
+| **Specs + implementación Sprint 4** | ⏳ **En curso — 4/5 HU** · HU-021 ✅, HU-022 ✅ (hotfix de UI aplicado 2026-10-01), HU-023 ✅, HU-024 ✅ Implementadas · pendiente HU-025 (23 de 28 pts) |
 | Implementación (código) | ✅ En curso — 24 de 45 HU Implementadas |
 | Auditoría post-Sprint 3 | ✅ Resuelta 100% (2026-09-21 — 3 críticos, 6 medios, 8 mejoras) |
 
-### Estado técnico verificado (2026-09-30)
+### Estado técnico verificado (2026-10-01)
 
 | Indicador | Valor |
 |-----------|-------|
 | Build | `dotnet build PE-GOL.sln` → **0 advertencias, 0 errores** |
-| Tests | `dotnet test PE-GOL.sln` → **813/813 en verde** (0 fallidas, 0 omitidas) — 797 previos + 16 del hotfix de HU-023 (8 v2 + 7 v3 + 1 de regresión arquitectónica `JsApiBaseUrlRegressionTests`) |
+| Tests | `dotnet test PE-GOL.sln` → **830/830 en verde** (0 fallidas, 0 omitidas) — 813 previos + 17 del hotfix de HU-022 (12 de proxies + 2 de autorización por reflexión + 3 de action `Entregables`/ViewModel) |
 | Cobertura BLL | **89,96%** (línea) ≥ 70% (TEST-02) |
 | Migraciones | **V001–V005 EJECUTADAS y verificadas** en Supabase Cloud (V001–V004 en HU-045; `V005__indice_accion_plan_gantt.sql` en HU-021 → `idx_accion_plan_ciclo_area ON public.accion_plan USING btree (tenant_id, ciclo_id, area_id)`) |
 | Frontend | Cimiento HU-045 + Gantt HU-021 + Consolidado HU-023 (con **proxy MVC** — ADR-016) · DHTMLX Gantt **Community MIT v10.0.3** vendorizada en `wwwroot/lib/dhtmlx-gantt/` (ADR-011) |
@@ -93,15 +93,15 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 - **Pendiente de decisión de Jorge:** precisión de `STACK-07` (variante/versión exacta). La regla se dejó **sin tocar** a propósito.
 - **Salvedad de HU-021:** no hubo verificación visual autenticada del Gantt renderizado; se verificó la entrega de assets y el contrato, no el render.
 
-### Fase siguiente: **hotfix de HU-022 (3 problemas de UI) → Sprint 4 — HU-025 (Gestión de Key Results)**
+### Fase siguiente: **Sprint 4 — HU-025 (Gestión de Key Results)**
 
-`specs/sprint-04/HU-023.spec.md` en `Implementado` (hotfix aplicado y validado) · siguiente paso acordado con Jorge: **hotfix de HU-022** (3 problemas de UI — ver «Deuda técnica pendiente», ítem 4) · luego en el loop: **HU-025** (Gestión de Key Results) — última HU pendiente del Sprint 4.
+`specs/sprint-04/HU-022-hotfix.spec.md` en `Implementado` (hotfix aplicado y validado — deuda de UI pagada) · siguiente en el loop: **HU-025** (Gestión de Key Results) — última HU pendiente del Sprint 4.
 
 ---
 
 ## 🧾 Deuda técnica pendiente
 
-> Registro vivo (no histórico): se actualiza al cerrar cada HU. Fecha de la última revisión: **2026-09-30** (cierre del hotfix de HU-023 + registro del hotfix pendiente de HU-022, ítems 3-4).
+> Registro vivo (no histórico): se actualiza al cerrar cada HU. Fecha de la última revisión: **2026-10-01** (cierre del hotfix de HU-022 — ítems 3-4 retirados: deuda pagada).
 
 ### 1. Swagger sin XML comments — **prioridad baja**
 
@@ -124,24 +124,6 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 - El bundle vendorizado `wwwroot/lib/dhtmlx-gantt/codebase/dhtmlxgantt.css` (L1) **añade** un `@font-face` de `Inter` que referencia `fonts.gstatic.com` (**6 referencias** en el bundle). Ese `@font-face` sí viene con la librería de HU-021, pero es el mismo problema de dependencia externa que ya existía.
 
 **Prioridad y motivo.** **Media**, a resolver **antes de producción pública**: la decisión de auto-hospedar tiene sentido cuando se approachen escenarios **air-gap** o requisitos de **privacidad GDPR** (fuera de la UE, minimization de terceros). Mientras el despliegue sea dentro de la UE con salida a Google Fonts asumida, es aceptable.
-
-### 3. `entregables.js` — 3 fetch en ruta relativa contra el MVC — **hotfix propio de HU-022**
-
-**Qué falta.** `PE-GOL.Aplicacion/wwwroot/js/entregables.js` (HU-022) tiene **3 fetch en ruta relativa** contra el origen del MVC (`:7200`) en **L225, L372 y L401** → **404** (el MVC no tiene rutas `/api/v1` ni proxy alguno). Es el **mismo defecto E de HU-023**, detectado en la validación en navegador del 2026-09-30: la tabla inicial se renderiza server-side, pero las interacciones que dependen de esos fetch fallan.
-
-**Fix.** Proxy MVC `/AccionPlan/EntregablesDatos` con `ApiClient` — el patrón de **ADR-016** («el navegador nunca consume la API interna; el MVC hace de proxy con `IApiClient`»).
-
-**Por qué no se incluye en el hotfix de HU-023.** Es deuda de **HU-022**: se cierra en su **propio hotfix**, sin mezclarse en los commits atómicos de HU-023 (mismo criterio de alcance que los ítems 1 y 2).
-
-### 4. Hotfix pendiente de HU-022 — 3 problemas de UI — siguiente paso acordado con Jorge
-
-**Qué falta.** La revisión de navegación tras el hotfix de HU-023 (2026-09-30, Jorge) destapó **3 problemas de UI en HU-022 (Gestión de Entregables Adjuntos)** que quedan para un **hotfix propio y separado** — **NO se mezclaron con el hotfix de HU-023** (mismo criterio de alcance que los ítems 1-3) y son el **siguiente paso acordado con Jorge**:
-
-1. **Vista inalcanzable.** `GET /AccionPlan/Entregables/{id}` existe pero **nada la enlaza** — no está en `_Sidebar`, ni en la lista de acciones, ni en el Gantt: solo se llega escribiendo la URL con un GUID a mano.
-2. **Defecto E en `entregables.js`** — el **ítem 3** de esta misma sección: 3 `fetch` en ruta relativa (L225/L372/L401) → 404, con sus 3 comentarios `TODO [hotfix-HU-022]` (L224/L373/L404). Fix ya registrado: proxy MVC `/AccionPlan/EntregablesDatos` con `ApiClient` (patrón ADR-016).
-3. **Dropzone visible para rol sin permiso.** La vista muestra el formulario de subida a cualquier rol que entre, pero la API solo permite subir a `JefeArea` (`AccionPlanController.cs:174`, `[Authorize(Roles = "JefeArea")]`) — un `Gerente` ve el dropzone y recibe **403** al intentar usarlo.
-
-**Plan.** Hotfix propio de HU-022, **spec primero** (LOOP-01): el punto 2 ya tiene fix registrado (ítem 3); los puntos 1 y 3 se definen en el spec del hotfix. Al cerrarlo, quitar `entregables.js` de `ExcepcionesConocidas` en `JsApiBaseUrlRegressionTests` (la lista debe quedar vacía — el propio test lo documenta en su Assert 2).
 
 ---
 
@@ -651,5 +633,23 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-09-30 (Sprint 4 en curso — 4/5 HU, HU-021 + HU-022 + HU-023 + HU-024 cerradas · hotfix de HU-023 aplicado y validado · 813/813 tests · cobertura BLL 89,96%) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: hotfix de HU-022 (3 problemas de UI) → Loop de HU-025 (Gestión de KRs) — Sprint 4*
+## Cierre del hotfix de HU-022 — 2026-10-01
+
+**Contexto:** la revisión de navegación tras el hotfix de HU-023 (2026-09-30, Jorge) destapó **3 problemas de UI en HU-022** (Gestión de Entregables Adjuntos), registrados como deuda (ítems 3-4 de «Deuda técnica pendiente»). El hotfix se aplicó **spec primero** (LOOP-01): `specs/sprint-04/HU-022-hotfix.spec.md`, aprobado por Jorge el 2026-10-01, amplió el encargo a **6 defectos (A-F)** con evidencia archivo:línea — la verificación de código de @Arquitecto destapó 3 adicionales en el mismo camino runtime (D: JWT en el DOM, el mismo defecto que el hotfix de HU-023 eliminó; E: typo `adjjunto` → `ReferenceError` tras la primera subida exitosa; F: tabla inexistente sobre una acción sin adjuntos). El spec pasó de `Aprobado` a `Implementado` (LOOP-05). Alcance: **100% `PE-GOL.Aplicacion` + `PE-GOL.Tests`** (0 cambios en API/BLL/DAL/Entity/DTO, sin migración, **sin ADR nuevo** — aplica ADR-016). El Sprint 4 sigue en curso (4/5 HU, 23 de 28 pts — el hotfix es deuda técnica, 0 pts).
+
+1. **Defecto A — vista inalcanzable.** Nada enlazaba a `GET /AccionPlan/Entregables/{id}`. Fix: **navegación por rol** (D-8) — botón `bi-paperclip` por fila en `AccionPlan/Index.cshtml` (JEF) + columna «Acciones» con enlace en `Plan/Consolidado.cshtml` **y** en la plantilla JS de `plan-consolidado.js` (GER — sin el render JS el enlace desaparecería al primer filtro/paginación). Gantt (read-only, HU-021) y Sidebar (la vista es por-acción) explícitamente NO.
+2. **Defecto B — 3 `fetch` relativos → 404 (ADR-016, deuda ítem 3).** Fix: **4 proxies MVC** en `AccionPlanController` — `EntregablesDatos` (GET), `EntregablesSubir` (POST, `[Authorize(Roles = "JefeArea")]` explícito: la API subyacente es JEF-only), `EntregablesDescarga` (GET, `[FromQuery] entregableId`) y `EntregablesEliminar` (POST, `[FromQuery]`) — con `IApiClient` (JWT server-side desde la sesión) + **overload multi-archivo** de `PostMultipartAsync` (D-6: planificado por el spec original de HU-022 y nunca implementado; la firma mono-archivo de HU-006 queda intacta). `entregables.js` sin el literal `/api/`: `JsApiBaseUrlRegressionTests` queda con `ExcepcionesConocidas` **vacía** (gate del defecto).
+3. **Defecto C — dropzone visible al Gerente.** Fix: `PuedeSubir` calculado **server-side** (`User.IsInRole("JefeArea")`) — el permiso nunca se confía al JS ni al DOM; el panel de subida se renderiza solo `@if (Model.PuedeSubir)`; el Gerente ve la vista read-only (tabla + descarga + `PuedeEliminar` por fila).
+4. **Defecto D — JWT en el DOM (SEC-01/SEC-05).** Eliminados el `<meta name="access-token">`, `EntregablesViewModel.AccessToken`, `obtenerToken()` y los 3 headers `Authorization` — mismo fix que el hotfix de HU-023 aplicó a `PlanConsolidado`: el JWT ya no viaja al navegador; el proxy lo adjunta server-side desde la sesión.
+5. **Defecto E — typo `adjjunto`.** `ReferenceError` en `agregarFilaTabla` en cuanto una subida tenía éxito (misma clase de defecto runtime de navegador que el hotfix de HU-021 documentó). Corregido a `adjunto`.
+6. **Defecto F — tabla inexistente sin adjuntos.** La tabla se renderizaba solo si `Count > 0` → sobre una acción vacía, la primera subida no pintaba nada. Fix: tabla + empty state **siempre en el DOM** (`#contenedor-tabla-adjuntos` / `#tbody-adjuntos` / `#empty-state-adjuntos` con toggle) y mensaje role-neutral (UX-05).
+7. **Gates verificados:** `dotnet build` **0 errores / 0 advertencias** · `dotnet test` **830/830 en verde, 0 omitidos** (813 previos + 17 nuevos: 12 de proxies + 2 de autorización por reflexión + 3 de action `Entregables`/ViewModel) · cobertura BLL **89,96%** sin drift (0 cambios BLL — TEST-02) · Swagger **54 paths intactos** (los proxies son acciones MVC, no endpoints de API — ARCH-03).
+8. **Validación visual en navegador por Jorge:** ✅ confirmada por @Orquestador al encargar el cierre (2026-10-01) — subir/descargar/eliminar sin reload, acción sin adjuntos pinta la tabla tras la primera subida, Gerente sin panel de subida, DOM sin `<meta name="access-token">`.
+9. **Trazabilidad:** `Consolidado.cshtml` y `plan-consolidado.js` (HU-023) se tocan **mínimamente** (una celda por fila) para la navegación GER — no es deuda de HU-023. Dos detalles aditivos de defensa verificados en el cierre: helper `SanitizarMensajeProxy` en los 4 proxies (URLs absolutas → `[URL interna]`, JWT/`Bearer` → `[token]` — defensa en profundidad sobre D-4/ADR-016) y `esc()` sobre el `accionId` en la plantilla JS.
+
+**Artefactos del cierre:** `specs/sprint-04/HU-022-hotfix.spec.md` (estado `Implementado` + DoD en verde + registro de cierre) · `AGENTS.md` v1.29 · `docs/HANDOFF_PE_GOL.md` (esta sección + «Deuda técnica pendiente» ítems 3-4 retirados) · `adrs/ADR-016.md` (§ Decisión sincronizada con la precisión D-4 del spec) · `specs/sprint-04/README.md` (HU-022 hotfix aplicado).
+
+---
+
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-10-01 (Sprint 4 en curso — 4/5 HU, HU-021 + HU-022 + HU-023 + HU-024 cerradas · hotfix de HU-022 y hotfix de HU-023 aplicados y validados · 830/830 tests · cobertura BLL 89,96%) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Loop de HU-025 (Gestión de KRs) — Sprint 4*

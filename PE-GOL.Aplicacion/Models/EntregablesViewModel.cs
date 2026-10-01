@@ -23,6 +23,7 @@ public class EntregablesViewModel
     /// <summary>Indica si el ciclo está activo (para habilitar/deshabilitar subida).</summary>
     public bool CicloActivo { get; set; }
 
-    /// <summary>Token JWT para llamadas fetch desde el frontend (se inyecta desde el servidor).</summary>
-    public string AccessToken { get; set; } = string.Empty;
+    /// <summary>true si el rol actual puede subir (JefeArea — la API de subida es JEF-only,
+    /// API AccionPlanController.cs:174). Calculado en el controller; el JS no reimplementa la regla.</summary>
+    public bool PuedeSubir { get; set; }
 }

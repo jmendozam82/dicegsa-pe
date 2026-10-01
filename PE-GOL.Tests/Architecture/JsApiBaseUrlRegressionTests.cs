@@ -50,16 +50,17 @@ public class JsApiBaseUrlRegressionTests
     /// cita la fuente autorizante (ADR + HANDOFF + TODO en el propio fichero). Esta lista debe
     /// estar VACÍA para cerrar la deuda; cualquier otra violación que aparezca en el scan debe
     /// seguir haciendo fallar este test (TEST-06 / LOOP-01).
+    ///
+    /// Estado al cierre del hotfix de HU-022 (2026-10-01): la lista pasa a estar VACÍA.
+    /// <c>entregables.js</c> ya NO contiene el literal <c>/api/</c>: sus 3 <c>fetch</c>
+    /// apuntan ahora a los proxies MVC <c>/AccionPlan/Entregables*</c> con JWT server-side
+    /// (ADR-016 — Defecto B pagado). El propio <c>entregables.js</c> deja de llevar los
+    /// <c>TODO [hotfix-HU-022]</c> (L224/L373/L404 eliminados).
     /// </summary>
     private static readonly HashSet<string> ExcepcionesConocidas = new(StringComparer.OrdinalIgnoreCase)
     {
-        // HU-022 — entregables.js. 3 fetch a /api/v1/acciones/{id}/entregables[…]
-        //   · Autorización: ADR-016 § "Deuda técnica pendiente" (aceptado por Jorge 2026-09-30).
-        //   · Trazabilidad documental: docs/HANDOFF_PE_GOL.md § "Deuda técnica pendiente" ítem 3.
-        //   · Marcado en código: TODO [hotfix-HU-022] en L224, L373 y L404 de entregables.js.
-        //   · Fix previsto: proxy MVC /AccionPlan/EntregablesDatos con ApiClient (mismo patrón
-        //     que HU-023 — caso de los 2 proxy). Hotfix propio de HU-022, NO de HU-023.
-        "entregables.js",
+        // Lista vacía — deuda ADR-016 cerrada en el hotfix de HU-022.
+        // Si vuelve a aparecer una violación NO tolerada, el Assert.Fail del scan la detecta.
     };
 
     private const string MensajeAyuda =

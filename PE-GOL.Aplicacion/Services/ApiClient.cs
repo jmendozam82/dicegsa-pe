@@ -101,6 +101,23 @@ public class ApiClient : IApiClient
         return await ProcesarRespuestaAsync<TRes>(response, ct);
     }
 
+    public async Task<TRes> PostMultipartAsync<TRes>(string path, IReadOnlyList<IFormFile> archivos, string campo, CancellationToken ct = default)
+    {
+        var response = await EnviarMultipartConTokenAsync(path, archivos, campo, ct);
+
+        // SEC-01: 401 → refresh con rotación → reintento ÚNICO del request original.
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            var renovado = await IntentarRefreshAsync(ct);
+            if (!renovado)
+                throw new UnauthorizedException("La sesión expiró. Vuelva a iniciar sesión.");
+
+            response = await EnviarMultipartConTokenAsync(path, archivos, campo, ct);
+        }
+
+        return await ProcesarRespuestaAsync<TRes>(response, ct);
+    }
+
     // ─── Núcleo ──────────────────────────────────────────────────────────────
 
     private async Task<T> EnviarAsync<T>(
@@ -159,6 +176,39 @@ public class ApiClient : IApiClient
         if (!string.IsNullOrEmpty(archivo.ContentType))
             contenidoArchivo.Headers.ContentType = new MediaTypeHeaderValue(archivo.ContentType);
         contenido.Add(contenidoArchivo, campo, archivo.FileName);
+        request.Content = contenido;
+
+        return await _httpClient.SendAsync(request, ct);
+    }
+
+    /// <summary>
+    /// POST multipart/form-data con Bearer (HU-022-hotfix, campo «archivos»).
+    /// Todos los archivos comparten el MISMO nombre de campo. Los streams se descartan
+    /// al salir del método (using / await using).
+    /// </summary>
+    private async Task<HttpResponseMessage> EnviarMultipartConTokenAsync(
+        string path,
+        IReadOnlyList<IFormFile> archivos,
+        string campo,
+        CancellationToken ct)
+    {
+        var accessToken = _sesionService.ObtenerAccessToken();
+        if (string.IsNullOrEmpty(accessToken))
+            throw new UnauthorizedException("No hay sesión activa.");
+
+        var request = new HttpRequestMessage(HttpMethod.Post, path);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var contenido = new MultipartFormDataContent();
+        foreach (var archivo in archivos)
+        {
+            await using var stream = archivo.OpenReadStream();
+            var contenidoArchivo = new StreamContent(stream);
+            if (!string.IsNullOrEmpty(archivo.ContentType))
+                contenidoArchivo.Headers.ContentType = new MediaTypeHeaderValue(archivo.ContentType);
+            contenido.Add(contenidoArchivo, campo, archivo.FileName);
+        }
+
         request.Content = contenido;
 
         return await _httpClient.SendAsync(request, ct);

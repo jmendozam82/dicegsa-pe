@@ -205,6 +205,10 @@ else
                                        asp-route-id="@accion.Id" title="Historial de progreso">
                                         <i class="bi bi-clock-history" aria-hidden="true"></i>
                                     </a>
+                                    <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Entregables"
+                                       asp-route-id="@accion.Id" title="Entregables adjuntos">
+                                        <i class="bi bi-paperclip" aria-hidden="true"></i>
+                                    </a>
                                     <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Editar"
                                        asp-route-id="@accion.Id" title="Editar">
                                         <i class="bi bi-pencil" aria-hidden="true"></i>

@@ -1,5 +1,6 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PE_GOL.Aplicacion.Exceptions;
@@ -420,6 +421,10 @@ public class AccionPlanController : Controller
 
     // ─── Entregables Adjuntos (HU-022) ─────────────────────────────────────────
 
+
+
+    // ─── Entregables Adjuntos (HU-022 + hotfix ADR-016) ──────────────────────
+
     /// <summary>
     /// Vista de entregables adjuntos de una acción (HU-022).
     /// GET /AccionPlan/Entregables/{id}
@@ -444,9 +449,6 @@ public class AccionPlanController : Controller
             var ciclos = await _apiClient.GetAsync<List<CicloResponse>>("/api/v1/ciclos");
             var cicloActivo = ciclos.Any(c => c.Estado == "Activo");
 
-            // Obtener el token JWT para inyectar en la vista (el frontend lo usa con fetch)
-            var token = _sesionService.ObtenerAccessToken();
-
             return View(new EntregablesViewModel
             {
                 AccionId = id,
@@ -454,7 +456,7 @@ public class AccionPlanController : Controller
                 AccionNombre = accion.Descripcion,
                 Adjuntos = adjuntos ?? new List<EntregableAdjuntoResponse>(),
                 CicloActivo = cicloActivo,
-                AccessToken = token ?? string.Empty
+                PuedeSubir = User.IsInRole("JefeArea")
             });
         }
         catch (ApiClientException ex) when (ex.StatusCode == 404)
@@ -464,6 +466,103 @@ public class AccionPlanController : Controller
         catch (UnauthorizedException)
         {
             return RedirectToAction("Login", "Auth");
+        }
+    }
+
+    /// <summary>Proxy del listado de adjuntos (ADR-016). GET /AccionPlan/EntregablesDatos/{id}.
+    /// El JWT viaja server-side desde la sesión; el navegador no lo envía.</summary>
+    [HttpGet]
+    public async Task<IActionResult> EntregablesDatos(Guid id)
+    {
+        try
+        {
+            var lista = await _apiClient.GetAsync<List<EntregableAdjuntoResponse>>(
+                $"/api/v1/acciones/{id}/entregables");
+            return new ObjectResult(lista) { StatusCode = 200 };
+        }
+        catch (ApiClientException ex)
+        {
+            _logger.LogError(ex, "Proxy MVC de entregables: error {StatusCode} de la API interna (acción {AccionId})",
+                ex.StatusCode, id);
+            return new ObjectResult(new { message = SanitizarMensajeProxy(ex.Message), errors = ex.Errors }) { StatusCode = ex.StatusCode };
+        }
+        catch (UnauthorizedException)
+        {
+            return Unauthorized();
+        }
+    }
+
+    /// <summary>Proxy de la subida (ADR-016). POST /AccionPlan/EntregablesSubir/{id}.
+    /// Solo JefeArea: estrecha la clase porque la API es JEF-only (API AccionPlanController.cs:174).</summary>
+    [HttpPost]
+    [Authorize(Roles = "JefeArea")]
+    public async Task<IActionResult> EntregablesSubir(Guid id, [FromForm] List<IFormFile> archivos)
+    {
+        if (archivos is null || archivos.Count == 0)
+        {
+            return new ObjectResult(new { message = "Selecciona al menos un archivo para subir." })
+            { StatusCode = 400 };
+        }
+
+        try
+        {
+            var creados = await _apiClient.PostMultipartAsync<List<EntregableAdjuntoResponse>>(
+                $"/api/v1/acciones/{id}/entregables", archivos, "archivos");
+            return new ObjectResult(creados) { StatusCode = 200 };
+        }
+        catch (ApiClientException ex)
+        {
+            _logger.LogError(ex, "Proxy MVC de entregables: error {StatusCode} de la API interna (acción {AccionId})",
+                ex.StatusCode, id);
+            return new ObjectResult(new { message = SanitizarMensajeProxy(ex.Message), errors = ex.Errors }) { StatusCode = ex.StatusCode };
+        }
+        catch (UnauthorizedException)
+        {
+            return Unauthorized();
+        }
+    }
+
+    /// <summary>Proxy de la descarga (ADR-016). GET /AccionPlan/EntregablesDescarga/{id}?entregableId=…</summary>
+    [HttpGet]
+    public async Task<IActionResult> EntregablesDescarga(Guid id, [FromQuery] Guid entregableId)
+    {
+        try
+        {
+            var payload = await _apiClient.GetAsync<EntregableDescargaResponse>(
+                $"/api/v1/acciones/{id}/entregables/{entregableId}/descarga");
+            return new ObjectResult(payload) { StatusCode = 200 };
+        }
+        catch (ApiClientException ex)
+        {
+            _logger.LogError(ex, "Proxy MVC de entregables: error {StatusCode} de la API interna (acción {AccionId})",
+                ex.StatusCode, id);
+            return new ObjectResult(new { message = SanitizarMensajeProxy(ex.Message), errors = ex.Errors }) { StatusCode = ex.StatusCode };
+        }
+        catch (UnauthorizedException)
+        {
+            return Unauthorized();
+        }
+    }
+
+    /// <summary>Proxy del borrado (ADR-016). POST /AccionPlan/EntregablesEliminar/{id}?entregableId=…</summary>
+    [HttpPost]
+    public async Task<IActionResult> EntregablesEliminar(Guid id, [FromQuery] Guid entregableId)
+    {
+        try
+        {
+            var eliminado = await _apiClient.DeleteAsync<bool>(
+                $"/api/v1/acciones/{id}/entregables/{entregableId}");
+            return new ObjectResult(eliminado) { StatusCode = 200 };
+        }
+        catch (ApiClientException ex)
+        {
+            _logger.LogError(ex, "Proxy MVC de entregables: error {StatusCode} de la API interna (acción {AccionId})",
+                ex.StatusCode, id);
+            return new ObjectResult(new { message = SanitizarMensajeProxy(ex.Message), errors = ex.Errors }) { StatusCode = ex.StatusCode };
+        }
+        catch (UnauthorizedException)
+        {
+            return Unauthorized();
         }
     }
 
@@ -496,6 +595,50 @@ public class AccionPlanController : Controller
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Sanitiza el mensaje de error antes de devolverlo al navegador (ADR-016).
+    /// Elimina URLs absolutas, tokens JWT y el prefijo Bearer para evitar filtrar
+    /// detalles internos de la API. Los mensajes user-facing sin estos detalles
+    /// pasan intactos.
+    /// </summary>
+    private static string SanitizarMensajeProxy(string? mensaje)
+    {
+        if (string.IsNullOrEmpty(mensaje))
+            return mensaje ?? string.Empty;
+
+        var sanitizado = mensaje;
+
+        // Reemplazar URLs absolutas (http://... o https://...) por marcador.
+        sanitizado = Regex.Replace(
+            sanitizado,
+            @"https?://[^\s""'<>]+",
+            "[URL interna]",
+            RegexOptions.IgnoreCase);
+
+        // Reemplazar "Bearer" seguido de token JWT por marcador (antes del token suelto).
+        sanitizado = Regex.Replace(
+            sanitizado,
+            @"Bearer\s+eyJ[A-Za-z0-9_\-]*\.[A-Za-z0-9_\-]*\.[A-Za-z0-9_\-]*",
+            "[token]",
+            RegexOptions.IgnoreCase);
+
+        // Reemplazar tokens JWT sueltos (eyJ... . ... . ...) por marcador.
+        sanitizado = Regex.Replace(
+            sanitizado,
+            @"eyJ[A-Za-z0-9_\-]*\.[A-Za-z0-9_\-]*\.[A-Za-z0-9_\-]*",
+            "[token]",
+            RegexOptions.IgnoreCase);
+
+        // Reemplazar cualquier ocurrencia remanente de "Bearer" seguido de token-like.
+        sanitizado = Regex.Replace(
+            sanitizado,
+            @"Bearer\s+[A-Za-z0-9_\-\.]+",
+            "[token]",
+            RegexOptions.IgnoreCase);
+
+        return sanitizado;
     }
 
     /// <summary>Detalle de una acción (GET /api/v1/acciones/{id}). Null si falla.</summary>

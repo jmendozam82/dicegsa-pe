@@ -191,6 +191,11 @@
                     '<span class="body-sm d-block">→ ' + formatearFecha(item.fechaVencimiento) + '</span>' +
                 '</td>' +
                 '<td>' + (item.responsableNombre ? esc(item.responsableNombre) : '—') + '</td>' +
+                '<td class="text-end">' +
+                    '<a class="btn-pe btn-pe--secondary btn-pe--sm" href="/AccionPlan/Entregables/' + esc(item.accionId) + '" title="Entregables adjuntos">' +
+                        '<i class="bi bi-paperclip" aria-hidden="true"></i>' +
+                    '</a>' +
+                '</td>' +
             '</tr>';
         }).join('');
     }

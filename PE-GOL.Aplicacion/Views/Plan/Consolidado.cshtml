@@ -175,6 +175,7 @@ else
                         <th>Tipo</th>
                         <th>Fechas</th>
                         <th>Responsable</th>
+                        <th class="text-end">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="tbodyConsolidado">
@@ -206,6 +207,12 @@ else
                             </td>
                             <td>
                                 @(string.IsNullOrWhiteSpace(item.ResponsableNombre) ? "—" : item.ResponsableNombre)
+                            </td>
+                            <td class="text-end">
+                                <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-controller="AccionPlan"
+                                   asp-action="Entregables" asp-route-id="@item.AccionId" title="Entregables adjuntos">
+                                    <i class="bi bi-paperclip" aria-hidden="true"></i>
+                                </a>
                             </td>
                         </tr>
                     }

@@ -33,6 +33,10 @@ public interface IApiClient
     /// <summary>POST multipart/form-data (logo de empresa — HU-006, campo 'archivo'). Desenvuelve ApiResponse&lt;TRes&gt;.Data.</summary>
     Task<TRes> PostMultipartAsync<TRes>(string path, IFormFile archivo, string campo, CancellationToken ct = default);
 
+    /// <summary>POST multipart/form-data multi-archivo (HU-022-hotfix, campo «archivos»).
+    /// Desenvuelve ApiResponse&lt;TRes&gt;.Data. Overload aditivo del mono-archivo (HU-006).</summary>
+    Task<TRes> PostMultipartAsync<TRes>(string path, IReadOnlyList<IFormFile> archivos, string campo, CancellationToken ct = default);
+
     /// <summary>DELETE sin body (eliminar pilar — HU-013). Desenvuelve ApiResponse&lt;TRes&gt;.Data.</summary>
     Task<TRes> DeleteAsync<TRes>(string path, CancellationToken ct = default);
 

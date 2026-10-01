@@ -1,6 +1,6 @@
-// PE-GOL SaaS — Entregables Adjuntos (HU-022)
+// PE-GOL SaaS — Entregables Adjuntos (HU-022 + hotfix ADR-016)
 // Dropzone, subida múltiple, listado, descarga y eliminación de adjuntos.
-// Usa fetch nativo con async/await. Token JWT en sesión (SesionService).
+// Los fetch apuntan a proxies MVC (/AccionPlan/Entregables*); el JWT viaja server-side.
 $(function () {
     'use strict';
 
@@ -29,6 +29,8 @@ $(function () {
     const $btnSubir = $('#btn-subir');
     const $btnLimpiar = $('#btn-limpiar');
     const $tbodyAdjuntos = $('#tbody-adjuntos');
+    const $contenedorTabla = $('#contenedor-tabla-adjuntos');
+    const $emptyState = $('#empty-state-adjuntos');
     const $modalEliminar = $('#modalEliminarAdjunto');
     const $modalTexto = $('#modalEliminarAdjuntoTexto');
     const $btnConfirmarEliminar = $('#btn-confirmar-eliminar');
@@ -37,9 +39,17 @@ $(function () {
 
     // ── Inicialización ───────────────────────────────────────────────────────
     function inicializar() {
-        if (!$form.length) return;
+        accionId = $form.length
+            ? $form.data('accion-id')
+            : $('#panel-adjuntos').data('accion-id');
 
-        accionId = $form.data('accion-id');
+        if (!$form.length) {
+            // Vista read-only (Gerente): solo inicializar modal y botones de descarga/eliminar
+            inicializarModalEliminar();
+            inicializarBotonesAccion();
+            return;
+        }
+
         cicloActivo = $form.data('ciclo-activo') !== false;
 
         if (!cicloActivo) {
@@ -221,38 +231,30 @@ $(function () {
                 formData.append('archivos', file, file.name);
             });
 
-            // TODO [hotfix-HU-022] fetch a /api/v1/... resuelve contra el origen del MVC (Defecto E, ADR-016).
-            // Fix previsto: proxy /AccionPlan/EntregablesDatos con ApiClient (JWT en sesión).
-            const token = obtenerToken();
-            const response = await fetch(`/api/v1/acciones/${accionId}/entregables`, {
+            // ADR-016: proxy MVC relativo, sin Authorization header (JWT server-side).
+            const response = await fetch(`/AccionPlan/EntregablesSubir/${accionId}`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Accept': 'application/json'
                 },
                 body: formData
             });
 
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                const cantidad = data.data?.length || archivosSeleccionados.length;
-                mostrarToast(`Se agregaron ${cantidad} archivo(s) correctamente.`, 'success');
+            if (response.ok) {
+                const data = await response.json();
+                const creados = Array.isArray(data) ? data : [];
+                mostrarToast(`Se agregaron ${creados.length} archivo(s) correctamente.`, 'success');
 
                 // Agregar las nuevas filas a la tabla
-                if (data.data && data.data.length > 0) {
-                    data.data.forEach(adjunto => agregarFilaTabla(adjunto));
-                }
+                creados.forEach(adjunto => agregarFilaTabla(adjunto));
+                actualizarEmptyState($tbodyAdjuntos.children().length);
 
                 // Limpiar selección
                 archivosSeleccionados = [];
                 renderizarListaSeleccionados();
                 actualizarBotones();
-
-                // Ocultar empty state si estaba visible
-                $('.empty-state').closest('.card-pe').addClass('d-none');
             } else {
-                const mensaje = data.message || 'Error al subir los archivos.';
-                mostrarToast(mensaje, 'danger');
+                await mostrarErrorResponse(response);
             }
         } catch (error) {
             console.error('Error al subir archivos:', error);
@@ -266,7 +268,7 @@ $(function () {
     // ── Tabla de adjuntos ────────────────────────────────────────────────────
     function agregarFilaTabla(adjunto) {
         const icono = iconoTipo(adjunto.extension);
-        const $fila = $('<tr>').attr('data-adjunto-id', adjjunto.id);
+        const $fila = $('<tr>').attr('data-adjunto-id', adjunto.id);
 
         const $celdaNombre = $('<td>').html(`
             <i class="bi bi-paperclip me-1 text-secondary"></i>
@@ -330,6 +332,11 @@ $(function () {
         return div.innerHTML;
     }
 
+    function actualizarEmptyState(conteo) {
+        $emptyState.toggleClass('d-none', conteo > 0);
+        $contenedorTabla.toggleClass('d-none', conteo === 0);
+    }
+
     // ── Modal de eliminación ─────────────────────────────────────────────────
     function inicializarModalEliminar() {
         if (!$modalEliminar.length) return;
@@ -352,17 +359,11 @@ $(function () {
             try {
                 await eliminarAdjunto(adjuntoIdEliminar);
                 $modalEliminar.modal('hide');
-
-                // Eliminar la fila de la tabla
-                $(`tr[data-adjunto-id="${adjuntoIdEliminar}"]`).remove();
-
-                // Si no quedan filas, mostrar empty state
-                if ($tbodyAdjuntos.children().length === 0) {
-                    location.reload();
-                }
+                await cargarAdjuntos();
+                mostrarToast('Adjunto eliminado correctamente.', 'success');
             } catch (error) {
                 console.error('Error al eliminar:', error);
-                mostrarToast('Error al eliminar el adjunto.', 'danger');
+                mostrarToast(error.message || 'Error al eliminar el adjunto.', 'danger');
             } finally {
                 $(this).prop('disabled', false).text('Sí, eliminar');
             }
@@ -370,23 +371,40 @@ $(function () {
     }
 
     async function eliminarAdjunto(adjuntoId) {
-        // TODO [hotfix-HU-022] fetch a /api/v1/... resuelve contra el origen del MVC (Defecto E, ADR-016).
-        // Fix previsto: proxy /AccionPlan/EntregablesDatos con ApiClient (JWT en sesión).
-        const token = obtenerToken();
-        const response = await fetch(`/api/v1/acciones/${accionId}/entregables/${adjuntoId}`, {
-            method: 'DELETE',
+        // ADR-016: proxy MVC relativo, sin Authorization header (JWT server-side).
+        const response = await fetch(`/AccionPlan/EntregablesEliminar/${accionId}?entregableId=${adjuntoId}`, {
+            method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Accept': 'application/json'
             }
         });
 
-        const data = await response.json();
+        if (!response.ok) {
+            await mostrarErrorResponse(response, true);
+        }
+    }
 
-        if (response.ok && data.success) {
-            mostrarToast('Adjunto eliminado correctamente.', 'success');
-        } else {
-            const mensaje = data.message || 'Error al eliminar el adjunto.';
-            throw new Error(mensaje);
+    async function cargarAdjuntos() {
+        try {
+            const response = await fetch(`/AccionPlan/EntregablesDatos/${accionId}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                await mostrarErrorResponse(response);
+                return;
+            }
+
+            const data = await response.json();
+            const adjuntos = Array.isArray(data) ? data : [];
+            $tbodyAdjuntos.empty();
+            adjuntos.forEach(adjunto => agregarFilaTabla(adjunto));
+            actualizarEmptyState(adjuntos.length);
+        } catch (error) {
+            console.error('Error al cargar adjuntos:', error);
         }
     }
 
@@ -401,24 +419,24 @@ $(function () {
 
     async function descargarAdjunto(adjuntoId) {
         try {
-            // TODO [hotfix-HU-022] fetch a /api/v1/... resuelve contra el origen del MVC (Defecto E, ADR-016).
-            // Fix previsto: proxy /AccionPlan/EntregablesDatos con ApiClient (JWT en sesión).
-            const token = obtenerToken();
-            const response = await fetch(`/api/v1/acciones/${accionId}/entregables/${adjuntoId}/descarga`, {
+            // ADR-016: proxy MVC relativo, sin Authorization header (JWT server-side).
+            const response = await fetch(`/AccionPlan/EntregablesDescarga/${accionId}?entregableId=${adjuntoId}`, {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Accept': 'application/json'
                 }
             });
 
-            const data = await response.json();
+            if (!response.ok) {
+                await mostrarErrorResponse(response);
+                return;
+            }
 
-            if (response.ok && data.success && data.data?.url) {
-                // Abrir la URL firmada en una pestaña nueva
-                window.open(data.data.url, '_blank', 'noopener');
+            const data = await response.json();
+            if (data.url) {
+                window.open(data.url, '_blank', 'noopener');
             } else {
-                const mensaje = data.message || 'No se pudo generar el enlace de descarga.';
-                mostrarToast(mensaje, 'danger');
+                mostrarToast('No se pudo generar el enlace de descarga.', 'warning');
             }
         } catch (error) {
             console.error('Error al descargar:', error);
@@ -426,12 +444,31 @@ $(function () {
         }
     }
 
-    // ── Utilidades ───────────────────────────────────────────────────────────
-    function obtenerToken() {
-        // El token JWT se inyecta desde el servidor en un meta tag (HU-022)
-        return $('meta[name="access-token"]').attr('content') || '';
+    // ── Manejo de error común ────────────────────────────────────────────────
+    async function mostrarErrorResponse(response, lanzar = false) {
+        if (response.status === 401) {
+            mostrarToast('La sesión expiró. Vuelva a iniciar sesión.', 'warning');
+            window.location.href = '/Auth/Login';
+            if (lanzar) throw new Error('Sesión expirada');
+            return;
+        }
+
+        let errorData = null;
+        try {
+            errorData = await response.json();
+        } catch (e) {
+            // no JSON
+        }
+
+        const mensaje = errorData?.errors?.length
+            ? errorData.errors.join(' ')
+            : (errorData?.message || `Error ${response.status}`);
+
+        mostrarToast(mensaje, 'danger');
+        if (lanzar) throw new Error(mensaje);
     }
 
+    // ── Utilidades ───────────────────────────────────────────────────────────
     function mostrarToast(mensaje, tipo = 'info') {
         if (!$toast.length) {
             // Fallback: usar alert nativa si no hay toast
