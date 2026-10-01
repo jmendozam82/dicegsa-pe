@@ -170,6 +170,38 @@ public class StorageFileApiTests
 
     // ─────────────────────── 59 · ObtenerUrlFirmadaAsync · TimeSpan ────────────────────────
 
+    // 58-bis · Regresión HU-022-hotfix v2 (defecto I): la ruta devuelta por el SDK de Storage
+    // llega CON el nombre del bucket delante ("entregables/tenant/..."), porque es la clave que
+    // devuelve la API de Supabase. Si esa clave se persiste tal cual en file_path, la descarga
+    // posterior busca "entregables/entregables/..." dentro del bucket "entregables" y Supabase
+    // responde «Object not found»: el adjunto se listaba pero era imposible de descargar ni de
+    // borrar (la compensación de RNF-014 tampoco encontraba el objeto y lo dejaba huérfano).
+    // Las rutas del dominio son RELATIVAS a la raíz del bucket (ADR-013), así que el prefijo
+    // debe retirarse en el helper, que es el único que habla con el SDK.
+    [Fact]
+    public async Task SubirArchivoAsync_ElSdkDevuelveLaClaveConElBucket_PersisteLaRutaRelativaAlBucket()
+    {
+        // Arrange: el SDK responde la clave con el prefijo del bucket, como hace Supabase.
+        // El setup va DESPUÉS de CrearHelper() porque este reinicia los mocks del _api.
+        var sut = CrearHelper();
+        _api.Setup(a => a.UploadAsync(
+                Bucket,
+                It.IsAny<string>(),
+                It.IsAny<Stream>(),
+                It.IsAny<FileUploadOptions?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string bucket, string path, Stream content, FileUploadOptions? opciones, CancellationToken ct) =>
+                new StorageUploadResult($"{bucket}/{path}", content.Length, "\"etag\""));
+        var ruta = $"{TenantId}/{CicloId}/{AccionId}/2f1c9b0e-1111-2222-3333-444455556666.pdf";
+
+        // Act
+        var resultado = await sut.SubirArchivoAsync(Bucket, ruta, Encoding.UTF8.GetBytes("%PDF-1.7"), TipoArchivo.Pdf, CancellationToken.None);
+
+        // Assert: lo que se persiste es la ruta RELATIVA, igual a la que se pidió subir.
+        Assert.Equal(ruta, resultado);
+        Assert.DoesNotContain($"{Bucket}/{Bucket}/", resultado!, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task ObtenerUrlFirmadaAsync_Expiracion24h_LlamaCreateSignedUrlCon86400()
     {

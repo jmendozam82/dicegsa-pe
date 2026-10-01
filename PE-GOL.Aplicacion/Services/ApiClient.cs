@@ -155,36 +155,27 @@ public class ApiClient : IApiClient
 
     /// <summary>
     /// POST multipart/form-data con Bearer (logo de empresa — HU-006, campo 'archivo').
-    /// El stream del archivo permanece abierto durante SendAsync (se descarta al salir del método).
+    /// Delega en el overload multi-archivo.
     /// </summary>
-    private async Task<HttpResponseMessage> EnviarMultipartConTokenAsync(
+    private Task<HttpResponseMessage> EnviarMultipartConTokenAsync(
         string path,
         IFormFile archivo,
         string campo,
         CancellationToken ct)
-    {
-        var accessToken = _sesionService.ObtenerAccessToken();
-        if (string.IsNullOrEmpty(accessToken))
-            throw new UnauthorizedException("No hay sesión activa.");
-
-        var request = new HttpRequestMessage(HttpMethod.Post, path);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
-        using var contenido = new MultipartFormDataContent();
-        await using var stream = archivo.OpenReadStream();
-        var contenidoArchivo = new StreamContent(stream);
-        if (!string.IsNullOrEmpty(archivo.ContentType))
-            contenidoArchivo.Headers.ContentType = new MediaTypeHeaderValue(archivo.ContentType);
-        contenido.Add(contenidoArchivo, campo, archivo.FileName);
-        request.Content = contenido;
-
-        return await _httpClient.SendAsync(request, ct);
-    }
+        => EnviarMultipartConTokenAsync(path, new[] { archivo }, campo, ct);
 
     /// <summary>
     /// POST multipart/form-data con Bearer (HU-022-hotfix, campo «archivos»).
-    /// Todos los archivos comparten el MISMO nombre de campo. Los streams se descartan
-    /// al salir del método (using / await using).
+    /// Todos los archivos comparten el MISMO nombre de campo.
+    ///
+    /// HU-022-hotfix v2: los streams NO pueden abrirse con `using`/`await using` dentro del
+    /// cuerpo del bucle. Una declaración `using` se descarta al salir del bloque que la
+    /// contiene, y el cuerpo del `foreach` ES ese bloque → cada stream se cerraba al final de
+    /// su iteración, antes de que MultipartContent serializase el cuerpo en SendAsync
+    /// (ObjectDisposedException: «Cannot access a disposed object», ReferenceReadStream).
+    /// Aquí se abren todos, se acumulan en `streams` y se descartan en el `finally`, ya
+    ///DevUELTO SendAsync. Además OpenReadStream() se invoca en cada intento, de modo que el
+    /// reintento tras 401 (rotación D1) resubmite el contenido completo desde el principio.
     /// </summary>
     private async Task<HttpResponseMessage> EnviarMultipartConTokenAsync(
         string path,
@@ -196,22 +187,33 @@ public class ApiClient : IApiClient
         if (string.IsNullOrEmpty(accessToken))
             throw new UnauthorizedException("No hay sesión activa.");
 
-        var request = new HttpRequestMessage(HttpMethod.Post, path);
+        using var request = new HttpRequestMessage(HttpMethod.Post, path);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
-        using var contenido = new MultipartFormDataContent();
-        foreach (var archivo in archivos)
+        var streams = new List<Stream>(archivos.Count);
+        try
         {
-            await using var stream = archivo.OpenReadStream();
-            var contenidoArchivo = new StreamContent(stream);
-            if (!string.IsNullOrEmpty(archivo.ContentType))
-                contenidoArchivo.Headers.ContentType = new MediaTypeHeaderValue(archivo.ContentType);
-            contenido.Add(contenidoArchivo, campo, archivo.FileName);
+            using var contenido = new MultipartFormDataContent();
+            foreach (var archivo in archivos)
+            {
+                var stream = archivo.OpenReadStream();
+                streams.Add(stream);
+
+                var contenidoArchivo = new StreamContent(stream);
+                if (!string.IsNullOrEmpty(archivo.ContentType))
+                    contenidoArchivo.Headers.ContentType = new MediaTypeHeaderValue(archivo.ContentType);
+                contenido.Add(contenidoArchivo, campo, archivo.FileName);
+            }
+
+            request.Content = contenido;
+
+            return await _httpClient.SendAsync(request, ct);
         }
-
-        request.Content = contenido;
-
-        return await _httpClient.SendAsync(request, ct);
+        finally
+        {
+            foreach (var stream in streams)
+                await stream.DisposeAsync();
+        }
     }
 
     private HttpRequestMessage CrearRequest(

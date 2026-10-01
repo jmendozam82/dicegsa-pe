@@ -112,6 +112,11 @@ public static class TipoArchivoHelper
     /// DOCX vs XLSX (ambos OOXML = ZIP). Primero el directorio central, que es la fuente
     /// autoritativa; si el buffer está truncado, las cabeceras locales del ZIP (que están
     /// al principio) delatan las mismas rutas.
+    /// <para>
+    /// Con el archivo COMPLETO no hace falta el respaldo: <see cref="ZipArchive"/> encuentra el
+    /// directorio central al final del archivo. Ese es el motivo de leer el archivo entero y no
+    /// una cabecera corta (defecto H, HU-022-hotfix v2).
+    /// </para>
     /// </summary>
     private static TipoArchivo DetectarTipoOfficeOpenXml(ReadOnlySpan<byte> header)
     {
@@ -217,5 +222,21 @@ public static class TipoArchivoHelper
         TipoArchivo.Png => "image/png",
         TipoArchivo.Jpg => "image/jpeg",
         _ => "application/octet-stream"
+    };
+
+    /// <summary>
+    /// Nombre legible de un tipo, para el mensaje de rechazo (RNF-009). Sin esto el usuario
+    /// solo lee «el contenido no corresponde a su extensión» y no sabe qué tiene entre manos:
+    /// el caso real fue un <c>.doc</c> de Word 97-2003 renombrado a <c>.docx</c>, que la
+    /// validación bloquea correctamente pero sin explicar por qué.
+    /// </summary>
+    public static string NombreLegible(TipoArchivo tipo) => tipo switch
+    {
+        TipoArchivo.Pdf => "PDF",
+        TipoArchivo.Docx => "DOCX de Word (OOXML)",
+        TipoArchivo.Xlsx => "XLSX de Excel (OOXML)",
+        TipoArchivo.Png => "PNG",
+        TipoArchivo.Jpg => "JPG",
+        _ => "un formato no permitido"
     };
 }

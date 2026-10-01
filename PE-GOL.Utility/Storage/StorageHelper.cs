@@ -95,7 +95,30 @@ public class StorageHelper : IStorageHelper
 
         // El StorageUploadResult se colapsa a la ruta o a null: la forma del SDK no sube a
         // la BLL (D-O). null = señal de compensación (D-H).
-        return string.IsNullOrWhiteSpace(resultado?.Path) ? null : resultado!.Path;
+        if (string.IsNullOrWhiteSpace(resultado?.Path))
+            return null;
+
+        // La ruta que devuelve la API de Supabase viene CON el nombre del bucket delante
+        // ("entregables/{tenant}/{ciclo}/{accion}/{uuid}.{ext}"), pero las rutas del dominio son
+        // RELATIVAS a la raíz del bucket (ADR-013): es la que después se pasa a
+        // From(bucket).CreateSignedUrl y a Remove. Persistir la clave tal cual duplicaba el
+        // prefijo, así que toda descarga, borrado o compensación posterior buscaba
+        // "entregables/entregables/..." y Supabase respondía «Object not found»: el adjunto se
+        // listaba pero era imposible de descargar, y la compensación de RNF-014 tampoco
+        // encontraba el objeto y lo dejaba huérfano en el bucket (defecto I, HU-022-hotfix v2).
+        return QuitarPrefijoBucket(bucket, resultado!.Path);
+    }
+
+    /// <summary>
+    /// Quita el prefijo <c>{bucket}/</c> de la clave que devuelve Storage. Si la clave no lo trae,
+    /// se devuelve tal cual: es una normalización de lo que el SDK dice, no una validación.
+    /// </summary>
+    private static string QuitarPrefijoBucket(string bucket, string ruta)
+    {
+        var prefijo = $"{bucket.TrimEnd('/')}/";
+        return ruta.StartsWith(prefijo, StringComparison.Ordinal)
+            ? ruta[prefijo.Length..]
+            : ruta;
     }
 
     /// <summary>

@@ -332,6 +332,65 @@ public class EntregableAdjuntoServiceTests
     }
 
     /// <summary>
+    /// DOCX con la estructura que produce Word de verdad: un [Content_Types].xml PESADO (decenas de
+    /// overrides con GUIDs, incomprimible) seguido de word/document.xml.
+    ///
+    /// Reproduce el defecto H (HU-022-hotfix v2). La detección se hacía sobre los primeros 512
+    /// bytes, pero el directorio central de un ZIP está al FINAL del archivo: si la primera
+    /// entrada pesa más que la cabecera de lectura, la marca "word/" cae fuera de esos 512 bytes,
+    /// el tipo se resolvía como Desconocido y la subida se rechazaba con un 422 aunque el archivo
+    /// fuera un DOCX perfectly válido. Es exactamente lo que reportó el usuario con Word y Excel.
+    /// </summary>
+    private static byte[] BytesDocxRealPesado()
+    {
+        using var ms = new MemoryStream();
+        using (var zip = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var contentTypes = zip.CreateEntry("[Content_Types].xml");
+            using (var w = new StreamWriter(contentTypes.Open()))
+            {
+                w.Write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Types>");
+                for (var i = 0; i < 25; i++)
+                {
+                    var guid = Guid.NewGuid().ToString();
+                    w.Write($"<Override PartName=\"/xl/{guid}.xml\" ContentType=\"application/x-{guid}\"/>");
+                }
+                w.Write("</Types>");
+            }
+
+            var documento = zip.CreateEntry("word/document.xml");
+            using var w2 = new StreamWriter(documento.Open());
+            w2.Write("<w:document><w:body><w:p/></w:body></w:document>");
+        }
+        return ms.ToArray();
+    }
+
+    /// <summary>XLSX real de Excel: [Content_Types].xml pesado y xl/ fuera de la cabecera corta.</summary>
+    private static byte[] BytesXlsxRealPesado()
+    {
+        using var ms = new MemoryStream();
+        using (var zip = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var contentTypes = zip.CreateEntry("[Content_Types].xml");
+            using (var w = new StreamWriter(contentTypes.Open()))
+            {
+                w.Write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Types>");
+                for (var i = 0; i < 25; i++)
+                {
+                    var guid = Guid.NewGuid().ToString();
+                    w.Write($"<Override PartName=\"/word/{guid}.xml\" ContentType=\"application/x-{guid}\"/>");
+                }
+                w.Write("</Types>");
+            }
+
+            var libro = zip.CreateEntry("xl/workbook.xml");
+            using var w2 = new StreamWriter(libro.Open());
+            w2.Write("<workbook><sheets/></workbook>");
+        }
+        return ms.ToArray();
+    }
+
+    /// <summary>
     /// Captura el INSERT (tx incluida) y sirve las re-lecturas del paso 13 con los valores que
     /// pone la BD: created_at (DEFAULT now()) y subido_por_nombre (LEFT JOIN usuario.nombre).
     /// </summary>
@@ -539,6 +598,50 @@ public class EntregableAdjuntoServiceTests
         Assert.Equal(5, rutas.Distinct(StringComparer.Ordinal).Count());
     }
 
+    // 3-bis · Regresión de concurrencia (HU-022-hotfix v2, defecto G).
+    //
+    // El paso 13 (re-lectura de las filas creadas) usaba Task.WhenAll sobre hasta 5
+    // ObtenerPorIdAsync. El DAL cachea UNA conexión por instancia (_connectionActiva), y una
+    // conexión Npgsql no admite dos comandos a la vez: con 2 o más archivos, Npgsql lanzaba
+    // «A command is already in progress» -> HTTP 500 DESPUÉS de haber commiteado las filas y
+    // subido los objetos a Storage. El usuario veía un error y creía que no se había guardado,
+    // cuando el lote estaba persistido. Este test falla si dos re-lecturas se solapan.
+    [Fact]
+    public async Task SubirAsync_VariosArchivos_NoReleeEnParalelo_SobreLaConexionCompartida()
+    {
+        // Arrange
+        ConfigurarEscenarioValido();
+        ConfigurarInsercionYRelectura();
+        ConfigurarAuditoria();
+        var request = CrearRequestValido(3);
+
+        var enCurso = 0;
+        var maximoSolapado = 0;
+        _entregables
+            .Setup(r => r.ObtenerPorIdAsync(
+                It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Returns(async () =>
+            {
+                // Detecta solapamiento real: si dos re-lecturas están en vuelo a la vez,
+                // comparten la conexión del DAL y Npgsql las rechazaría en producción.
+                var actual = Interlocked.Increment(ref enCurso);
+                maximoSolapado = Math.Max(maximoSolapado, actual);
+                await Task.Delay(5);
+                Interlocked.Decrement(ref enCurso);
+
+                return null;
+            });
+
+        // Act
+        await _sut.SubirAsync(request, CancellationToken.None);
+
+        // Assert: 3 re-lecturas, todas SECUENCIALES (nunca más de una en vuelo).
+        _entregables.Verify(r => r.ObtenerPorIdAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(3));
+        Assert.Equal(1, maximoSolapado);
+    }
+
     // 4
     [Fact]
     public async Task SubirAsync_SeisArchivos_Retorna422YNoSube()
@@ -729,6 +832,102 @@ public class EntregableAdjuntoServiceTests
         _storage.Verify(s => s.SubirArchivoAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<TipoArchivo>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    // 12-ter · El mensaje de rechazo debe ser ACCIONABLE: decir qué se detectó, no solo que
+    // "no corresponde". Sin esto el usuario ve un callejón sin salida (caso real: un .doc de
+    // Word 97-2003 renombrado a .docx, rechazado correctamente pero sin explicación).
+    [Fact]
+    public async Task SubirAsync_ExtensionIncorrecta_DiceQueFormatoEsRealmente()
+    {
+        // Arrange: PDF real con extensión .docx (el caso que reportó el usuario).
+        ConfigurarEscenarioValido();
+        var request = CrearRequestValido(1);
+        request.Archivos[0] = CrearArchivo(
+            "cotizacion.docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            BytesPdf(), 4_096);
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ValidacionException>(
+            () => _sut.SubirAsync(request, CancellationToken.None));
+
+        // Assert: nombra el archivo, el formato REAL detectado y la extensión declarada.
+        Assert.Contains("cotizacion.docx", ex.Message);
+        Assert.Contains("PDF", ex.Message);
+        Assert.Contains(".docx", ex.Message);
+
+        // Y sigue sin subirse nada (RNF-009 no se relaja para dar mejor el mensaje).
+        _storage.Verify(s => s.SubirArchivoAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>(),
+            It.IsAny<TipoArchivo>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // 12-quater · Defecto H: DOCX/XLSX REALES de Word/Excel deben aceptarse. Los tests 12 y
+    // 12-bis usaban ZIP mínimos con [Content_Types].xml diminuto, donde la marca "word/"/"xl/"
+    // cabía de sobra en los primeros 512 bytes. Con la estructura real (content-types pesado),
+    // la marca cae fuera de esa ventana y la validación rechazaba archivos legítimos con un 422
+    // «el contenido no corresponde a su extensión». Es el reporte real del usuario.
+    [Theory]
+    [InlineData("cotizacion.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")]
+    [InlineData("plan.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")]
+    public async Task SubirAsync_OfficeRealDeWordOExcel_Retorna201(string nombre, string contentType)
+    {
+        // Arrange
+        ConfigurarEscenarioValido();
+        ConfigurarInsercionYRelectura();
+        ConfigurarAuditoria();
+        var request = CrearRequestValido(1);
+        var contenido = Path.GetExtension(nombre) == ".docx" ? BytesDocxRealPesado() : BytesXlsxRealPesado();
+        request.Archivos[0] = CrearArchivo(nombre, contentType, contenido, 8_192);
+
+        // Act
+        var resultado = await _sut.SubirAsync(request, CancellationToken.None);
+
+        // Assert: se aceptan y se guardan con el MIME canónico del tipo detectado.
+        Assert.Single(resultado);
+        Assert.Equal(nombre, Assert.Single(resultado).NombreArchivo);
+        _storage.Verify(s => s.SubirArchivoAsync(
+            Bucket,
+            It.IsAny<string>(),
+            It.IsAny<byte[]>(),
+            Path.GetExtension(nombre) == ".docx" ? TipoArchivo.Docx : TipoArchivo.Xlsx,
+            It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // 12-bis · Caso POSITIVO que faltaba: un DOCX real con su extensión correcta debe
+    // aceptarse. El caso 12 solo probaba el camino negativo (DOCX renombrado a .xlsx), así que
+    // un fallo de DetectarTipo que devolviera Desconocido para TODO .docx habría pasado
+    // inadvertido — que es exactamente lo que se/cacheó en la validación de navegador con
+    // «COTIZACIÓN RANSA.docx».
+    [Fact]
+    public async Task SubirAsync_DocxRealConSuExtension_Retorna201()
+    {
+        // Arrange: ZIP que contiene word/ nombrado .docx → la firma y la extensión coinciden.
+        ConfigurarEscenarioValido();
+        ConfigurarInsercionYRelectura();
+        ConfigurarAuditoria();
+        var request = CrearRequestValido(1);
+        request.Archivos[0] = CrearArchivo(
+            "cotizacion.docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            BytesDocxComoXlsx(), 4_096);
+
+        // Act
+        var resultado = await _sut.SubirAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.Single(resultado);
+        Assert.Equal("cotizacion.docx", Assert.Single(resultado).NombreArchivo);
+        _storage.Verify(s => s.SubirArchivoAsync(
+            Bucket,
+            It.IsAny<string>(),
+            It.IsAny<byte[]>(),
+            TipoArchivo.Docx,                       // MIME canónico del tipo DETECTADO (D-C)
+            It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     // 13

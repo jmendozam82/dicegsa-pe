@@ -6,7 +6,7 @@
 | HU | Título | Estado |
 |----|--------|--------|
 | HU-021 | Vista Gantt del Plan de Acción | ✅ Implementada (2026-09-27) |
-| HU-022 | Gestión de Entregables Adjuntos | ✅ Implementada (2026-09-29 · hotfix de UI aplicado 2026-10-01) |
+| HU-022 | Gestión de Entregables Adjuntos | ✅ Implementada (2026-09-29 · hotfix de UI v1 aplicado 2026-10-01 + **hotfix v2** el mismo día tras la validación real en navegador: 8 defectos de runtime corregidos, 841/841 tests, cobertura BLL 90,00%) |
 | HU-023 | Vista Consolidada del Plan (Gerente) | ✅ Implementada (2026-09-29) |
 | HU-024 | CRUD de OKRs | ✅ Implementada (2026-09-30) |
 | HU-025 | Gestión de Key Results (KRs) | ⏳ Pendiente |

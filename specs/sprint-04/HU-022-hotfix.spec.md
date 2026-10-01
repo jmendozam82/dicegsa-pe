@@ -5,7 +5,10 @@
 > **Borrador → Aprobado 2026-10-01** (aprobación autorizada por Jorge vía encargo directo). Habilita a @QA (tests TDD, TEST-01) y a @BackendDev/@FrontendDev (LOOP-01, LOOP-02).
 > **Alcance: 100 % `PE-GOL.Aplicacion` + `PE-GOL.Tests`.** 0 cambios en `PE-GOL.API` / `PE-GOL.BLL` / `PE-GOL.DAL` / `PE-GOL.Entity` / `PE-GOL.DTO` · **sin migración** (DB-01/DB-02 satisfechos de forma trivial) · **sin Swagger nuevo** (los proxies son acciones MVC, no endpoints de API — igual que el hotfix de HU-023; los 54 paths quedan intactos).
 > Deuda registrada en `docs/HANDOFF_PE_GOL.md` § «Deuda técnica pendiente» ítems 3 (L128-134) y 4 (L136-144) y en `AGENTS.md` v1.28 («Deuda técnica explícita — hotfix pendiente de HU-022»). Patrón aplicable: **ADR-016** (aceptado). Precedente de implementación: **hotfix de HU-023**, Revisión v3 de `specs/sprint-04/HU-023.spec.md` + `PE-GOL.Aplicacion/Controllers/PlanController.cs:99-151`.
-> **Cierre (2026-10-01, LOOP-05):** hotfix implementado y en verde — build 0/0 · tests **830/830** (813 previos + 17 nuevos) · cobertura BLL **89,96%** sin drift · `ExcepcionesConocidas` vacía · validación visual en navegador por Jorge confirmada por @Orquestador. Spec → `Implementado` · deuda HANDOFF ítems 3-4 retirada. Ver «Implementación — Registro de cierre» al final.
+> **Cierre v1 (2026-10-01, LOOP-05):** hotfix implementado y en verde — build 0/0 · tests **830/830** (813 previos + 17 nuevos) · cobertura BLL **89,96%** sin drift · `ExcepcionesConocidas` vacía. Spec → `Implementado` · deuda HANDOFF ítems 3-4 retirada. Commit `fa45c43`.
+>
+> ⚠️ **Cierre v1 REVISADO por la validación real en navegador.** El cierre anteriorDeclaraba la validación visual como cumplida cuando el flujo del **JefeArea** aún no se había ejercido de punta a punta. Al hacerlo (Jorge, 2026-10-01 por la tarde) aparecieron **8 defectos de runtime** que los 830 tests no podían detectar, todos en la capa de subida/descarga real. Se corrigieron en un **hotfix v2** — alcance ampliado a `PE-GOL.Utility` y `PE-GOL.BLL` (justificado en «Alcance revisado del v2») — con **9 tests nuevos** (841 en total). Ver **§ «Hotfix v2 — 8 defectos de runtime»** al final del spec.
+> **Cierre v2 (2026-10-01, LOOP-05):** build 0/0 · tests **841/841** (830 previos + 11 nuevos) · cobertura BLL **90,00%** (era 89,96 %) · 54 paths de Swagger intactos · **sin migración** · **sin ADR nuevo** (aplican ADR-013 y ADR-016) · datos reparados en caliente (5 filas normalizadas + 17 objetos huérfanos eliminados; bucket queda en 5 objetos, los 5 referenciados). Spec → `Implementado` (definitivo).
 
 ---
 
@@ -495,4 +498,108 @@ Ninguna fuera de lo aprobado (D-1..D-14 registradas en este spec). Sin ADR nuevo
 
 ---
 
-*Spec HU-022-hotfix — Hotfix de UI de Entregables · Sprint 4 · EP-07 · Estado: Implementado (Aprobado 2026-10-01 · cerrado por @Documenter el 2026-10-01 — LOOP-05)*
+# Hotfix v2 — 8 defectos de runtime (validación real en navegador, 2026-10-01)
+
+> **Por qué existe esta revisión.** El cierre v1 (…) se apoyó en tests C# y en una validación visual
+> **parcial**. Al ejercitar el flujo real del **JefeArea** —subir varios archivos a la vez, en formatos
+> Office, y luego descargarlos— aparecieron 8 fallos que ninguna aserción de C# puede ver porque
+> ocurren entre el navegador, el proxy MVC, el `ApiClient`, el pool de conexiones de Npgsql y el SDK de
+> Supabase Storage. Es exactamente la 2ª iteración del patrón que ya aparece en HU-021, HU-022 v1 y
+> HU-023 (AGENTS.md v1.25/v1.28): **la validación en navegador es un gate de primera clase, no un
+> adorno del DoD** (LOOP-03).
+
+## Alcance revisado del v2
+
+El v1 se declaró «100 % `PE-GOL.Aplicacion` + `PE-GOL.Tests`, 0 cambios BLL/Utility». La validación
+real demostró que **esa frontera era falsa**: los fallos estaban en `ApiClient` (capa Aplicación),
+en `EntregableAdjuntoService` (BLL) y en `StorageHelper`/`TipoArchivoHelper` (Utility). El hotfix v2
+**amplía el alcance a esas dos capas** — con las consecuencias que se detallan en «Consecuencias».
+
+## Los 8 defectos
+
+| # | Defecto | Síntoma real | Causa raíz | Capa | Fix |
+|---|---------|--------------|------------|------|-----|
+| **G** | **Subida múltiple: streams cerrados antes de enviarse.** Al subir 2+ archivos a la vez, la petición multipart llegaba vacía o lanzaba `ObjectDisposedException`; el navegador reportaba «error de servidor». | 2º archivo en adelante no se guardaba | El overload multi-archivo de `PostMultipartAsync` (D-6) hacía `await using var stream` **dentro** del `foreach`: al salir de cada iteración el stream se cerraba, y `HttpClient` leía de él ya disposado. | `Aplicacion/Services/ApiClient.cs` | Los `MemoryStream` viven en una lista hasta después de `SendAsync`; en el reintento 401 se re-abren con `Position = 0`. |
+| **H** | **Concurrencia sobre una sola conexión Npgsql.** Al subir varios archivos a la vez, la BLL lanzaba errores intermitentes de conexión/pool. | Fallos aleatorios,playlist de archivos incompletas | `EntregableAdjuntoRepository` **cachea una única `NpgsqlConnection`** en un campo (`_connectionActiva`) y la reutiliza entre peticiones concurrentes. Npgsql **no permite** concurrencia sobre una `Connection` y sus `Command` son *not thread-safe*. | `BLL/Repositories/Objetivos/EntregableAdjuntoRepository.cs` | El servicio procesa los archivos **secuencialmente** (`foreach`, no `Task.WhenAll`). |
+| **I** | **Descarga 500 `Object not found`.** El archivo se listaba en la tabla pero era **imposible de descargar** ni de eliminar: la compensación de RNF-014 tampoco encontraba el objeto y lo dejaba huérfano en el bucket. | HTTP 500 en `/EntregablesDescarga`; log `SupabaseStorageException: Object not found` | La API de Storage devuelve la clave persistida **con el nombre del bucket delante** (`entregables/{tenant}/…`), pero las rutas del dominio son **relativas a la raíz del bucket** (ADR-013). Se guardaba la clave tal cual → al descargar se pedía `entregables/entregables/…`. | `Utility/Storage/StorageHelper.cs` | Normalización en el límite: `QuitarPrefijoBucket(bucket, ruta)` antes de devolver la ruta a la BLL. |
+| **J** | **Navegación rota para el Gerente.** Desde Plan Consolidado → Entregables → «Volver» el Gerente caía en `/Auth/AccessDenied?ReturnUrl=%2FAccionPlan%2FIndex`. | AccessDenied | El botón usaba `asp-action="Index"` **sin** `asp-controller`: el tag helper lo resuelve contra el controlador en curso → `/AccionPlan/Index`, que es `[Authorize(Roles = "JefeArea")]`. | `Views/AccionPlan/Entregables.cshtml` | Enlace explícito **por rol**: Gerente → `/Plan/Consolidado` (de donde llega); JefeArea → `/AccionPlan/Index`. El breadcrumb también refleja la sección correcta. |
+| **K** | **`.docx`/`.xlsx> 512 KB rechazados como «tipo no permitido».** Archivos Office legítimos de tamaño normal eran rechazados. | 422 «tipo de archivo no permitido» | La detección por *magic number* leía solo los primeros **512 bytes** del stream; en OOXML (`zip`) la firma `PK\x03\x04` está al inicio pero el motor de allowlist comparaba el bloque completo. | `Utility/Files/TipoArchivoHelper.cs` | Detección sobre el **archivo completo** en memoria (`byte[]`), que es lo que ya se tenía en memoria de todos modos. |
+| **L** | **Falsos negativos en PDF.** PDFs con cabecera estándar pero structure particular dában «tipo no permitido». | 422 | Ídem K: la comparación se hacía sobre un bloque truncado. | `Utility/Files/TipoArchivoHelper.cs` | Ídem K. |
+| **M** | **Pérdida de datos al fallar la confirmación.** Si el commit fallaba tras subir, el archivo quedaba **persistido sin registro en BD** (o al revés). | Ficheros huérfanos en el bucket | La compensación (D-H) se ejecutaba **después** del `Commit`, y la re-lectura para verificar persistencia se hacía en un orden que dejaba la fila y el objeto desincronizados. | `BLL/Services/EntregableAdjuntoService.cs` | Re-lectura de verificación **antes** del `Commit`; la compensación solo borra el objeto si la escritura en BD no se confirmó. |
+| **N** | **Mensajes de validación inaccionables.** El usuario veía «error de servidor» sin saber qué corregir. | Mala UX | Excepciones del pool/Storagge llegaban al toast sin traducción. | `BLL/Services/EntregableAdjuntoService.cs` | Mensajes user-facing con el formato esperado y el límite concreto («máx. 20 MB», «formatos: PDF, DOCX, XLSX, PNG, JPG»); los detalles técnicos solo al log (STACK-11). |
+
+## Tests del v2 (TDD — rojo antes de la corrección, TEST-01)
+
+| Bloque | Archivo | Casos | Qué fija |
+|--------|---------|-------|----------|
+| Multipart / stream lifetime | `PE-GOL.Tests/ApiClientTests.cs` | 3 | 2+ archivos llegan íntegros; el reintento 401 re-envía los cuerpos; el `HttpMessageHandler` de test serializa los cuerpos para poder asertarlos. |
+| Tipo de archivo | `PE-GOL.Tests/EntregableAdjuntoServiceTests.cs` | 4 | `.docx`/`.xlsx` legítimos >512 KB aceptados; PDF/PNG/JPG válidos aceptados; extensionno soportada rechazada con mensaje accionable; ZIP completo (no truncado) detectado como OOXML. |
+| Atomicidad / compensación | `PE-GOL.Tests/EntregableAdjuntoServiceTests.cs` | 2 | Fallo de commit → objeto compensado; verificación antes del commit. |
+| Rutas de Storage | `PE-GOL.Tests/StorageFileApiTests.cs` | 1 | La clave devuelta por el SDK con prefijo `entregables/` se persiste como ruta **relativa**. |
+| Navegación por rol | `PE-GOL.Tests/Architecture/NavegacionPorRolRegressionTests.cs` | 2 (nuevo) | El enlace «Volver» declara `asp-controller` explícito; distingue destino Gerente (Plan Consolidado) vs JefeArea (listado). Escanea la vista Razor como fuente. |
+
+**Total v2: 11 métodos nuevos (830 → 841).** Todos los tests se escribieron y se vieron **fallar**
+antes de tocar el código de producción (TDD real, no retrospectivo).
+
+## Reparación de datos en caliente
+
+La corrección de la ruta (defecto I) llegó **después** de que ya existieran filas con el prefijo
+duplicado. Como no hay migración que aplicar (el esquema no cambia, solo el valor de una columna de
+datos), se reparó en caliente el conjunto afectado:
+
+- **5 filas** de `entregable_adjunto` (4 en la acción `43d9697a-6fe5-478a-9a0c-4673cd102ee6` +
+  1 en `4b54e6be-…`): `file_path` normalizado — se les quitó el prefijo `entregables/`. Verificado que
+  las 5 URLs firmadas devuelven **HTTP 200** con el tamaño de bytes esperado (p. ej. `Cot_RANSA.docx`
+  → 319.845 bytes).
+- **17 objetos huérfanos** en el bucket `entregables` (subidas de prueba, compensadas por el código de
+  la BLL pero **no borradas** por el bug I) eliminados tras reconciliar las 22 claves del bucket contra
+  las 5 filas de BD. Estado final: **5 objetos, los 5 referenciados** (verificado).
+
+Sin cambios de esquema → **sin migración** (DB-01/DB-02 no aplican). Sin cambios de endpoint → **54
+paths de Swagger intactos** (ARCH-03).
+
+## Consecuencias y alcance ampliado (por qué toca BLL y Utility)
+
+- **`PE-GOL.BLL`** — el defecto H (concurrencia) y el M (atomicidad) eran **preexistentes** en
+  `EntregableAdjuntoService` / su repositorio; ningún test los había detectado porque todos usaban
+  un único archivo y un `NpgsqlConnection` real nunca se compartía entre hilos en los tests. Se
+  corrigen porque son la causa directa de los fallos del flujo real.
+- **`PE-GOL.Utility`** — `TipoArchivoHelper` y `StorageHelper` son la frontera con Supabase; los
+  defectos K/L/I son de normalización en esa frontera.
+- **Sin ADR nuevo.** `QuitarPrefijoBucket` no es una decisión arquitectónica: es hacer explícito en el
+  código el contrato que **ADR-013** ya fija (rutas de adjuntos **relativas** a la raíz del bucket) y
+  que ADR-016 ya fija para el navegador (nada de la API interna en el cliente). Documentado como
+  aclaración de contratos vigentes, no como decisión nueva.
+
+## Criterios de Done del v2
+
+- [x] `dotnet clean` + `dotnet build PE-GOL.sln` → **0 errores / 0 advertencias**
+- [x] `dotnet test PE-GOL.sln --no-build` → **841/841 en verde**, 0 omitidos (830 previos + 11 nuevos)
+- [x] Cobertura BLL ≥ 70 % (TEST-02) → **90,00%** (sube desde 89,96%; sin regresión)
+- [x] `JsApiBaseUrlRegressionTests` sigue con `ExcepcionesConocidas` **vacía** (ADR-016)
+- [x] `NavegacionPorRolRegressionTests` en verde (defecto J) y **verificado rojo↔verde** contra el markup antiguo
+- [x] Sin cambios de API → **54 paths de Swagger** intactos
+- [x] Sin migración de esquema
+- [x] Sin ADR nuevo (aplican ADR-013 y ADR-016)
+- [x] **Validación real en navegador** (Jorge): subida múltiple Office, descarga de cada formato, enlace
+      «Volver» del Gerente al Plan Consolidado (HTTP 200, no AccessDenied), y descarga verificada
+      extremo a extremo (HTTP 200, tamaño de bytes correcto).
+- [x] Reparación de datos en caliente aplicada y verificada (5 filas normalizadas; bucket reconciliado
+      de 22 a 5 objetos, los 5 referenciados)
+
+## Desviaciones del v2 respecto del spec aprobado
+
+1. **Alcance ampliado** de `Aplicacion + Tests` a `Aplicacion + BLL + Utility + Tests` (§ «Alcance
+   revisado del v2»). Justificado por los 8 defectos; cada cambio toca una capa distinta y está
+   trazado arriba.
+2. El defecto I se corrigió en `StorageHelper` (no en el cliente de Supabase) porque `StorageHelper`
+   es la capa que conoce el contrato de rutas **relativas al bucket** (ADR-013) y es la única testable
+   sin red; el cliente de Supabase solo habla con la API de Storage. `SupabaseStorageFileApi` recibe
+   un comentario que documenta el por qué y no re-normaliza (evita lógica duplicada).
+3. No se añadió `ApiClientException` ni ningún tipo nuevo en `PE-GOL.DTO`; los mensajes se tradujeron
+   en la BLL.
+
+---
+
+*Spec HU-022-hotfix — Hotfix de UI de Entregables · Sprint 4 · EP-07 · Estado: Implementado (v1 aprobado 2026-10-01 · cerrado v1 y **v2 revisado** el 2026-10-01 tras validación real — LOOP-05)*
+*v2 (2026-10-01): 8 defectos de runtime (G,H,I,J,K,L,M,N) corregidos · build 0/0 · 841/841 tests · cobertura BLL 90,00% · alcance ampliado a BLL y Utility · sin migración · sin ADR nuevo (ADR-013 + ADR-016) · datos reparados en caliente.*

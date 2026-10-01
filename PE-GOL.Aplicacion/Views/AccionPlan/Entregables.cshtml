@@ -1,6 +1,13 @@
 @model EntregablesViewModel
 @{
     ViewData["Title"] = $"Entregables — {Model.AccionCodigo}";
+
+    // Defecto J (HU-022-hotfix v2): «Volver» tiene un destino DISTINTO por rol. El listado
+    // /AccionPlan/Index es [Authorize(Roles = "JefeArea")], así que el Gerente —que llega aquí
+    // desde el Plan Consolidado y no tiene otra entrada a ese listado— no puede volver por ahí:
+    // caería en AccessDenied con ReturnUrl=%2FAccionPlan%2FIndex. El destino se decide en el
+    // servidor con User.IsInRole, nunca en el JS. Blindado por NavegacionPorRolRegressionTests.
+    var volverAConsolidado = User.IsInRole("Gerente");
 }
 
 @* ADR-016: sin token JWT en el DOM — la autenticación va por cookie de sesión y los proxies
@@ -11,7 +18,7 @@
 
 <div class="page-header">
     <div class="page-header__breadcrumb">
-        <span>Plan de Acción</span>
+        <span>@(volverAConsolidado ? "Contenido" : "Mi Área")</span>
         <i class="bi bi-chevron-right" aria-hidden="true"></i>
         <span class="active">Entregables</span>
     </div>
@@ -20,9 +27,18 @@
 </div>
 
 <div class="d-flex gap-2 mb-3">
-    <a class="btn-pe btn-pe--secondary" asp-action="Index">
-        <i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al Plan
-    </a>
+    @if (volverAConsolidado)
+    {
+        <a class="btn-pe btn-pe--secondary" asp-controller="Plan" asp-action="Consolidado">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al Plan Consolidado
+        </a>
+    }
+    else
+    {
+        <a class="btn-pe btn-pe--secondary" asp-controller="AccionPlan" asp-action="Index">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al Plan
+        </a>
+    }
 </div>
 
 @if (TempData["Success"] is string mensajeExito)

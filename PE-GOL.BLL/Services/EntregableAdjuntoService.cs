@@ -62,12 +62,6 @@ public sealed class EntregableAdjuntoService : IEntregableService
     private const string RolJefeArea = "JefeArea";
     private const string RolGerente = "Gerente";
 
-    /// <summary>
-    /// Bytes leídos para la firma. El spec fija ~512: suficiente para las 4 firmas cortas y para
-    /// las cabeceras locales del ZIP que desambiguan DOCX de XLSX.
-    /// </summary>
-    private const int BytesCabecera = 512;
-
     /// <summary>JSON legible en el log, sin escapes Unicode (ADR-003).</summary>
     private static readonly JsonSerializerOptions JsonOpcionesAuditoria = new()
     {
@@ -185,6 +179,9 @@ public sealed class EntregableAdjuntoService : IEntregableService
         var creadas = new List<Guid>();
         long totalBytes = 0;
 
+        // Se rellena dentro de la transacción (paso 12) y se proyecta después del commit.
+        List<EntregableAdjuntoEntity?> releidas = [];
+
         using var tx = await _entregables.BeginTransactionAsync(ct);
         try
         {
@@ -197,11 +194,32 @@ public sealed class EntregableAdjuntoService : IEntregableService
 
                 // 11.b · FIRMA DE BYTES, antes de subir (RNF-009). Al ejecutarse aquí la lista de
                 //         compensación está vacía para este archivo: no hay nada que compensar.
-                var tipo = TipoArchivoHelper.DetectarTipo(
-                    bytes.AsSpan(0, Math.Min(bytes.Length, BytesCabecera)));
-                if (tipo == TipoArchivo.Desconocido || tipo != TipoDesdeExtension(pendiente.Archivo.ExtensionDeNombre))
+                //
+                //         Se detecta sobre el archivo COMPLETO, no sobre una cabecera corta
+                //         (defecto H, HU-022-hotfix v2). El tipo se decide con el directorio central
+                //         del ZIP, que vive al FINAL del archivo: truncando a 512 bytes, un DOCX o
+                //         XLSX real de Word/Excel —cuyo [Content_Types].xml ocupa más que eso—
+                //         dejaba la marca "word/" o "xl/" fuera del buffer y se rechazaba con un
+                //         422 siendo un archivo perfectamente válido. El contenido ya está volcado
+                //         en memoria por el controller (límite 20 MB por archivo), así que no
+                //         hay coste de E/S adicional.
+                var tipo = TipoArchivoHelper.DetectarTipo(bytes);
+                var tipoEsperado = TipoDesdeExtension(pendiente.Archivo.ExtensionDeNombre);
+                if (tipo == TipoArchivo.Desconocido || tipo != tipoEsperado)
+                {
+                    // El mensaje dice QUÉ se detectó, no solo que "no corresponde": sin eso el
+                    // usuario no puede actionarlo. Lo más habitual es un .doc de Word 97-2003
+                    // renombrado a .docx (su contenido no es OOXML), que esta validación bloquea
+                    // a propósito. NUNCA se acepta el archivo (RNF-009 manda).
+                    var detalle = tipo == TipoArchivo.Desconocido
+                        ? "su contenido no es ninguno de los formatos permitidos (PDF, DOCX, XLSX, PNG o JPG)"
+                        : $"su contenido es realmente {TipoArchivoHelper.NombreLegible(tipo)}";
+
                     throw new ValidacionException(
-                        $"El contenido del archivo «{pendiente.NombreSaneado}» no corresponde a su extensión. Se rechazó antes de almacenarlo.");
+                        $"El archivo «{pendiente.NombreSaneado}» fue rechazado: {detalle}, " +
+                        $"pero su extensión dice .{pendiente.Archivo.ExtensionDeNombre}. " +
+                        "Abra el archivo y guárdelo con su formato real antes de volverlo a subir.");
+                }
 
                 // 11.c · Subida al bucket privado con la ruta ya construida (ARCH-06).
                 var rutaPersistida = await _storage.SubirArchivoAsync(
@@ -250,6 +268,27 @@ public sealed class EntregableAdjuntoService : IEntregableService
                 totalBytes += entidad.FileSizeBytes;
             }
 
+            // ── 12. Re-lectura de las filas creadas DENTRO de la transacción, ANTES del commit.
+            //
+            // El 201 lleva los valores REALES de CreatedAt (lo fija el DEFAULT now() del DDL) y
+            // SubidoPorNombre (el LEFT JOIN), no valores adivinados. Máximo 5 point-reads
+            // (RNF-001 aceptable), y SECUENCIALES: el DAL cachea una sola conexión por instancia
+            // y una conexión Npgsql no admite dos comandos simultáneos, así que Task.WhenAll
+            // lanzaba «A command is already in progress» (HU-022-hotfix v2, defecto G).
+            //
+            // El orden importa tanto como la secuencialidad. Con el commit ANTES de esta re-lectura,
+            // cualquier fallo posterior (una query caída, un timeout) caía en el catch, que
+            // compensaba borrando los objetos de Storage — pero las filas ya estaban CONFIRMADAS.
+            // Resultado: adjuntos que quedaban en la lista pero cuya descarga respondía «Object not
+            // found», y el usuario veía un error tras una subida que en realidad sí se había
+            // guardado. Leyendo antes de committear, un fallo aquí revierte fila y archivo juntos
+            // (todo o nada, D-H) y nunca deja referencias colgadas.
+            releidas = new List<EntregableAdjuntoEntity?>(creadas.Count);
+            foreach (var id in creadas)
+            {
+                releidas.Add(await _entregables.ObtenerPorIdAsync(id, request.AccionId, request.TenantId, ct));
+            }
+
             tx.Commit();
         }
         catch (Exception ex) when (!EsFalloDeDominio(ex))
@@ -283,17 +322,11 @@ public sealed class EntregableAdjuntoService : IEntregableService
             throw;
         }
 
-        // ── 12. Log sin la ruta de Storage ni los bytes: la ruta es interna y el contenido es dato
+        // ── 13. Log sin la ruta de Storage ni los bytes: la ruta es interna y el contenido es dato
         //        sensible. Filtrable por tenant, usuario y módulo (STACK-11). ──
         _logger.LogInformation(
             "Se registraron {Cantidad} entregable(s) adjunto(s) en una acción. Modulo=PlanOperativo TenantId={TenantId} UserId={UserId} AccionId={AccionId} TotalBytes={TotalBytes}",
             creadas.Count, request.TenantId, request.UserId, request.AccionId, totalBytes);
-
-        // ── 13. Re-lectura de las filas creadas: el 201 lleva los valores REALES de CreatedAt (lo
-        //        fija el DEFAULT now() del DDL) y SubidoPorNombre (el LEFT JOIN), no valores adivinados.
-        //        Máximo 5 point-reads (RNF-001 aceptable). ──
-        var releidas = await Task.WhenAll(creadas.Select(id =>
-            _entregables.ObtenerPorIdAsync(id, request.AccionId, request.TenantId, ct)));
 
         return releidas
             .Where(e => e is not null)

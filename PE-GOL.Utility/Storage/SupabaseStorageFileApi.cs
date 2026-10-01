@@ -112,6 +112,11 @@ public sealed class SupabaseStorageFileApi : IStorageFileApi
         if (string.IsNullOrWhiteSpace(rutaPersistida))
             return null;
 
+        // La clave se devuelve TAL COMO LA DEVUELVE la API de Supabase, que la antepone al nombre
+        // del bucket ("entregables/{tenant}/..."). Quitarle ese prefijo es cosa de
+        // <see cref="StorageHelper"/>, que es quien conoce la convención de rutas relativas a la
+        // raíz del bucket (ADR-013) y quien devuelve la ruta a la BLL (defecto I, HU-022-hotfix v2).
+
         // El ETag no lo expone el Upload del SDK 8.1.1 (devuelve la clave, no el cuerpo de la
         // respuesta), así que viaja como null: quien necesite verificar la integridad lo pide
         // con la API de metadatos del bucket, no con un segundo viaje en cada subida.

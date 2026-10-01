@@ -341,4 +341,132 @@ public class ApiClientTests
         Assert.Contains("Error interno del servidor", ex.Message);
         Assert.DoesNotContain("NullReferenceException", ex.Message); // no filtra detalles internos
     }
+
+    // ─── 9. PostMultipartAsync multi-archivo: regresión HU-022-hotfix v2 ──────
+    //
+    // El defecto que estos tests blindan: los streams se abrian con `await using` DENTRO
+    // del cuerpo del `foreach`, de modo que C# los descartaba al final de cada iteracion.
+    // MultipartContent serializa el cuerpo de forma perezosa dentro de SendAsync, ya con
+    // todos los streams cerrados -> ObjectDisposedException y la subida nunca llegaba a
+    // la API. Solo se reproduce si el handler LEE el contenido; por eso los asserts
+    // serializan el multipart en lugar de limitarse a inspeccionar la peticion.
+
+    [Fact]
+    public async Task PostMultipartAsync_MultiArchivo_SerializaElContenido_SinStreamsDisuestos()
+    {
+        // Arrange
+        var (client, handler, sesion) = CrearCliente();
+        sesion.GuardarSesion("token-abc", "refresh-1", CrearUsuario());
+        handler.AgregarRespuesta(RespuestaJson(HttpStatusCode.OK, new ApiResponse<string>
+        {
+            Success = true,
+            Data = "ok"
+        }));
+
+        var archivos = new List<IFormFile>
+        {
+            CrearFormFile("contrato.pdf", "%PDF-1.7 contenido"),
+            CrearFormFile("evidencia.png", "PNG-falso-para-prueba")
+        };
+
+        // Act: el handler serializa el cuerpo (leerlo es lo que disparaba el defecto).
+        var resultado = await client.PostMultipartAsync<string>(
+            "/api/v1/acciones/43d9697a-6fe5-478a-9a0c-4673cd102ee6/entregables",
+            archivos,
+            "archivos");
+
+        // Assert
+        Assert.Equal("ok", resultado);
+
+        var request = Assert.Single(handler.Requests);
+        var cuerpo = Assert.Single(handler.BodiesSerializados);
+
+        Assert.Contains("contrato.pdf", cuerpo);
+        Assert.Contains("%PDF-1.7 contenido", cuerpo); // el contenido llego integro
+        Assert.Contains("evidencia.png", cuerpo);
+        Assert.Contains("PNG-falso-para-prueba", cuerpo);
+    }
+
+    [Fact]
+    public async Task PostMultipartAsync_MultiArchivo_401_ReintentaYReenviaElContenidoCompleto()
+    {
+        // Arrange: 401 -> refresh con rotacion (D1) -> reintento UNICO. El reintento
+        // reabre los streams, asi que debe reenviar el contenido completo, no uno vacio.
+        var (client, handler, sesion) = CrearCliente();
+        sesion.GuardarSesion("token-vencido", "refresh-1", CrearUsuario());
+
+        handler.AgregarRespuesta(RespuestaJson(HttpStatusCode.Unauthorized, new ApiResponse<string>
+        {
+            Success = false,
+            Message = "Token expirado"
+        }));
+        handler.AgregarRespuesta(RespuestaJson(HttpStatusCode.OK, new ApiResponse<RefreshResponse>
+        {
+            Success = true,
+            Data = new RefreshResponse { AccessToken = "token-nuevo", RefreshToken = "refresh-2" }
+        }));
+        handler.AgregarRespuesta(RespuestaJson(HttpStatusCode.OK, new ApiResponse<string>
+        {
+            Success = true,
+            Data = "ok"
+        }));
+
+        var archivo = CrearFormFile("plan.pdf", "contenido-del-plan");
+
+        // Act
+        var resultado = await client.PostMultipartAsync<string>(
+            "/api/v1/acciones/43d9697a-6fe5-478a-9a0c-4673cd102ee6/entregables",
+            new List<IFormFile> { archivo },
+            "archivos");
+
+        // Assert
+        Assert.Equal("ok", resultado);
+        Assert.Equal(3, handler.Requests.Count);
+        Assert.Equal("Bearer", handler.Requests[2].Headers.Authorization?.Scheme);
+        Assert.Equal("token-nuevo", handler.Requests[2].Headers.Authorization?.Parameter);
+
+        // El 3er request (el reintento) debe llevar el archivo completo: si el stream se
+        // hubiera consumido en el primer intento, aqui saldria un cuerpo vacio.
+        var cuerpoReintento = handler.BodiesSerializados[2];
+        Assert.Contains("plan.pdf", cuerpoReintento);
+        Assert.Contains("contenido-del-plan", cuerpoReintento);
+    }
+
+    [Fact]
+    public async Task PostMultipartAsync_ArchivoUnico_SerializaElContenido_SinStreamsDisuestos()
+    {
+        // Arrange: el overload de un solo archivo (HU-006, logo) comparte implementacion
+        // con el multi-archivo desde el hotfix v2 y sufria del mismo defecto.
+        var (client, handler, sesion) = CrearCliente();
+        sesion.GuardarSesion("token-abc", "refresh-1", CrearUsuario());
+        handler.AgregarRespuesta(RespuestaJson(HttpStatusCode.OK, new ApiResponse<string>
+        {
+            Success = true,
+            Data = "ok"
+        }));
+
+        // Act
+        var resultado = await client.PostMultipartAsync<string>(
+            "/api/v1/tenants/8a1b/logo",
+            CrearFormFile("logo.png", "PNG-de-la-empresa"),
+            "archivo");
+
+        // Assert
+        Assert.Equal("ok", resultado);
+
+        Assert.Single(handler.Requests);
+        var cuerpo = Assert.Single(handler.BodiesSerializados);
+        Assert.Contains("logo.png", cuerpo);
+        Assert.Contains("PNG-de-la-empresa", cuerpo);
+    }
+
+    private static IFormFile CrearFormFile(string nombreArchivo, string contenido)
+    {
+        var bytes = Encoding.UTF8.GetBytes(contenido);
+        return new FormFile(new MemoryStream(bytes), 0, bytes.Length, "archivos", nombreArchivo)
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = "application/octet-stream"
+        };
+    }
 }
