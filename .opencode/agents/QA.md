@@ -5,10 +5,10 @@ description: Escribe los tests unitarios xUnit + Moq del proyecto
   de cada HU. Actívalo con @QA al iniciar una HU o para revisar 
   criterios de calidad.
 mode: subagent
-# model: opencode/big-pickle          # Primera opción: 200K, gratis, exhaustivo
-model: opencode-go/minimax-m3   # Fallback Go: 1M, si Big Pickle cae
+model: opencode/big-pickle          # Primera opción: 200K, gratis, exhaustivo
+# model: opencode-go/minimax-m3   # Fallback Go: 1M, si Big Pickle cae
 # model: opencode-go/longcat-2.5-preview-free
-temperature: 0.1
+temperature: 0.2
 color: "#C62828"
 tools:
   read: true

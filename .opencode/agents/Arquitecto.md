@@ -6,8 +6,8 @@ description: Diseña specs técnicos y ADRs del proyecto PE-GOL SaaS,
   decisión arquitectónica por registrar (adrs/ADR-XXX.md). 
   También ejecuta operaciones git cuando @Orquestador lo delegue.
 mode: subagent
-# model: opencode/big-pickle          # Primera opción: 200K, gratis, exhaustivo
-model: opencode-go/glm-5.2         # Fallback Go: 1M, si Big Pickle cae
+model: opencode/big-pickle          # Primera opción: 200K, gratis, exhaustivo
+# model: opencode-go/glm-5.2         # Fallback Go: 1M, si Big Pickle cae
 # model: opencode-go/longcat-2.5-preview-free
 temperature: 0.2
 color: "#6A1B9A"

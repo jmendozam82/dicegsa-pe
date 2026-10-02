@@ -51,9 +51,9 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 
 ## 🗓️ Estado Actual del Proyecto
 
-> **Actualizado: 2026-10-01** (cierre del **hotfix v2 de HU-022**, tras la validación real en navegador que destapó 8 defectos de runtime). Este bloque refleja el estado vigente; el historial detallado de cada sprint está en las secciones de cierre al final de este documento.
+> **Actualizado: 2026-10-02** (cierre de **HU-025** — Sprint 4 completado 5/5 HU, 28 de 28 pts). Este bloque refleja el estado vigente; el historial detallado de cada sprint está en las secciones de cierre al final de este documento.
 
-### Fases completadas: **Análisis + Diseño (Fases 0, 1 y 2) + Sprint 1 + Sprint 2 + Sprint 3**
+### Fases completadas: **Análisis + Diseño (Fases 0, 1 y 2) + Sprint 1 + Sprint 2 + Sprint 3 + Sprint 4**
 
 | Entregable | Estado |
 |-----------|--------|
@@ -69,20 +69,20 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 | **Specs + implementación Sprint 1** | ✅ Completo — HU-001, HU-002, HU-003, HU-004, HU-006, HU-007, HU-008 (7/7) |
 | **Specs + implementación Sprint 2** | ✅ Completo — HU-005, HU-009..HU-015 (8/8) |
 | **Specs + implementación Sprint 3** | ✅ Completo — HU-016..HU-020 y HU-045 (6/6) |
-| **Specs + implementación Sprint 4** | ⏳ **En curso — 4/5 HU** · HU-021 ✅, HU-022 ✅ (hotfix de UI **v1** 2026-10-01 + **v2** tras validación real: 8 defectos de runtime corregidos, 841/841 tests), HU-023 ✅, HU-024 ✅ Implementadas · pendiente HU-025 (23 de 28 pts) |
-| Implementación (código) | ✅ En curso — 24 de 45 HU Implementadas |
+| **Specs + implementación Sprint 4** | ✅ Completo — HU-021, HU-022 (hotfix v1+v2), HU-023 (hotfix), HU-024 y HU-025 Implementadas (Sprint 4: 5/5 HU — 28 de 28 pts) |
+| Implementación (código) | ✅ En curso — 29 de 45 HU Implementadas (Sprint 4 completado) |
 | Auditoría post-Sprint 3 | ✅ Resuelta 100% (2026-09-21 — 3 críticos, 6 medios, 8 mejoras) |
 
-### Estado técnico verificado (2026-10-01)
+### Estado técnico verificado (2026-10-02)
 
 | Indicador | Valor |
 |-----------|-------|
 | Build | `dotnet clean` + `dotnet build PE-GOL.sln` → **0 advertencias, 0 errores** |
-| Tests | `dotnet test PE-GOL.sln` → **841/841 en verde** (0 fallidas, 0 omitidas) — 830 previos + 11 del **hotfix v2 de HU-022** (3 de multipart/`ApiClient`, 4 de tipo de archivo, 2 de atomicidad/compensación, 1 de rutas de Storage, + `NavegacionPorRolRegressionTests` de arquitectura) |
-| Cobertura BLL | **90,00%** (línea) ≥ 70% (TEST-02) — subió desde 89,96% |
-| Migraciones | **V001–V005 EJECUTADAS y verificadas** en Supabase Cloud (V001–V004 en HU-045; `V005__indice_accion_plan_gantt.sql` en HU-021 → `idx_accion_plan_ciclo_area ON public.accion_plan USING btree (tenant_id, ciclo_id, area_id)`) |
-| Frontend | Cimiento HU-045 + Gantt HU-021 + Consolidado HU-023 (con **proxy MVC** — ADR-016) · DHTMLX Gantt **Community MIT v10.0.3** vendorizada en `wwwroot/lib/dhtmlx-gantt/` (ADR-011) |
-| Swagger | **54 paths** documentados (49 previos + 5 de `OkrController` — ARCH-03; el hotfix de HU-023 añadió acciones MVC, no endpoints de API) |
+| Tests | `dotnet test PE-GOL.sln` → **917/917 en verde** (0 fallidas, 0 omitidas) — 841 previos + 76 de HU-025 (56 BLL + 13 DAL + 7 MVC) |
+| Cobertura BLL | **90,2%** (línea) ≥ 70% (TEST-02) — subió desde 90,00% |
+| Migraciones | **V001–V005 EJECUTADAS y verificadas** en Supabase Cloud (V001–V004 en HU-045; `V005__indice_accion_plan_gantt.sql` in HU-021 → `idx_accion_plan_ciclo_area ON public.accion_plan USING btree (tenant_id, ciclo_id, area_id)`) |
+| Frontend | Cimiento HU-045 + Gantt HU-021 + Consolidado HU-023 (con **proxy MVC** — ADR-016) + OKRs HU-024 + KRs HU-025 · DHTMLX Gantt **Community MIT v10.0.3** vendorizada en `wwwroot/lib/dhtmlx-gantt/` (ADR-011) |
+| Swagger | **60 paths** documentados (54 previos + 6 de `KeyResultController` — ARCH-03) |
 
 ### Decisiones de procedencia que siguen vigentes
 
@@ -93,9 +93,9 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 - **Pendiente de decisión de Jorge:** precisión de `STACK-07` (variante/versión exacta). La regla se dejó **sin tocar** a propósito.
 - **Salvedad de HU-021:** no hubo verificación visual autenticada del Gantt renderizado; se verificó la entrega de assets y el contrato, no el render.
 
-### Fase siguiente: **Sprint 4 — HU-025 (Gestión de Key Results)**
+### Fase siguiente: **Sprint 5 — HU-026 (Registro Mensual de Valores Reales de KRs)**
 
-`specs/sprint-04/HU-022-hotfix.spec.md` en `Implementado` (v1 + **v2** cerrados el 2026-10-01 — deuda de UI pagada y defectos de runtime corregidos) · siguiente en el loop: **HU-025** (Gestión de Key Results) — última HU pendiente del Sprint 4.
+Sprint 4 cerrado el 2026-10-02 (5/5 HU — 28 de 28 pts). `specs/sprint-04/HU-025.spec.md` en `Implementado` (6 endpoints JEF-only, `KeyResultService`/`KeyResultRepository`, DTOs, vistas Razor, `keyresults.js`, 917/917 tests, cobertura BLL 90,2%). Siguiente en el loop: **HU-026** (Registro Mensual de Valores Reales de KRs) — primera HU del Sprint 5.
 
 ---
 

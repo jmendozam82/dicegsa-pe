@@ -47,6 +47,7 @@ public static class DependencyContainer
         services.AddScoped<IEntregableAdjuntoRepository, EntregableAdjuntoRepository>(); // HU-022: entregable_adjunto (bucket privado + auditoría en la misma tx)
         services.AddScoped<IPlanConsolidadoRepository, PlanConsolidadoRepository>(); // HU-023: vista consolidada del plan (solo lectura)
         services.AddScoped<IOkrRepository, OkrRepository>(); // HU-024: OKRs del área
+        services.AddScoped<IKeyResultRepository, KeyResultRepository>(); // HU-025: Key Results de un OKR
 
         // Servicios de negocio (Scoped: estado por request).
         services.AddScoped<ITenantService, TenantService>();
@@ -67,6 +68,7 @@ public static class DependencyContainer
         services.AddScoped<IEntregableService, EntregableAdjuntoService>(); // HU-022: entregables adjuntos de una acción
         services.AddScoped<IPlanConsolidadoService, PlanConsolidadoService>(); // HU-023: vista consolidada del plan (solo lectura)
         services.AddScoped<IOkrService, OkrService>(); // HU-024: OKRs del área
+        services.AddScoped<IKeyResultService, KeyResultService>(); // HU-025: Key Results de un OKR
 
         // PlanLimitValidator es STATELESS (lógica pura, D4): Singleton.
         // TenantService (nueva dependencia, HU-002 §9.1) y PlanService lo consumen vía

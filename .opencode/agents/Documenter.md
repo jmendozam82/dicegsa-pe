@@ -5,8 +5,8 @@ description: Cierra specs y ADRs del proyecto PE-GOL SaaS al
   criterios de Done para registrar la documentación.
 mode: subagent
 # model: opencode/big-pickle          # Primera opción: 200K, gratis, exhaustivo
-model: opencode-go/glm-5.2   # Fallback Go: 1M, si Big Pickle cae
-# model: opencode-go/longcat-2.5-preview-free
+# model: opencode-go/glm-5.2   # Fallback Go: 1M, si Big Pickle cae
+model: opencode-go/longcat-2.5-preview-free
 temperature: 0.1
 color: "#00695C"
 tools:

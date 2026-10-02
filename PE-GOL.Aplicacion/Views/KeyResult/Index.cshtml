@@ -1,0 +1,199 @@
+@model KeyResultIndexViewModel
+@{
+    ViewData["Title"] = $"Key Results de {Model.OkrCodigo}";
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Mi Área</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>OKRs</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>@Model.OkrCodigo</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">KRs</span>
+    </div>
+    <h1 class="page-header__title">Key Results de @Model.OkrCodigo</h1>
+    <p class="page-header__subtitle">
+        @if (Model.OkrNoExiste)
+        {
+            <text>El OKR solicitado no existe o no pertenece a su área.</text>
+        }
+        else
+        {
+            <text>@Model.OkrDescripcion</text>
+        }
+    </p>
+</div>
+
+@if (TempData["Success"] is string mensajeExito)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle" aria-hidden="true"></i> @mensajeExito
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+@if (TempData["Error"] is string mensajeError)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @mensajeError
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@if (Model.OkrNoExiste)
+{
+    @* ── Estado vacío: OKR no encontrado (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-shield-exclamation empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">No se encontró el OKR indicado</h3>
+            <p class="empty-state__message">El OKR solicitado no existe o no pertenece a su área.</p>
+            <a class="btn-pe btn-pe--primary" asp-controller="Okr" asp-action="Index">
+                <i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a Mis OKRs
+            </a>
+        </div>
+    </div>
+}
+else if (Model.Items.Count == 0)
+{
+    @* ── Estado vacío: sin KRs (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-bullseye empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">Este OKR aún no tiene Key Results</h3>
+            <p class="empty-state__message">Registre el primer Key Result de este OKR. Máximo 5 KRs por OKR.</p>
+            <a class="btn-pe btn-pe--primary" asp-action="Crear" asp-route-okrId="@Model.OkrId">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo KR
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    @* ── Banner de Σ pesos (CA #3 · F0 aprobado) ── *@
+    <div class="alert @(Model.SumaPesos == 1.000m ? "alert-success" : "alert-warning") alert-dismissible fade show" role="alert">
+        <i class="bi @(Model.SumaPesos == 1.000m ? "bi-check-circle" : "bi-exclamation-triangle")" aria-hidden="true"></i>
+        <strong>Σ de pesos: @Model.SumaPesos.ToString("0.000")</strong> de 1.000 — @Model.Cantidad de @Model.MaxKeyResults KRs
+        @if (Model.SumaPesos != 1.000m)
+        {
+            <span>— <em>El reparto debe sumar exactamente 1.000. Use «Ajustar pesos» para corregirlo.</em></span>
+        }
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+
+    @* ── Tabla (UX-03 · CA #1 — columnas Codigo, Descripcion, Peso, PuntuacionFinal, PuntuacionPonderada) ── *@
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <a class="btn-pe btn-pe--primary" asp-action="Crear" asp-route-okrId="@Model.OkrId">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo KR
+            </a>
+        </div>
+        <div>
+            <button type="button" class="btn-pe btn-pe--secondary" data-bs-toggle="modal" data-bs-target="#modalPesos">
+                <i class="bi bi-sliders" aria-hidden="true"></i> Ajustar pesos
+            </button>
+        </div>
+    </div>
+    <div class="card-pe p-0">
+        <div class="table-responsive">
+            <table class="tabla-pe mb-0">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Descripción</th>
+                        <th class="text-center">Peso</th>
+                        <th class="text-center" title="Se calcula automáticamente al registrar los valores mensuales (HU-026)">Puntuación Final</th>
+                        <th class="text-center" title="Se calcula automáticamente al registrar los valores mensuales (HU-026)">Puntuación Ponderada</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var kr in Model.Items)
+                    {
+                        <tr>
+                            <td><span class="cell-codigo">@kr.Codigo</span></td>
+                            <td>
+                                <span class="cell-truncate d-inline-block" title="@kr.Descripcion">@kr.Descripcion</span>
+                            </td>
+                            <td class="text-center">@kr.Peso.ToString("0.000")</td>
+                            <td class="text-center">@kr.PuntuacionFinal.ToString("0.000")</td>
+                            <td class="text-center">@kr.PuntuacionPonderada.ToString("0.000")</td>
+                            <td class="text-end">
+                                <div class="d-inline-flex gap-1">
+                                    <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Editar"
+                                       asp-route-okrId="@Model.OkrId" asp-route-id="@kr.Id" title="Editar">
+                                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                                    </a>
+                                    <button type="button" class="btn-pe btn-pe--danger btn-pe--sm"
+                                            data-bs-toggle="modal" data-bs-target="#modalEliminarKr"
+                                            data-kr-id="@kr.Id" data-kr-codigo="@kr.Codigo" data-kr-descripcion="@kr.Descripcion"
+                                            title="Eliminar">
+                                        <i class="bi bi-trash" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@* ── Modal de confirmación eliminar (DS § 5.7) ── *@
+<div class="modal fade modal-pe" id="modalEliminarKr" tabindex="-1" aria-labelledby="modalEliminarKrTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEliminarKrTitulo">Eliminar Key Result</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="body-md mb-0" id="modalEliminarKrTexto"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-pe btn-pe--secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formEliminarKr" method="post" action="">
+                    <button type="submit" class="btn-pe btn-pe--danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Modal de ajuste de pesos (CA #3 · F0 aprobado) ── *@
+<div class="modal fade modal-pe" id="modalPesos" tabindex="-1" aria-labelledby="modalPesosTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalPesosTitulo">Ajustar pesos de @Model.OkrCodigo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="body-sm mb-3">Ajuste los pesos de los Key Results. La suma debe ser exactamente 1.000.</p>
+                <div id="pesosContainer">
+                    @* Los inputs se generan por JS *@
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        <strong>Σ: <span id="sumaPesos" class="fw-bold">0.000</span></strong>
+                    </div>
+                    <button type="button" class="btn-pe btn-pe--secondary btn-pe--sm" id="btnRepartirEquitativo">
+                        <i class="bi bi-calculator" aria-hidden="true"></i> Repartir equitativamente
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-pe btn-pe--secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn-pe btn-pe--primary" id="btnGuardarPesos" disabled>
+                    <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar reparto
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/keyresults.js" asp-append-version="true"></script>
+}

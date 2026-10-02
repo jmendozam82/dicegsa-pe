@@ -495,7 +495,7 @@
 - [ ] Validación: suma de pesos de KRs del mismo OKR debe ser 1.0 (100%); error si difiere
 - [ ] No se puede eliminar un KR con valores reales registrados en el ciclo activo
 
-**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 4 (corregido de "Sprint: 7" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-025 al Sprint 4)
+**Pts:** 5 · **Prioridad:** Alta · **Sprint:** 4 (corregido de "Sprint: 7" el 2026-09-27: la tabla de Sprint Planning es la fuente de verdad y asigna HU-025 al Sprint 4) · **Estado:** ✅ Implementada (2026-10-02)
 
 ---
 
@@ -920,19 +920,19 @@
 
 ---
 
-### 🟢 Sprint 4 — Plan de Acción Completo
+### ✅ Sprint 4 — Plan de Acción Completo (COMPLETADO — 5/5 HU)
 **Objetivo:** Plan de Acción totalmente operativo con Gantt, entregables y vista consolidada.
 
 | HU | Descripción | Pts |
 |----|-------------|-----|
 | HU-021 | Vista Gantt (EP-07) — ✅ Implementada (2026-09-27) | 8 |
-| HU-022 | Entregables Adjuntos | 5 |
-| HU-023 | Vista Consolidada Plan (Gerente) | 5 |
-| HU-024 | CRUD OKRs | 5 |
-| HU-025 | Gestión de KRs | 5 |
+| HU-022 | Entregables Adjuntos — ✅ Implementada (2026-10-01, hotfix v1+v2) | 5 |
+| HU-023 | Vista Consolidada Plan (Gerente) — ✅ Implementada (2026-09-30, hotfix) | 5 |
+| HU-024 | CRUD OKRs — ✅ Implementada (2026-09-30) | 5 |
+| HU-025 | Gestión de KRs — ✅ Implementada (2026-10-02) | 5 |
 | **Total** | | **28 pts** |
 
-> **Sprint 4 en curso (1/5 HU, 8 de 28 pts).** HU-021 cerrada el 2026-09-27: endpoint de solo lectura `GET /api/v1/acciones/gantt`, vista Gantt con escala de 12 meses, agrupación por Objetivo CG, color por status y 4 filtros; DHTMLX Gantt Community MIT v10.0.3 vendorizado (ADR-011) e índice `idx_accion_plan_ciclo_area` aplicado (ADR-012 + `V005`). Pendientes HU-022..HU-025.
+> **Sprint 4 completado el 2026-10-02 (5/5 HU — 28 de 28 pts).** HU-025 cerró con 6 endpoints JEF-only (incluido el masivo `PUT .../key-results/pesos`), `KeyResultService`/`KeyResultRepository`, DTOs, vistas Razor y `keyresults.js`. Tests: 917/917 en verde · Cobertura BLL 90,2%. Pendiente: **Sprint 5** (HU-026 Registro Mensual Valores KRs, HU-027 Consolidado OKRs, HU-028 CRUD CAPEX, HU-029 Desembolso CAPEX).
 
 ---
 

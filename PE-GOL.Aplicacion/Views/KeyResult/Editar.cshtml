@@ -1,0 +1,61 @@
+@model KeyResultFormViewModel
+@{
+    ViewData["Title"] = "Editar Key Result";
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Mi Área</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>OKRs</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>@Model.OkrCodigo</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Editar KR</span>
+    </div>
+    <h1 class="page-header__title">Editar Key Result</h1>
+    <p class="page-header__subtitle">El código <span class="cell-codigo">@Model.Codigo</span> es auto-generado y no se puede modificar (CA #1, DB-04).</p>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <strong>No se pudo actualizar el Key Result:</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="card-pe">
+    <form asp-action="Editar" asp-route-okrId="@Model.OkrId" asp-route-id="@Model.KeyResultId" method="post" id="formKeyResult" novalidate>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-pe-label">Código</label>
+                <div><span class="cell-codigo">@Model.Codigo</span></div>
+                <span class="body-sm">Auto-generado, no editable.</span>
+            </div>
+            <div class="col-12">
+                <label class="form-pe-label" for="descripcion">Descripción de la métrica *</label>
+                <textarea class="form-pe-input" id="descripcion" name="descripcion" rows="4"
+                          maxlength="500" placeholder="Describa la métrica concreta que evidenciará el logro del objetivo (1-500 caracteres)">@Model.Descripcion</textarea>
+                <span class="body-sm">Máx 500 caracteres.</span>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-pe btn-pe--primary">
+                <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+            </button>
+            <a class="btn-pe btn-pe--secondary" asp-action="Index" asp-route-okrId="@Model.OkrId">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="~/js/keyresult-form.js" asp-append-version="true"></script>
+}

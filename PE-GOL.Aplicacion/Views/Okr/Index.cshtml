@@ -110,6 +110,10 @@ else
                             </td>
                             <td class="text-end">
                                 <div class="d-inline-flex gap-1">
+                                    <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-controller="KeyResult" asp-action="Index"
+                                       asp-route-okrId="@okr.Id" title="Gestionar KRs de @okr.Codigo">
+                                        <i class="bi bi-bullseye" aria-hidden="true"></i> KRs
+                                    </a>
                                     <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Editar"
                                        asp-route-id="@okr.Id" title="Editar">
                                         <i class="bi bi-pencil" aria-hidden="true"></i>
