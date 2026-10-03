@@ -265,6 +265,29 @@ public sealed class OkrRepository : IOkrRepository, IDisposable
         await GetConnection().ExecuteAsync(sql, new { Id = id, TenantId = tenantId, AreaId = areaId }, transaction: tx);
     }
 
+    public async Task<int> ActualizarPuntuacionOkrAsync(Guid tenantId, Guid areaId, Guid okrId, decimal puntuacionFinal, string semaforo, IDbTransaction? tx = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE okr
+            SET puntuacion_final = @PuntuacionFinal,
+                semaforo         = @Semaforo::semaforo_color,
+                updated_at       = CURRENT_TIMESTAMP
+            WHERE id        = @OkrId
+              AND tenant_id = @TenantId
+              AND area_id   = @AreaId;";
+
+        var p = new
+        {
+            OkrId = okrId,
+            TenantId = tenantId,
+            AreaId = areaId,
+            PuntuacionFinal = puntuacionFinal,
+            Semaforo = semaforo
+        };
+
+        return await GetConnection().ExecuteAsync(sql, p, transaction: tx);
+    }
+
     public async Task<IEnumerable<OkrResponse>> ListarConsolidadoAsync(Guid tenantId, Guid cicloId, Guid areaId, CancellationToken ct = default)
     {
         const string sql = @"

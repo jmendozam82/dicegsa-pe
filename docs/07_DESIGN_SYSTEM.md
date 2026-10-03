@@ -686,6 +686,7 @@ Se usa **Bootstrap Icons** (`bootstrap-icons@1.11.x`) — ya incluido con Bootst
 | Plan de Acción | `bi-list-check` |
 | Gantt | `bi-bar-chart-steps` |
 | OKRs | `bi-graph-up-arrow` |
+| Valores mensuales de KRs | `bi-calendar-month` |
 | CAPEX | `bi-coin` |
 | OPEX | `bi-receipt` |
 | Memoria de Cálculo | `bi-calculator` |

@@ -1,0 +1,280 @@
+@model ValorMensualKrIndexViewModel
+@{
+    ViewData["Title"] = $"Valores mensuales de {Model.OkrCodigo}";
+
+    // Mapeo semáforo -> clase del Design System (UX-02). Sin clases nuevas (UX-01).
+    Func<string?, string> claseSemaforo = s => (s ?? string.Empty).Trim().ToLowerInvariant() switch
+    {
+        "verde" => "verde",
+        "amarillo" => "amarillo",
+        "rojo" => "rojo",
+        _ => "gris"
+    };
+
+    var ventanaEditable = Model.MesMaxEditable > 0 && Model.MesMaxEditable >= Model.MesMinEditable;
+}
+
+<div class="page-header">
+    <div class="page-header__breadcrumb">
+        <span>Mi Área</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>OKRs</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>@Model.OkrCodigo</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span>Key Results</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <span class="active">Valores mensuales</span>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-3">
+        <div>
+            <h1 class="page-header__title">Valores mensuales de @Model.OkrCodigo</h1>
+            <p class="page-header__subtitle">
+                @if (!Model.OkrNoExiste)
+                {
+                    <text>@Model.OkrDescripcion — Pilar @Model.PilarNombre.</text>
+                }
+                else
+                {
+                    <text>El OKR solicitado no existe o no pertenece a su área.</text>
+                }
+            </p>
+        </div>
+        @if (!Model.OkrNoExiste && Model.KRs.Count > 0)
+        {
+            <div class="ms-auto d-flex flex-wrap gap-2">
+                <a class="btn-pe btn-pe--secondary" asp-controller="KeyResult" asp-action="Index"
+                   asp-route-okrId="@Model.OkrId">
+                    <i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a los KRs
+                </a>
+                <a class="btn-pe btn-pe--primary" asp-controller="ValorMensualKr" asp-action="Exportar"
+                   asp-route-okrId="@Model.OkrId">
+                    <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Exportar Excel
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] is string mensajeExito)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle" aria-hidden="true"></i> @mensajeExito
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+@if (TempData["Error"] is string mensajeError)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @mensajeError
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@* ── Contenedor de avisos de la edición en línea (JS) ── *@
+<div id="avisosInline"></div>
+
+@if (Model.OkrNoExiste)
+{
+    @* ── Estado vacío: OKR no encontrado (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-shield-exclamation empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">No se encontró el OKR indicado</h3>
+            <p class="empty-state__message">El OKR solicitado no existe o no pertenece a su área.</p>
+            <a class="btn-pe btn-pe--primary" asp-controller="Okr" asp-action="Index">
+                <i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a Mis OKRs
+            </a>
+        </div>
+    </div>
+}
+else if (Model.KRs.Count == 0)
+{
+    @* ── Estado vacío: el OKR no tiene KRs sobre los que registrar valores (UX-05) ── *@
+    <div class="card-pe">
+        <div class="empty-state">
+            <i class="bi bi-calendar-month empty-state__icon" aria-hidden="true"></i>
+            <h3 class="empty-state__title">Este OKR aún no tiene Key Results</h3>
+            <p class="empty-state__message">Los valores reales se registran por Key Result. Cree primero los KRs del OKR @Model.OkrCodigo para poder cargar su avance mensual.</p>
+            <a class="btn-pe btn-pe--primary" asp-controller="KeyResult" asp-action="Index"
+               asp-route-okrId="@Model.OkrId">
+                <i class="bi bi-bullseye" aria-hidden="true"></i> Ir a los KRs
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    @* ── Banner de ventana editable (CA #2/#3): la UI refleja; el servidor manda ── *@
+    <div class="alert @(ventanaEditable ? "alert-info" : "alert-warning")" role="alert">
+        @if (ventanaEditable)
+        {
+            <i class="bi bi-calendar-check" aria-hidden="true"></i>
+            <text>
+                Meses editables:
+                <strong>@(Model.MesesEditables.Count > 0 ? string.Join(", ", Model.MesesEditables) : "—")</strong>
+                — corte al <strong>@Model.FechaNegocio.ToString("dd/MM/yyyy")</strong>.
+                Los meses fuera de la ventana se muestran bloqueados y el servidor los rechaza aunque se manipulen.
+            </text>
+        }
+        else
+        {
+            <i class="bi bi-lock" aria-hidden="true"></i>
+            <text>
+                Todavía no hay meses editables: la fecha de negocio del ciclo es
+                <strong>@Model.FechaNegocio.ToString("dd/MM/yyyy")</strong> y precede al inicio del registro mensual.
+            </text>
+        }
+    </div>
+
+    <div class="alert alert-light border mb-4" role="note">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        Semáforos del ciclo: <strong>verde ≥ @Model.UmbralVerde.ToString("0.00")</strong> ·
+        <strong>amarillo ≥ @Model.UmbralAmarillo.ToString("0.00")</strong> ·
+        <strong>rojo &lt; @Model.UmbralAmarillo.ToString("0.00")</strong>.
+        Los promedios trimestrales y la puntuación final se recalculan al guardar (no se editan a mano).
+    </div>
+
+    <div id="grillaOkr" data-okr-id="@Model.OkrId">
+        <form id="formGrilla" novalidate>
+            <div class="card-pe p-0">
+                <div class="table-responsive">
+                    <table class="tabla-pe mb-0">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Key Result</th>
+                                <th class="text-center" title="Peso del KR dentro del OKR (suma 1.000)">Peso</th>
+                                @foreach (var mes in Model.KRs[0].Meses)
+                                {
+                                    <th class="text-center" title="@mes.Nombre">@mes.Nombre</th>
+                                }
+                                <th class="text-center" title="Promedio de los meses con valor del trimestre">Q1</th>
+                                <th class="text-center" title="Promedio de los meses con valor del trimestre">Q2</th>
+                                <th class="text-center" title="Promedio de los meses con valor del trimestre">Q3</th>
+                                <th class="text-center" title="Promedio de los meses con valor del trimestre">Q4</th>
+                                <th class="text-center" title="Promedio de los trimestres con datos">Final</th>
+                                <th class="text-center" title="Puntuación final × peso del KR">Ponderada</th>
+                                <th class="text-center">Semáforo</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var fila in Model.KRs)
+                            {
+                                <tr data-kr-id="@fila.KeyResultId" data-kr-codigo="@fila.Codigo"
+                                    data-kr-descripcion="@fila.Descripcion" data-kr-peso="@fila.Peso.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture)"
+                                    data-kr-mes-con-valor="@fila.MesesConValor">
+                                    <td><span class="cell-codigo">@fila.Codigo</span></td>
+                                    <td>
+                                        <span class="cell-truncate d-inline-block" title="@fila.Descripcion">@fila.Descripcion</span>
+                                    </td>
+                                    <td class="text-center">@fila.Peso.ToString("0.000")</td>
+                                    @foreach (var celda in fila.Meses)
+                                    {
+                                        <td class="text-center celda-mes">
+                                            @if (celda.Editable)
+                                            {
+                                                <input type="text" inputmode="decimal" autocomplete="off"
+                                                       class="form-pe-input valor-mes"
+                                                       id="valor-@fila.KeyResultId.ToString("N")-@celda.Mes"
+                                                       name="valor-@celda.Mes"
+                                                       data-mes="@celda.Mes"
+                                                       data-mes-nombre="@celda.Nombre"
+                                                       data-registrado="@(celda.Registrado ? "true" : "false")"
+                                                       value="@(celda.Valor?.ToString("0.0"))"
+                                                       maxlength="3"
+                                                       aria-label="@($"Valor real de {celda.Nombre} para {fila.Codigo} (0.0 a 1.0)")" />
+                                                @if (celda.Registrado)
+                                                {
+                                                    <button type="button" class="btn-pe btn-pe--danger btn-pe--sm btn-eliminar-valor"
+                                                            data-mes="@celda.Mes"
+                                                            data-mes-nombre="@celda.Nombre"
+                                                            title="Eliminar el valor de @celda.Nombre">
+                                                        <i class="bi bi-trash" aria-hidden="true"></i>
+                                                    </button>
+                                                }
+                                            }
+                                            else if (celda.Registrado)
+                                            {
+                                                <span class="valor-registrado" title="@celda.MotivoBloqueo">@celda.Valor?.ToString("0.0")</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-secondary" title="@celda.MotivoBloqueo">—</span>
+                                            }
+                                        </td>
+                                    }
+                                    <td class="text-center valor-q1">@fila.PuntuacionQ1.ToString("0.000")</td>
+                                    <td class="text-center valor-q2">@fila.PuntuacionQ2.ToString("0.000")</td>
+                                    <td class="text-center valor-q3">@fila.PuntuacionQ3.ToString("0.000")</td>
+                                    <td class="text-center valor-q4">@fila.PuntuacionQ4.ToString("0.000")</td>
+                                    <td class="text-center valor-final">@fila.PuntuacionFinal.ToString("0.000")</td>
+                                    <td class="text-center valor-ponderada">@fila.PuntuacionPonderada.ToString("0.000")</td>
+                                    <td class="text-center">
+                                        <span class="semaforo semaforo--@claseSemaforo(fila.Semaforo)" data-semaforo="@fila.Semaforo">@fila.Semaforo</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn-pe btn-pe--primary btn-pe--sm btn-guardar-fila">
+                                            <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    @* ── Agregado del OKR (persistido en la BLL, DB-04; la UI solo lo refleja) ── *@
+    <div class="row g-3 mt-1">
+        <div class="col-md-4">
+            <div class="kpi-card h-100">
+                <div class="kpi-card__label">Puntuación final del OKR</div>
+                <div class="kpi-card__value" id="okrPuntuacionFinal">@((Model.CalculoOkr?.PuntuacionFinal ?? 0m).ToString("0.000"))</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="kpi-card h-100">
+                <div class="kpi-card__label">Semáforo del OKR</div>
+                <div class="kpi-card__value">
+                    <span class="semaforo semaforo--@claseSemaforo(Model.CalculoOkr?.Semaforo)" id="okrSemaforo"
+                          data-semaforo="@Model.CalculoOkr?.Semaforo">@Model.CalculoOkr?.Semaforo</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="kpi-card h-100">
+                <div class="kpi-card__label">KRs con al menos un valor</div>
+                <div class="kpi-card__value" id="okrKrsConValor">@(Model.CalculoOkr?.KrsConValor ?? 0) de @Model.KRs.Count</div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Modal de confirmación eliminar valor (DS § 5.7) ── *@
+    <div class="modal fade modal-pe" id="modalEliminarValor" tabindex="-1" aria-labelledby="modalEliminarValorTitulo" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalEliminarValorTitulo">Eliminar valor mensual</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="body-md mb-0" id="modalEliminarValorTexto"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-pe btn-pe--secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn-pe btn-pe--danger" id="btnConfirmarEliminarValor">
+                        <i class="bi bi-trash" aria-hidden="true"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/valormensualkr.js" asp-append-version="true"></script>
+}

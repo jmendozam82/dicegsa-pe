@@ -48,6 +48,7 @@ public static class DependencyContainer
         services.AddScoped<IPlanConsolidadoRepository, PlanConsolidadoRepository>(); // HU-023: vista consolidada del plan (solo lectura)
         services.AddScoped<IOkrRepository, OkrRepository>(); // HU-024: OKRs del área
         services.AddScoped<IKeyResultRepository, KeyResultRepository>(); // HU-025: Key Results de un OKR
+        services.AddScoped<IValorMensualKrRepository, ValorMensualKrRepository>(); // HU-026: valores mensuales de KRs
 
         // Servicios de negocio (Scoped: estado por request).
         services.AddScoped<ITenantService, TenantService>();
@@ -69,6 +70,7 @@ public static class DependencyContainer
         services.AddScoped<IPlanConsolidadoService, PlanConsolidadoService>(); // HU-023: vista consolidada del plan (solo lectura)
         services.AddScoped<IOkrService, OkrService>(); // HU-024: OKRs del área
         services.AddScoped<IKeyResultService, KeyResultService>(); // HU-025: Key Results de un OKR
+        services.AddScoped<IValorMensualKrService, ValorMensualKrService>(); // HU-026: registro mensual de valores de KRs
 
         // PlanLimitValidator es STATELESS (lógica pura, D4): Singleton.
         // TenantService (nueva dependencia, HU-002 §9.1) y PlanService lo consumen vía

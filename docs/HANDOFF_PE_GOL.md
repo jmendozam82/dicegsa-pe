@@ -51,7 +51,7 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 
 ## 🗓️ Estado Actual del Proyecto
 
-> **Actualizado: 2026-10-02** (cierre de **HU-025** — Sprint 4 completado 5/5 HU, 28 de 28 pts). Este bloque refleja el estado vigente; el historial detallado de cada sprint está en las secciones de cierre al final de este documento.
+> **Actualizado: 2026-10-02** (cierre de **HU-026** — Sprint 5 en curso, 1 HU de las planificadas, 8 pts). Este bloque refleja el estado vigente; el historial detallado de cada sprint está en las secciones de cierre al final de este documento.
 
 ### Fases completadas: **Análisis + Diseño (Fases 0, 1 y 2) + Sprint 1 + Sprint 2 + Sprint 3 + Sprint 4**
 
@@ -70,7 +70,8 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 | **Specs + implementación Sprint 2** | ✅ Completo — HU-005, HU-009..HU-015 (8/8) |
 | **Specs + implementación Sprint 3** | ✅ Completo — HU-016..HU-020 y HU-045 (6/6) |
 | **Specs + implementación Sprint 4** | ✅ Completo — HU-021, HU-022 (hotfix v1+v2), HU-023 (hotfix), HU-024 y HU-025 Implementadas (Sprint 4: 5/5 HU — 28 de 28 pts) |
-| Implementación (código) | ✅ En curso — 29 de 45 HU Implementadas (Sprint 4 completado) |
+| **Specs + implementación Sprint 5** | ⏳ En curso — HU-026 Implementada (Sprint 5: 1 HU de las planificadas, 8 pts); pendientes HU-027..HU-029 |
+| Implementación (código) | ✅ En curso — 30 de 45 HU Implementadas (Sprint 5 en curso) |
 | Auditoría post-Sprint 3 | ✅ Resuelta 100% (2026-09-21 — 3 críticos, 6 medios, 8 mejoras) |
 
 ### Estado técnico verificado (2026-10-02)
@@ -78,11 +79,11 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 | Indicador | Valor |
 |-----------|-------|
 | Build | `dotnet clean` + `dotnet build PE-GOL.sln` → **0 advertencias, 0 errores** |
-| Tests | `dotnet test PE-GOL.sln` → **917/917 en verde** (0 fallidas, 0 omitidas) — 841 previos + 76 de HU-025 (56 BLL + 13 DAL + 7 MVC) |
-| Cobertura BLL | **90,2%** (línea) ≥ 70% (TEST-02) — subió desde 90,00% |
+| Tests | `dotnet test PE-GOL.sln` → **1028/1028 en verde** (0 fallidas, 0 omitidas) — 917 previos + 111 de HU-026 (76 BLL + 17 DAL + 18 MVC) |
+| Cobertura BLL | **90,80%** (línea; rama 72,88%) ≥ 70% (TEST-02) — subió desde 90,2% |
 | Migraciones | **V001–V005 EJECUTADAS y verificadas** en Supabase Cloud (V001–V004 en HU-045; `V005__indice_accion_plan_gantt.sql` in HU-021 → `idx_accion_plan_ciclo_area ON public.accion_plan USING btree (tenant_id, ciclo_id, area_id)`) |
-| Frontend | Cimiento HU-045 + Gantt HU-021 + Consolidado HU-023 (con **proxy MVC** — ADR-016) + OKRs HU-024 + KRs HU-025 · DHTMLX Gantt **Community MIT v10.0.3** vendorizada en `wwwroot/lib/dhtmlx-gantt/` (ADR-011) |
-| Swagger | **60 paths** documentados (54 previos + 6 de `KeyResultController` — ARCH-03) |
+| Frontend | Cimiento HU-045 + Gantt HU-021 + Consolidado HU-023 (con **proxy MVC** — ADR-016) + OKRs HU-024 + KRs HU-025 + Valores Mensuales HU-026 · DHTMLX Gantt **Community MIT v10.0.3** vendorizada en `wwwroot/lib/dhtmlx-gantt/` (ADR-011) |
+| Swagger | **64 paths** documentados (60 previos + 4 de `ValorMensualKrController` — ARCH-03) |
 
 ### Decisiones de procedencia que siguen vigentes
 
@@ -93,9 +94,9 @@ Todos los archivos listados abajo están subidos en la sección de contexto del 
 - **Pendiente de decisión de Jorge:** precisión de `STACK-07` (variante/versión exacta). La regla se dejó **sin tocar** a propósito.
 - **Salvedad de HU-021:** no hubo verificación visual autenticada del Gantt renderizado; se verificó la entrega de assets y el contrato, no el render.
 
-### Fase siguiente: **Sprint 5 — HU-026 (Registro Mensual de Valores Reales de KRs)**
+### Fase siguiente: **Sprint 5 — HU-027 (Visualización Consolidada de OKRs, Gerente)**
 
-Sprint 4 cerrado el 2026-10-02 (5/5 HU — 28 de 28 pts). `specs/sprint-04/HU-025.spec.md` en `Implementado` (6 endpoints JEF-only, `KeyResultService`/`KeyResultRepository`, DTOs, vistas Razor, `keyresults.js`, 917/917 tests, cobertura BLL 90,2%). Siguiente en el loop: **HU-026** (Registro Mensual de Valores Reales de KRs) — primera HU del Sprint 5.
+HU-026 cerrada el 2026-10-02 (Sprint 5 en curso: 1 HU de las planificadas, 8 pts). `specs/sprint-05/HU-026.spec.md` en `Implementado` (4 endpoints JEF-only, `ValorMensualKrService`/`ValorMensualKrRepository`, DTOs, vista Razor, `valormensualkr.js`, 1028/1028 tests, cobertura BLL 90,80 %). **Pendiente de validación visual en navegador por Jorge.** Siguiente en el loop: **HU-027** (Visualización Consolidada de OKRs) — consumirá `okr.puntuacion_final` y `okr.semaforo` reales que HU-026 ya persiste.
 
 ---
 
@@ -651,5 +652,24 @@ y la sección 'Tests requeridos' del spec HU-001."
 
 ---
 
-*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-10-01 (Sprint 4 en curso — 4/5 HU, HU-021 + HU-022 + HU-023 + HU-024 cerradas · hotfix de HU-022 y hotfix de HU-023 aplicados y validados · 830/830 tests · cobertura BLL 89,96%) · Conversación origen: Análisis y Diseño completo*
-*Siguiente conversación recomendada: Loop de HU-025 (Gestión de KRs) — Sprint 4*
+## Cierre HU-026 — Sprint 5 en curso — 2026-10-02
+
+**Contexto:** HU-026 (Registro Mensual de Valores Reales de KRs) se cerró el 2026-10-02 tras superar REVIEW. Jorge aprobó el spec («continuar») con las opciones recomendadas: F0 (frontera de mes editable), F1 (promedio de la puntuación final del KR = promedio de los trimestres con datos) y **F8** (semáforo del KR calculado en BLL, **Opción A** — no persistido) quedaron resueltas. Con este cierre el **Sprint 5 queda en curso (1 HU de las planificadas, 8 pts)**; pendientes HU-027 (Consolidado OKRs), HU-028 (CRUD CAPEX) y HU-029 (Desembolso CAPEX).
+
+1. **HU-026 Implementada (spec → `Implementado`):** `ValorMensualKrController` nuevo (API, **4 endpoints JEF-only** con `[ProducesResponseType]`: `GET /api/v1/okrs/{okrId}/valores-mensuales`, `PUT /api/v1/okrs/{okrId}/key-results/{keyResultId}/valores`, `DELETE /api/v1/okrs/{okrId}/key-results/{keyResultId}/valores/{mes}`, `GET /api/v1/okrs/{okrId}/valores-mensuales/exportar`) + `ValorMensualKrService`/`IValorMensualKrService` (BLL) + `ValorMensualKrRepository`/`IValorMensualKrRepository` (DAL) + DTOs + validators FluentValidation + vista Razor `ValorMensualKr/Index` (breadcrumb `Mi Área › OKRs › {Código} › Key Results › Valores mensuales`, 2 empty-states, banner de ventana editable, `.tabla-pe` de 22 columnas con 12 meses, inputs `.form-pe-input` solo en meses editables y `—` en el resto, Q1-Q4/Final/Ponderada de solo lectura, semáforos `.semaforo--verde/amarillo/rojo/gris`, 3 KPI del agregado del OKR, modal de confirmación de borrado) + `wwwroot/js/valormensualkr.js` (jQuery Validate con regla propia `valorEscala` 0.0-1.0 con un decimal, guardado por fila y borrado por mes sin recargar, avisos con `alert` del DS en vez de `alert()` nativo, `textContent` para los mensajes de la BLL) + botón `bi-calendar-month` por fila en `KeyResult/Index` (con `asp-controller="ValorMensualKr"` explícito) + icono registrado en `docs/07_DESIGN_SYSTEM.md` § 7. Sin CSS nuevo ni estilos inline (UX-01). Tests: **1028/1028 en verde** (build **0 errores / 0 advertencias**; 917 previos intactos + 111 nuevos = 76 BLL + 17 DAL + 18 MVC). Cobertura BLL **90,80 %** (línea; rama 72,88 %), sube desde 90,2 % de HU-025.
+2. **Sin migración ni ADR nuevo:** la tabla `valor_mensual_kr`, su `UNIQUE (key_result_id, mes)`, sus CHECK y su RLS ya existían en el DDL base; F8 se resolvió con la Opción A (semáforo del KR calculado en BLL, no persistido). Aplican ADR-003 (auditoría), ADR-014 (ClosedXML) y ADR-016 (el navegador no consume la API interna).
+3. **Hallazgo de implementación 1 — contrato JSON del 422:** el `Guardar` del MVC devuelve JSON `{ success, message, errores }` en vez de `ViewResult` (el guardado es en línea por `fetch`; devolver HTML dejaba la grilla a medias). `ModelState` conservado (test #93) + test #103 `Guardar_Post_Api422_DevuelveJsonConLosMensajesDeLaBll`. El `catch` genérico de `Guardar` también devuelve `Json`; `EliminarValor` ya devolvía JSON y se dejó igual.
+4. **Hallazgo de implementación 2 — `CalculoOkr` en el ViewModel:** `ValorMensualKrIndexViewModel` incorpora `CalculoOkr?` (puntuación final, semáforo y nº de KRs con valor del OKR, ya persistidos por la BLL) para que la vista los pinte sin recalcular en el cliente (DB-04). Test #102 `Index_Get_PropagaCalculoOkrPersistido`.
+5. **Hallazgo de implementación 3 — envío form-encoded:** el JS envía los vectores como `application/x-www-form-urlencoded` (`valores[0].mes`, `valores[0].valor`) porque la acción MVC declara el request como parámetro complejo **sin `[FromBody]`**; con `application/json` el binder no lo enlaza.
+6. **Fix colateral de HU-025 (`wwwroot/js/keyresults.js`):** el asset estaba roto de dos formas que impedían usar la vista de KRs — (a) llevaba **Razor dentro de un asset estático** (`@Html.Raw(Json.Serialize(...))` y `'@Model.OkrId'`), lo que provocaba un `SyntaxError` que abortaba TODO el script (ambos modales —eliminar y ajustar pesos— quedaban muertos); (b) enviaba el reparto de pesos como `application/json` a una acción MVC sin `[FromBody]`, así que el vector llegaba vacío. Arreglado leyendo `okrId` y los KRs de `data-*` del DOM (patrón de `okrs.js`, ADR-016) y mandando el vector form-encoded.
+7. **Desviación del spec registrada:** el Addendum de exportación decía `GET /api/v1/key-results/{id}/valores/exportar`; la implementación usa `GET /api/v1/okrs/{okrId}/valores-mensuales/exportar` porque la propia fila «Filas: 1 por KR del OKR padre (consolidado por OKR)» del addendum exige consolidar por OKR. Sin ADR (no cambia el modelo de datos ni la arquitectura).
+8. **Pendientes abiertos:**
+   - **Validación visual en navegador por Jorge** (login real `JefeArea`, `/KeyResult/Index` → botón «Valores» → `/ValorMensualKr/Index?okrId=…`) — **NO realizada** al cierre (2026-10-02). El ítem del DoD queda sin marcar.
+   - **Nota operativa:** tras editar un `.cshtml` hay que **recompilar y reiniciar** — `Copy-Item` preserva el `LastWriteTime`, el build incremental puede **no** recompilar la vista y el servidor sigue sirviendo el markup viejo (lección del hotfix v2 de HU-022). El test de arquitectura escanea el **fuente**; la página servida viene del **DLL compilado**, y ambos pueden divergir.
+
+**Artefactos del cierre:** `specs/sprint-05/HU-026.spec.md` (estado `Implementado` + registro de cierre) · `AGENTS.md` v1.32 · `docs/ESTADO_HUS.md` (HU-026 ✅) · `docs/07_DESIGN_SYSTEM.md` § 7 (icono `bi-calendar-month`).
+
+---
+
+*HANDOFF PE-GOL SaaS · Generado: 2026-09-13 · Actualizado: 2026-10-02 (Sprint 5 en curso — 1 HU de las planificadas, HU-026 cerrada · 1028/1028 tests · cobertura BLL 90,80 %) · Conversación origen: Análisis y Diseño completo*
+*Siguiente conversación recomendada: Loop de HU-027 (Visualización Consolidada de OKRs) — Sprint 5*

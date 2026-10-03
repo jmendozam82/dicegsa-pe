@@ -1,11 +1,16 @@
 // PE-GOL SaaS — Key Results de un OKR (HU-025)
 // Modal de confirmación eliminar + modal de ajuste de pesos (patrón okrs.js).
+// El JS es un asset estático: nunca lleva Razor dentro. El contexto (okrId) y los KRs se
+// leen del DOM con data-*, igual que okrs.js y el resto de vistas (ADR-016).
 $(function () {
     'use strict';
 
+    var contenedor = document.getElementById('tablaKrs');
+    var okrId = contenedor ? contenedor.getAttribute('data-okr-id') : null;
+
     // ─── Modal de eliminación ────────────────────────────────────────────────
     var modalEliminarEl = document.getElementById('modalEliminarKr');
-    if (modalEliminarEl) {
+    if (modalEliminarEl && okrId) {
         var modalEliminar = new bootstrap.Modal(modalEliminarEl);
 
         modalEliminarEl.addEventListener('show.bs.modal', function (event) {
@@ -17,7 +22,6 @@ $(function () {
             var krId = boton.getAttribute('data-kr-id');
             var krCodigo = boton.getAttribute('data-kr-codigo');
             var krDescripcion = boton.getAttribute('data-kr-descripcion');
-            var okrId = '@Model.OkrId';
 
             var texto = document.getElementById('modalEliminarKrTexto');
             var formulario = document.getElementById('formEliminarKr');
@@ -30,16 +34,23 @@ $(function () {
 
     // ─── Modal de ajuste de pesos ─────────────────────────────────────────────
     var modalPesosEl = document.getElementById('modalPesos');
-    if (modalPesosEl) {
-        var modalPesos = new bootstrap.Modal(modalPesosEl);
+    if (modalPesosEl && okrId) {
         var pesosContainer = document.getElementById('pesosContainer');
         var sumaPesosEl = document.getElementById('sumaPesos');
         var btnGuardarPesos = document.getElementById('btnGuardarPesos');
         var btnRepartirEquitativo = document.getElementById('btnRepartirEquitativo');
-        var okrId = '@Model.OkrId';
 
-        // Datos de los KRs desde el modelo
-        var krs = @Html.Raw(Json.Serialize(Model.Items.Select(kr => new { kr.Id, kr.Codigo, kr.Descripcion, kr.Peso })));
+        // Datos de los KRs leídos de las filas que el MVC ya renderizó.
+        var krs = Array.prototype.map.call(
+            contenedor.querySelectorAll('tbody tr[data-kr-id]'),
+            function (fila) {
+                return {
+                    Id: fila.getAttribute('data-kr-id'),
+                    Codigo: fila.getAttribute('data-kr-codigo'),
+                    Descripcion: fila.getAttribute('data-kr-descripcion'),
+                    Peso: parseFloat(fila.getAttribute('data-kr-peso')) || 0
+                };
+            });
 
         modalPesosEl.addEventListener('show.bs.modal', function () {
             renderPesos();
@@ -98,30 +109,37 @@ $(function () {
         });
 
         btnGuardarPesos.addEventListener('click', function () {
-            var pesos = [];
-            document.querySelectorAll('.input-peso').forEach(function (input) {
-                pesos.push({
-                    id: input.getAttribute('data-kr-id'),
-                    peso: parseFloat(input.value)
-                });
+            // Form-encoded (no JSON): la acción MVC declara el request como parámetro complejo
+            // sin [FromBody], así que el binder solo lo enlaza desde el cuerpo de un formulario.
+            // Con application/json el vector llegaba vacío y la BLL lo rechazaba.
+            var cuerpo = new URLSearchParams();
+            document.querySelectorAll('.input-peso').forEach(function (input, index) {
+                cuerpo.append('pesos[' + index + '].id', input.getAttribute('data-kr-id'));
+                cuerpo.append('pesos[' + index + '].peso', parseFloat(input.value).toFixed(3));
             });
 
+            btnGuardarPesos.disabled = true;
             fetch('/KeyResult/ActualizarPesos/' + okrId, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
                 },
-                body: JSON.stringify({ pesos: pesos })
+                body: cuerpo.toString()
             }).then(function (response) {
                 if (response.ok) {
                     window.location.reload();
-                } else {
-                    response.json().then(function (data) {
-                        alert(data.message || 'Error al guardar los pesos.');
-                    });
+                    return null;
                 }
+                return response.json()
+                    .catch(function () { return null; })
+                    .then(function (data) {
+                        alert(data && data.message ? data.message : 'Error al guardar los pesos.');
+                    });
             }).catch(function () {
                 alert('Error de conexión al guardar los pesos.');
+            }).then(function () {
+                btnGuardarPesos.disabled = false;
+                actualizarSuma();
             });
         });
     }

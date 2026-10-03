@@ -95,7 +95,7 @@ else
             </button>
         </div>
     </div>
-    <div class="card-pe p-0">
+    <div class="card-pe p-0" id="tablaKrs" data-okr-id="@Model.OkrId">
         <div class="table-responsive">
             <table class="tabla-pe mb-0">
                 <thead>
@@ -111,7 +111,8 @@ else
                 <tbody>
                     @foreach (var kr in Model.Items)
                     {
-                        <tr>
+                        <tr data-kr-id="@kr.Id" data-kr-codigo="@kr.Codigo" data-kr-descripcion="@kr.Descripcion"
+                            data-kr-peso="@kr.Peso.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture)">
                             <td><span class="cell-codigo">@kr.Codigo</span></td>
                             <td>
                                 <span class="cell-truncate d-inline-block" title="@kr.Descripcion">@kr.Descripcion</span>
@@ -121,6 +122,11 @@ else
                             <td class="text-center">@kr.PuntuacionPonderada.ToString("0.000")</td>
                             <td class="text-end">
                                 <div class="d-inline-flex gap-1">
+                                    <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-controller="ValorMensualKr"
+                                       asp-action="Index" asp-route-okrId="@Model.OkrId"
+                                       title="Valores mensuales reales de @kr.Codigo">
+                                        <i class="bi bi-calendar-month" aria-hidden="true"></i>
+                                    </a>
                                     <a class="btn-pe btn-pe--secondary btn-pe--sm" asp-action="Editar"
                                        asp-route-okrId="@Model.OkrId" asp-route-id="@kr.Id" title="Editar">
                                         <i class="bi bi-pencil" aria-hidden="true"></i>

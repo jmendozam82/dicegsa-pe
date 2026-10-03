@@ -1,7 +1,7 @@
 # Estado de Historias de Usuario — PE-GOL SaaS
 
 > Tabla de estado por HU. Se actualiza al cierre de cada HU (LOOP-05). Fuente de verdad del progreso del backlog.
-> Última actualización: 2026-10-02 (cierre de HU-025 — Sprint 4 completado).
+> Última actualización: 2026-10-02 (cierre de HU-026 — Sprint 5 en curso).
 
 | HU | Título | Sprint | Spec | Tests | Impl. | Done |
 |----|--------|--------|------|-------|-------|------|
@@ -30,7 +30,7 @@
 | HU-023 | Vista Consolidada del Plan (Gerente) | 4 | ✅ | ✅ | ✅ | ✅ |
 | HU-024 | CRUD de OKRs | 4 | ✅ | ✅ | ✅ | ✅ |
 | HU-025 | Gestión de Key Results (KRs) | 4 | ✅ | ✅ | ✅ | ✅ |
-| HU-026 | Registro Mensual de Valores Reales de KRs | 5 | ⏳ | ⏳ | ⏳ | ⏳ |
+| HU-026 | Registro Mensual de Valores Reales de KRs | 5 | ✅ | ✅ | ✅ | ⏳ |
 | HU-027 | Visualización Consolidada de OKRs (Gerente) | 5 | ⏳ | ⏳ | ⏳ | ⏳ |
 | HU-028 | CRUD de Proyectos CAPEX | 5 | ⏳ | ⏳ | ⏳ | ⏳ |
 | HU-029 | Registro de Desembolso CAPEX (Planeado y Real) | 5 | ⏳ | ⏳ | ⏳ | ⏳ |
@@ -53,4 +53,4 @@
 
 ---
 
-**Resumen:** 45 HU · 243 pts · 9 Sprints · **29 Implementadas** (Sprints 1-4 completos) · Sprint 4 completado (5/5 HU — 28 de 28 pts) · Pendiente: Sprint 5 (HU-026..HU-029).
+**Resumen:** 45 HU · 243 pts · 9 Sprints · **30 Implementadas** (Sprints 1-4 completos + HU-026) · Sprint 5 en curso (1 HU de las planificadas, 8 pts) · Pendiente: Sprint 5 (HU-027..HU-029).

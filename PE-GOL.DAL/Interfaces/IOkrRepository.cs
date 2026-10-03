@@ -42,6 +42,11 @@ public interface IOkrRepository
     /// <summary>Abre una conexión gestionada por el repositorio e inicia una transacción IDbTransaction.</summary>
     Task<IDbTransaction> BeginTransactionAsync(CancellationToken ct = default);
 
+    // ─── Extensión para registro mensual de valores (HU-026) ────────────────────────────────────
+    /// <summary>DAL-5 (HU-026) · UPDATE okr.puntuacion_final y okr.semaforo (RF-038 / RN-027).
+    /// El gate area_id va también en el UPDATE (SEC-07: entidad de área).</summary>
+    Task<int> ActualizarPuntuacionOkrAsync(Guid tenantId, Guid areaId, Guid okrId, decimal puntuacionFinal, string semaforo, IDbTransaction? tx = null, CancellationToken ct = default);
+
     // ─── Extensiones para consolidado (HU-027) ──────────────────────────────────────────────────
     /// <summary>Listado consolidado de OKRs del área (precedente para futura vista GER).</summary>
     Task<IEnumerable<OkrResponse>> ListarConsolidadoAsync(Guid tenantId, Guid cicloId, Guid areaId, CancellationToken ct = default);
