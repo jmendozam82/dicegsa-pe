@@ -25,9 +25,11 @@ public static class ZonaHorariaHelper
         if (ZonasIANA.Zonas.Contains(zona))
             return true;
 
-        // Paso 3: fallback TimeZoneInfo (IDs IANA con ICU en .NET 8). Comparación case-insensitive
-        // porque FindSystemTimeZoneById es case-sensitive en Windows → "america/managua" en
-        // minúsculas NO resuelve (test #22).
-        return TimeZoneInfo.GetSystemTimeZones().Any(z => z.Id.Equals(zona, StringComparison.OrdinalIgnoreCase));
+        // Paso 3: fallback TimeZoneInfo (IDs IANA con ICU en .NET 8). Comparación ORDINAL
+        // (case-sensitive): los IDs IANA distinguen mayúsculas (D7), así que "america/managua"
+        // NO resuelve ni en Windows ni en Linux/ICU (test #22). Con OrdinalIgnoreCase el fallback
+        // daba por válido "america/managua" en Linux (la lista del sistema sí trae IDs IANA) y
+        // rompía el test #22 en CI (ubuntu).
+        return TimeZoneInfo.GetSystemTimeZones().Any(z => z.Id.Equals(zona, StringComparison.Ordinal));
     }
 }
